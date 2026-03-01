@@ -1,0 +1,162 @@
+from flask import Flask
+import psycopg2
+import os
+from dotenv import load_dotenv
+from flask import jsonify
+from flask import request
+
+# Load environment variables
+load_dotenv()
+
+app = Flask(__name__)
+
+def get_db_connection():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+@app.route("/")
+def home():
+    try:
+        conn = get_db_connection()
+        conn.close()
+        return "Secure Database Connected Successfully 🔐"
+    except Exception as e:
+        return f"Database Connection Failed ❌ {e}"
+
+
+@app.route("/create-table")
+def create_table():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS students (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100),
+                email VARCHAR(100),
+                department VARCHAR(100)
+            );
+        """)
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return "Students table created successfully 🎯"
+
+    except Exception as e:
+        return f"Error: {e}"
+    
+
+
+@app.route("/add-student", methods=["POST"])
+def add_student():
+    try:
+        data = request.get_json()
+
+        name = data["name"]
+        email = data["email"]
+        department = data["department"]
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            INSERT INTO students (name, email, department)
+            VALUES (%s, %s, %s);
+        """, (name, email, department))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Student added successfully 🎓"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+
+@app.route("/students")
+def get_students():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT * FROM students;")
+        rows = cur.fetchall()
+
+        students = []
+        for row in rows:
+            students.append({
+                "id": row[0],
+                "name": row[1],
+                "email": row[2],
+                "department": row[3]
+            })
+
+        cur.close()
+        conn.close()
+
+        return jsonify(students)
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+
+@app.route("/update-student/<int:id>", methods=["PUT"])
+def update_student(id):
+    try:
+        data = request.get_json()
+
+        name = data["name"]
+        email = data["email"]
+        department = data["department"]
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            UPDATE students
+            SET name = %s,
+                email = %s,
+                department = %s
+            WHERE id = %s;
+        """, (name, email, department, id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Student updated successfully 🔄"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+    
+
+@app.route("/delete-student/<int:id>", methods=["DELETE"])
+def delete_student(id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("""
+            DELETE FROM students
+            WHERE id = %s;
+        """, (id,))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Student deleted successfully 🗑️"})
+
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+if __name__ == "__main__":
+    app.run(debug=True)

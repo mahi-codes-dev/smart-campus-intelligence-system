@@ -1,0 +1,25 @@
+### Add Student
+POST http://127.0.0.1:5000/add-student
+
+{
+    "name": "Ankit",
+    "email": "ankit@example.com",
+    "department": "Information Technology"
+}
+
+### Get Students
+GET http://127.0.0.1:5000/students
+Content-Type: application/json
+
+### Update Student
+PUT http://127.0.0.1:5000/update-student/1
+Content-Type: application/json
+
+{
+    "name": "Mahesh Updated",
+    "email": "mahesh_new@example.com",
+    "department": "Artificial Intelligence"
+}
+
+### Delete Student
+DELETE http://127.0.0.1:5000/delete-student/1
