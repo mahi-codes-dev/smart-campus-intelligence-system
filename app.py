@@ -3,11 +3,13 @@ import psycopg2
 import os
 from dotenv import load_dotenv
 from database import get_db_connection
+from routes.student_routes import student_bp
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+app.register_blueprint(student_bp)
 
 
 @app.route("/")
@@ -92,33 +94,6 @@ def add_student():
         return jsonify({"error": "Email already exists"}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@app.route("/students")
-def get_students():
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("SELECT * FROM students;")
-        rows = cur.fetchall()
-
-        students = []
-        for row in rows:
-            students.append({
-                "id": row[0],
-                "name": row[1],
-                "email": row[2],
-                "department": row[3]
-            })
-
-        cur.close()
-        conn.close()
-
-        return jsonify(students)
-
-    except Exception as e:
-        return jsonify({"error": str(e)})
     
 
 @app.route("/update-student/<int:id>", methods=["PUT"])
