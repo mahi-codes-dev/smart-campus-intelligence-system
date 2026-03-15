@@ -1,9 +1,7 @@
-from flask import Flask
+from flask import Flask, jsonify, request
 import psycopg2
 import os
 from dotenv import load_dotenv
-from flask import jsonify
-from flask import request
 
 # Load environment variables
 load_dotenv()
@@ -16,7 +14,7 @@ def get_db_connection():
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
-        port=os.getenv("DB_PORT")
+        port=int(os.getenv("DB_PORT"))
     )
 
 @app.route("/")
@@ -24,10 +22,27 @@ def home():
     try:
         conn = get_db_connection()
         conn.close()
-        return "Secure Database Connected Successfully 🔐"
+        return jsonify({"message": "Secure Database Connected Successfully 🔐"}), 200
     except Exception as e:
-        return f"Database Connection Failed ❌ {e}"
+        return jsonify({"error": str(e)}), 500
+    
 
+@app.route("/health")
+def health_check():
+    try:
+        conn = get_db_connection()
+        conn.close()
+        return jsonify({
+            "status": "healthy",
+            "database": "connected"
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e)
+        }), 500
+    
 
 @app.route("/create-table")
 def create_table():
@@ -39,7 +54,7 @@ def create_table():
             CREATE TABLE IF NOT EXISTS students (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(100),
-                email VARCHAR(100),
+                email VARCHAR(100) UNIQUE,
                 department VARCHAR(100)
             );
         """)
@@ -54,11 +69,13 @@ def create_table():
         return f"Error: {e}"
     
 
-
 @app.route("/add-student", methods=["POST"])
 def add_student():
     try:
         data = request.get_json()
+
+        if not data or "name" not in data or "email" not in data or "department" not in data:
+            return jsonify({"error": "Missing required fields"}), 400
 
         name = data["name"]
         email = data["email"]
@@ -76,10 +93,12 @@ def add_student():
         cur.close()
         conn.close()
 
-        return jsonify({"message": "Student added successfully 🎓"})
+        return jsonify({"message": "Student added successfully 🎓"}), 201
 
+    except psycopg2.errors.UniqueViolation:
+        return jsonify({"error": "Email already exists"}), 400
     except Exception as e:
-        return jsonify({"error": str(e)})
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/students")
