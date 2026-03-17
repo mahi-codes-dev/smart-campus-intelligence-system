@@ -1,15 +1,36 @@
 ### Add Student
 POST http://127.0.0.1:5000/add-student
+Content-Type: application/json
 
 {
-    "name": "Ankit",
-    "email": "ankit@example.com",
-    "department": "Information Technology"
+    "name": "Amol",
+    "email": "Amol@example.com",
+    "department": "Computer Science"
+}
+
+POST http://127.0.0.1:5000/auth/register
+Content-Type: application/json
+
+{
+    "name": "Mahesh",
+    "email": "mahesh@test.com",
+    "password": "123456",
+    "role_id": 1
+}
+
+#auth login
+POST http://127.0.0.1:5000/auth/login
+Content-Type: application/json
+
+{
+    "email": "mahesh@test.com",
+    "password": "123456"
 }
 
 ### Get Students
 GET http://127.0.0.1:5000/students
 Content-Type: application/json
+Authorization: Bearer <token>
 
 ### Update Student
 PUT http://127.0.0.1:5000/update-student/1
@@ -22,4 +43,5 @@ Content-Type: application/json
 }
 
 ### Delete Student
-DELETE http://127.0.0.1:5000/delete-student/1
+DELETE http://127.0.0.1:5000/delete-student/3
+Content-Type: application/json
