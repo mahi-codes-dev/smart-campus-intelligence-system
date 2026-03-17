@@ -30,6 +30,7 @@ Content-Type: application/json
 ### Get Students
 GET http://127.0.0.1:5000/students
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJlbWFpbCI6Im1haGVzaEB0ZXN0LmNvbSIsInJvbGVfaWQiOjEsImV4cCI6MTc3Mzc3NDE0OX0.MUEU5a7lQSTD3D1j8EdYkP4J-8S5Qgf4WwwIUmMqOFo
 
 ### Update Student
 PUT http://127.0.0.1:5000/update-student/1
