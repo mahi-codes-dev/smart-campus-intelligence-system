@@ -18,6 +18,15 @@ Content-Type: application/json
     "role_id": 1
 }
 
+#auth login
+POST http://127.0.0.1:5000/auth/login
+Content-Type: application/json
+
+{
+    "email": "mahesh@test.com",
+    "password": "123456"
+}
+
 ### Get Students
 GET http://127.0.0.1:5000/students
 Content-Type: application/json
