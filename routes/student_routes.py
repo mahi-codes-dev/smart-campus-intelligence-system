@@ -1,11 +1,12 @@
 from flask import Blueprint, jsonify
 from services.student_service import fetch_all_students
-from auth.auth_middleware import token_required
+from auth.auth_middleware import token_required, role_required
 
 student_bp = Blueprint("student_bp", __name__)
 
 @student_bp.route("/students")
 @token_required
+@role_required("Admin")
 def get_students():
     try:
         students = fetch_all_students()
