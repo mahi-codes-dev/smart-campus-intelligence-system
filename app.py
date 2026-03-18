@@ -6,6 +6,7 @@ from database import get_db_connection
 from routes.student_routes import student_bp
 from auth.auth_routes import auth_bp
 from routes.subject_routes import subject_bp
+from routes.attendance_routes import attendance_bp
 
 # Load environment variables
 load_dotenv()
@@ -14,6 +15,7 @@ app = Flask(__name__)
 app.register_blueprint(student_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(subject_bp)
+app.register_blueprint(attendance_bp)
 
 @app.route("/")
 def home():
