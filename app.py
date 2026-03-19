@@ -8,6 +8,9 @@ from auth.auth_routes import auth_bp
 from routes.subject_routes import subject_bp
 from routes.attendance_routes import attendance_bp
 from routes.marks_routes import marks_bp
+from routes.readiness_routes import readiness_bp
+from routes.skills_routes import skills_bp
+from routes.mock_routes import mock_bp
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +21,9 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(subject_bp)
 app.register_blueprint(attendance_bp)
 app.register_blueprint(marks_bp)
+app.register_blueprint(readiness_bp)
+app.register_blueprint(skills_bp)
+app.register_blueprint(mock_bp)
 
 @app.route("/")
 def home():
@@ -152,6 +158,11 @@ def delete_student(id):
 
     except Exception as e:
         return jsonify({"error": str(e)})
+    
+# @app.route("/test-mock")
+# def test_mock():
+#     return "Mock route test working"
 
 if __name__ == "__main__":
+    #print(app.url_map)
     app.run(debug=True)
