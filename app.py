@@ -9,6 +9,7 @@ from routes.subject_routes import subject_bp
 from routes.attendance_routes import attendance_bp
 from routes.marks_routes import marks_bp
 from routes.readiness_routes import readiness_bp
+from routes.skills_routes import skills_bp
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,7 @@ app.register_blueprint(subject_bp)
 app.register_blueprint(attendance_bp)
 app.register_blueprint(marks_bp)
 app.register_blueprint(readiness_bp)
+app.register_blueprint(skills_bp)
 
 @app.route("/")
 def home():
