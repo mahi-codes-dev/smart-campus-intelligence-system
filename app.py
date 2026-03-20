@@ -11,6 +11,7 @@ from routes.marks_routes import marks_bp
 from routes.readiness_routes import readiness_bp
 from routes.skills_routes import skills_bp
 from routes.mock_routes import mock_bp
+from flask import render_template
 
 # Load environment variables
 load_dotenv()
@@ -27,12 +28,13 @@ app.register_blueprint(mock_bp)
 
 @app.route("/")
 def home():
-    try:
-        conn = get_db_connection()
-        conn.close()
-        return jsonify({"message": "Secure Database Connected Successfully 🔐"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return render_template("login.html")
+    # try:
+    #     conn = get_db_connection()
+    #     conn.close()
+    #     return jsonify({"message": "Secure Database Connected Successfully 🔐"}), 200
+    # except Exception as e:
+    #     return jsonify({"error": str(e)}), 500
     
 
 @app.route("/health")
