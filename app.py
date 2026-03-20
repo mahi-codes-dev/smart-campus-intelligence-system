@@ -37,6 +37,11 @@ def home():
     #     return jsonify({"error": str(e)}), 500
     
 
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+
 @app.route("/health")
 def health_check():
     try:
