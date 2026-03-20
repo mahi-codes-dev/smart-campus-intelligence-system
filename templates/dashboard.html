@@ -1,2 +1,23 @@
-<h1>Dashboard</h1>
-<p>Welcome to the Smart Campus Intelligence System Dashboard!</p>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+
+    <h1>Dashboard</h1>
+
+    <h2>Your Readiness</h2>
+    <p id="readiness"></p>
+
+    <h2>Top Students</h2>
+    <ul id="topStudents"></ul>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>
+
+<script>
+    loadDashboardData();
+</script>

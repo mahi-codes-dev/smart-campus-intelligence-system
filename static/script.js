@@ -28,3 +28,39 @@ function login() {
         document.getElementById("message").innerText = "Server error";
     });
 }
+
+function loadDashboard() {
+    const token = localStorage.getItem("token");
+
+    // 🔹 Readiness (use a test student id for now)
+    fetch("/readiness/4", {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("readiness").innerText =
+            "Score: " + data.final_score +
+            " | Status: " + data.status +
+            " | Risk: " + data.risk_status;
+    });
+
+    // 🔹 Top Students
+    fetch("/top-students", {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        const list = document.getElementById("topStudents");
+        list.innerHTML = "";
+
+        data.forEach(student => {
+            const li = document.createElement("li");
+            li.innerText = student.name + " - " + student.score;
+            list.appendChild(li);
+        });
+    });
+}
