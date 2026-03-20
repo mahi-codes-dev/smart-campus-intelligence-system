@@ -6,7 +6,7 @@ def calculate_readiness(student_id):
 
     # 1 Attendance %
     cur.execute("""
-        SELECT 
+        SELECT
             COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*)
         FROM attendance
         WHERE student_id = %s
@@ -75,3 +75,34 @@ def calculate_readiness(student_id):
         "status": status,
         "risk_status": risk_status
     }
+
+def get_top_students(limit=5):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Get all student IDs
+    cur.execute("SELECT id, name FROM students")
+    students = cur.fetchall()
+
+    results = []
+
+    for student in students:
+        student_id = student[0]
+        student_name = student[1]
+
+        data = calculate_readiness(student_id)
+
+        results.append({
+            "student_id": student_id,
+            "name": student_name,
+            "score": data["final_score"],
+            "status": data["status"]
+        })
+
+    # Sort by score DESC
+    results.sort(key=lambda x: x["score"], reverse=True)
+
+    cur.close()
+    conn.close()
+
+    return results[:limit]
