@@ -23,6 +23,11 @@ def calculate_readiness(student_id):
     
     marks = float(cur.fetchone()[0] or 0)
 
+    if attendance < 60 or marks < 50:
+        risk_status = "At Risk"
+    else:
+        risk_status = "Safe"
+
     # 3 Skills count → convert to score
     cur.execute("""
         SELECT COUNT(*)
@@ -67,5 +72,6 @@ def calculate_readiness(student_id):
         "skills_score": skills_score,
         "mock_score": round(mock_score, 2),
         "final_score": round(final_score, 2),
-        "status": status
+        "status": status,
+        "risk_status": risk_status
     }
