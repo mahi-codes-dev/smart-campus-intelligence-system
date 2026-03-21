@@ -14,14 +14,12 @@ body {
     height: 100vh;
 }
 
-/* Center container */
 .login-container {
     width: 100%;
     display: flex;
     justify-content: center;
 }
 
-/* Login card */
 .login-card {
     background: white;
     padding: 40px;
@@ -31,7 +29,6 @@ body {
     text-align: center;
 }
 
-/* Inputs */
 .login-card input {
     width: 100%;
     padding: 10px;
@@ -40,7 +37,6 @@ body {
     border-radius: 6px;
 }
 
-/* Button */
 .login-card button {
     width: 100%;
     padding: 10px;
@@ -55,78 +51,9 @@ body {
     background: #1d4ed8;
 }
 
-/* Message */
 .message {
     margin-top: 10px;
     font-weight: bold;
-}
-
-/* ================= NAVBAR ================= */
-
-
-/* Logout */
-.navbar button {
-    background: #ef4444;
-    border: none;
-    padding: 8px 15px;
-    color: white;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-/* Cards */
-.card {
-    background: white;
-    padding: 25px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
-
-/* Leaderboard */
-.leaderboard ul {
-    list-style: none;
-    padding: 0;
-}
-
-.leaderboard li {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-/* Risk colors */
-.success {
-    color: green;
-    font-weight: bold;
-}
-
-.danger {
-    color: red;
-    font-weight: bold;
-}
-
-/* Welcome text */
-.welcome {
-    margin-top: -10px;
-    margin-bottom: 20px;
-    color: #555;
-}
-
-/* Highlight main card */
-.highlight {
-    border: 2px solid #2563eb;
-}
-
-/* Bigger score */
-#readinessScore {
-    font-size: 28px;
-    font-weight: bold;
-    color: #2563eb;
-}
-
-/* Hover effects */
-.card:hover {
-    transform: translateY(-5px);
-    transition: 0.2s;
 }
 
 /* ================= DASHBOARD LAYOUT ================= */
@@ -135,17 +62,18 @@ body {
     display: flex;
 }
 
-/* Sidebar */
+/* 🔹 Sidebar */
 .sidebar {
-    width: 220px;
+    width: 230px;
     height: 100vh;
-    background: #1e293b;
+    background: linear-gradient(180deg, #1e293b, #0f172a);
     color: white;
-    padding: 20px;
+    padding: 25px 15px;
 }
 
 .sidebar h2 {
     margin-bottom: 30px;
+    font-size: 20px;
 }
 
 .sidebar ul {
@@ -154,23 +82,28 @@ body {
 }
 
 .sidebar li {
-    padding: 10px;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
     cursor: pointer;
-    border-radius: 5px;
+    transition: 0.2s;
 }
 
-.sidebar li:hover,
+.sidebar li:hover {
+    background: rgba(255,255,255,0.1);
+}
+
 .sidebar .active {
-    background: #334155;
+    background: #2563eb;
 }
 
-/* Main */
+/* 🔹 Main */
 .main {
     flex: 1;
     background: #f5f7fa;
 }
 
-/* Topbar */
+/* 🔹 Topbar */
 .topbar {
     display: flex;
     justify-content: space-between;
@@ -187,39 +120,50 @@ body {
     border-radius: 5px;
 }
 
-/* Dashboard */
+/* 🔹 Dashboard */
 .dashboard-container {
     padding: 30px;
 }
 
-/* Grid */
+.welcome {
+    margin-bottom: 20px;
+    color: #555;
+}
+
+/* 🔹 Grid */
 .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
-/* Cards */
+/* 🔹 Cards */
 .card {
     background: white;
     padding: 20px;
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: 0.2s;
 }
 
-/* Highlight */
+.card:hover {
+    transform: translateY(-5px);
+}
+
+/* 🔹 Highlight Card */
 .highlight {
     border-left: 5px solid #2563eb;
+    transform: scale(1.03);
 }
 
-/* Score */
+/* 🔹 Score */
 #readinessScore {
     font-size: 28px;
     font-weight: bold;
     color: #2563eb;
 }
 
-/* Leaderboard */
+/* 🔹 Leaderboard */
 .leaderboard ul {
     list-style: none;
     padding: 0;
@@ -230,7 +174,7 @@ body {
     border-bottom: 1px solid #eee;
 }
 
-/* Risk */
+/* 🔹 Risk */
 .success {
     color: green;
     font-weight: bold;
@@ -239,4 +183,27 @@ body {
 .danger {
     color: red;
     font-weight: bold;
+}
+
+/* Hero Section */
+/* HERO CARD */
+.hero-card {
+    grid-column: span 2;   /* 🔥 Takes 2 columns */
+}
+
+/* Progress bar */
+.progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 5px;
+    margin-top: 15px;
+}
+
+#progressFill {
+    height: 100%;
+    background: #2563eb;
+    width: 0%;
+    border-radius: 5px;
+    transition: width 0.5s ease;
 }

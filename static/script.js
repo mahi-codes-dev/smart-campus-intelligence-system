@@ -59,6 +59,8 @@ function loadDashboard() {
         risk.innerText = data.risk_status;
 
         risk.className = data.risk_status === "At Risk" ? "danger" : "success";
+
+        document.getElementById("progressFill").style.width = data.final_score + "%";
     });
 
     fetch("/top-students", {
@@ -73,8 +75,9 @@ function loadDashboard() {
 
         data.forEach(student => {
             const li = document.createElement("li");
-            li.innerHTML = `<strong>${student.name}</strong> — ${student.score}`;
-            list.appendChild(li);
+            li.innerHTML = `
+                <span style="font-weight: bold;">🏆 ${student.name}</span>
+                <span style="float:right;">${student.score}</span>`;
         });
     });
 }
