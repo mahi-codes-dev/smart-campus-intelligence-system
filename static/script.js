@@ -47,11 +47,18 @@ function loadDashboard() {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById("readiness").innerHTML =
-            `<strong>Score:</strong> ${data.final_score} <br>
-            <strong>Status:</strong> ${data.status} <br>
-            <strong>Risk:</strong> ${data.risk_status}`;
-    });
+    document.getElementById("readinessScore").innerText = data.final_score;
+    document.getElementById("status").innerText = data.status;
+
+    const riskElement = document.getElementById("risk");
+    riskElement.innerText = data.risk_status;
+
+    if (data.risk_status === "At Risk") {
+        riskElement.className = "danger";
+    } else {
+        riskElement.className = "success";
+    }
+});
 
     // Top Students
     fetch("/top-students", {
@@ -61,15 +68,18 @@ function loadDashboard() {
     })
     .then(res => res.json())
     .then(data => {
-        const list = document.getElementById("topStudents");
-        list.innerHTML = "";
+    document.getElementById("readinessScore").innerText = data.final_score;
+    document.getElementById("status").innerText = data.status;
 
-        data.forEach(student => {
-            const li = document.createElement("li");
-            li.innerHTML = `<strong>${student.name}</strong> — ${student.score}`;
-            list.appendChild(li);
-        });
-    });
+    const riskElement = document.getElementById("risk");
+    riskElement.innerText = data.risk_status;
+
+    if (data.risk_status === "At Risk") {
+        riskElement.className = "danger";
+    } else {
+        riskElement.className = "success";
+    }
+});
 }
 
 
