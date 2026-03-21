@@ -2,22 +2,33 @@
 <html>
 <head>
     <title>Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-    <h1>Dashboard</h1>
+<div class="container">
 
-    <h2>Your Readiness</h2>
-    <p id="readiness"></p>
+    <h1>Smart Campus Dashboard</h1>
 
-    <h2>Top Students</h2>
-    <ul id="topStudents"></ul>
+    <div class="card">
+        <h2>Your Readiness</h2>
+        <p id="readiness"></p>
+    </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <div class="card">
+        <h2>Top Students</h2>
+        <ul id="topStudents"></ul>
+    </div>
+
+    <button onclick="logout()" class="logout-btn">Logout</button>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    loadDashboard();
+</script>
 
 </body>
 </html>
-
-<script>
-    loadDashboardData();
-</script>
