@@ -17,11 +17,14 @@ function login() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.token) {
-            localStorage.setItem("token", data.token);
-            message.innerText = "Login successful ✅";
-            window.location.href = "/dashboard";
-        } else {
+    if (data.token) {
+        localStorage.setItem("token", data.token);
+
+        // 🔥 ADD THIS (important)
+        localStorage.setItem("user_email", email);
+
+        window.location.href = "/dashboard";
+    }else {
             message.innerText = data.error || "Login failed ❌";
         }
     })
@@ -29,7 +32,6 @@ function login() {
         message.innerText = "Server error ❌";
     });
 }
-
 
 function loadDashboard() {
     const token = localStorage.getItem("token");
@@ -39,28 +41,26 @@ function loadDashboard() {
         return;
     }
 
-    // Readiness
-    fetch("/readiness/4", {
+    // 🔥 Temporary dynamic (later backend-based)
+    const studentId = 4;  // will replace later
+
+    fetch(`/readiness/${studentId}`, {
         headers: {
             "Authorization": "Bearer " + token
         }
     })
     .then(res => res.json())
     .then(data => {
-    document.getElementById("readinessScore").innerText = data.final_score;
-    document.getElementById("status").innerText = data.status;
+        document.getElementById("readinessScore").innerText = data.final_score;
+        document.getElementById("status").innerText = data.status;
+        document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
 
-    const riskElement = document.getElementById("risk");
-    riskElement.innerText = data.risk_status;
+        const risk = document.getElementById("risk");
+        risk.innerText = data.risk_status;
 
-    if (data.risk_status === "At Risk") {
-        riskElement.className = "danger";
-    } else {
-        riskElement.className = "success";
-    }
-});
+        risk.className = data.risk_status === "At Risk" ? "danger" : "success";
+    });
 
-    // Top Students
     fetch("/top-students", {
         headers: {
             "Authorization": "Bearer " + token
@@ -68,18 +68,15 @@ function loadDashboard() {
     })
     .then(res => res.json())
     .then(data => {
-    document.getElementById("readinessScore").innerText = data.final_score;
-    document.getElementById("status").innerText = data.status;
+        const list = document.getElementById("topStudents");
+        list.innerHTML = "";
 
-    const riskElement = document.getElementById("risk");
-    riskElement.innerText = data.risk_status;
-
-    if (data.risk_status === "At Risk") {
-        riskElement.className = "danger";
-    } else {
-        riskElement.className = "success";
-    }
-});
+        data.forEach(student => {
+            const li = document.createElement("li");
+            li.innerHTML = `<strong>${student.name}</strong> — ${student.score}`;
+            list.appendChild(li);
+        });
+    });
 }
 
 
