@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body onload="loadStudentDashboard()">
+
+<div class="dashboard-container">
+    <h1>🎓 Student Dashboard</h1>
+    <p>Welcome, <span id="userEmail"></span></p>
+
+    <div class="card">
+        <h3>Readiness Score</h3>
+        <p id="score"></p>
+
+        <div class="progress-bar">
+            <div id="progressFill"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>Status</h3>
+        <p id="status"></p>
+    </div>
+
+    <div class="card">
+        <h3>Risk Level</h3>
+        <p id="risk"></p>
+    </div>
+</div>
+
+<script>
+function loadStudentDashboard() {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "/";
+        return;
+    }
+
+    document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
+
+    // 🔥 TEMP (next step we fix properly)
+    const studentId = 6;  
+
+    fetch(`/readiness/${studentId}`, {
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("score").innerText = data.final_score;
+        document.getElementById("status").innerText = data.status;
+
+        const risk = document.getElementById("risk");
+        risk.innerText = data.risk_status;
+
+        risk.className = data.risk_status === "At Risk" ? "danger" : "success";
+
+        document.getElementById("progressFill").style.width = data.final_score + "%";
+    });
+}
+</script>
+
+</body>
+</html>

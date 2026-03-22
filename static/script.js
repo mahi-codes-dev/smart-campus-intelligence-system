@@ -36,7 +36,6 @@ function register() {
     });
 }
 
-
 function login() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
@@ -49,14 +48,33 @@ function login() {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({
+            email: email,
+            password: password
+        })
     })
     .then(res => res.json())
     .then(data => {
         if (data.token) {
+
+            // ✅ Store token
             localStorage.setItem("token", data.token);
-            localStorage.setItem("user_email", email);
-            window.location.href = "/dashboard";
+
+            // ✅ Store user info
+            localStorage.setItem("user_email", data.user.email);
+            localStorage.setItem("role_id", data.user.role_id);
+
+            // 🔥 ROLE BASED REDIRECT
+            if (data.user.role_id === 3) {
+                window.location.href = "/student-dashboard";
+            }
+            else if (data.user.role_id === 2) {
+                window.location.href = "/faculty-dashboard";
+            }
+            else {
+                window.location.href = "/dashboard";
+            }
+
         } else {
             message.innerText = data.error || "Login failed ❌";
         }

@@ -175,6 +175,16 @@ def delete_student(id):
 def register_page():
     return render_template("register.html")
 
+
+@app.route('/student-dashboard')
+def student_dashboard():
+    return render_template('dashboard_student.html')
+
+@app.route('/faculty-dashboard')
+def faculty_dashboard():
+    return render_template('dashboard_faculty.html')
+
+
 if __name__ == "__main__":
     #print(app.url_map)
     app.run(debug=True)

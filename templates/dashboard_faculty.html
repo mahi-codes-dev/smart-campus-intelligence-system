@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Faculty Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<div class="dashboard-container">
+    <h1>👨‍🏫 Faculty Dashboard</h1>
+    <p>Welcome, <span id="userEmail"></span></p>
+
+    <div class="card">
+        <h3>Analytics Section</h3>
+        <p>Charts will come here (we will move from old dashboard)</p>
+    </div>
+</div>
+
+<script>
+    document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
+</script>
+
+</body>
+</html>
