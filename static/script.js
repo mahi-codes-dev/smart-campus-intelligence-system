@@ -1,3 +1,42 @@
+function register() {
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    const role = document.getElementById("role").value;
+    const message = document.getElementById("message");
+
+    message.innerText = "Creating account...";
+
+    fetch("/auth/register", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            name: name,
+            email: email,
+            password: password,
+            role_id: parseInt(role)
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.message || data.success) {
+            message.innerText = "Account created successfully ✅";
+
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 1500);
+        } else {
+            message.innerText = data.error || "Registration failed ❌";
+        }
+    })
+    .catch(() => {
+        message.innerText = "Server error ❌";
+    });
+}
+
+
 function login() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
@@ -10,21 +49,15 @@ function login() {
         headers: {
             "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-            email: email,
-            password: password
-        })
+        body: JSON.stringify({ email, password })
     })
     .then(res => res.json())
     .then(data => {
-    if (data.token) {
-        localStorage.setItem("token", data.token);
-
-        // 🔥 ADD THIS (important)
-        localStorage.setItem("user_email", email);
-
-        window.location.href = "/dashboard";
-    }else {
+        if (data.token) {
+            localStorage.setItem("token", data.token);
+            localStorage.setItem("user_email", email);
+            window.location.href = "/dashboard";
+        } else {
             message.innerText = data.error || "Login failed ❌";
         }
     })
@@ -41,47 +74,75 @@ function loadDashboard() {
         return;
     }
 
-    // 🔥 Temporary dynamic (later backend-based)
-    const studentId = 4;  // will replace later
+    const studentId = 4;
 
     fetch(`/readiness/${studentId}`, {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
+        headers: { "Authorization": "Bearer " + token }
     })
     .then(res => res.json())
     .then(data => {
+
         document.getElementById("readinessScore").innerText = data.final_score;
         document.getElementById("status").innerText = data.status;
         document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
 
         const risk = document.getElementById("risk");
         risk.innerText = data.risk_status;
-
         risk.className = data.risk_status === "At Risk" ? "danger" : "success";
 
         document.getElementById("progressFill").style.width = data.final_score + "%";
+
+        // 🔥 CHART
+        const ctx = document.getElementById("performanceChart");
+
+        if (window.myChart) {
+            window.myChart.destroy();
+        }
+
+        window.myChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: ["Attendance", "Marks", "Skills", "Mock"],
+                datasets: [{
+                    label: "Performance",
+                    data: [
+                        data.attendance,
+                        data.marks,
+                        data.skills_score,
+                        data.mock_score
+                    ]
+                }]
+            }
+        });
     });
 
     fetch("/top-students", {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
+        headers: { "Authorization": "Bearer " + token }
     })
     .then(res => res.json())
     .then(data => {
         const list = document.getElementById("topStudents");
         list.innerHTML = "";
 
-        data.forEach(student => {
+        data.forEach((student, index) => {
             const li = document.createElement("li");
+
+            let medal = "";
+            if (index === 0) medal = "🥇";
+            else if (index === 1) medal = "🥈";
+            else if (index === 2) medal = "🥉";
+
             li.innerHTML = `
-                <span style="font-weight: bold;">🏆 ${student.name}</span>
-                <span style="float:right;">${student.score}</span>`;
+                <div class="leaderboard-item">
+                    <span><b>${medal} ${student.name}</b></span>
+                    <span class="score">${student.score}</span>
+                </div>
+            `;
+
+            list.appendChild(li);
         });
     });
 }
-
 
 function logout() {
     localStorage.removeItem("token");

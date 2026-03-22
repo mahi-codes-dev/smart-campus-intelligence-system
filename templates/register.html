@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="login-body">
+
+<div class="login-container">
+
+    <div class="login-card">
+        <h2>Create Account</h2>
+
+        <input type="text" id="name" placeholder="Enter Name">
+        <input type="email" id="email" placeholder="Enter Email">
+        <input type="password" id="password" placeholder="Enter Password">
+
+        <!-- 🔥 Role Selection -->
+        <select id="role">
+            <option value="3">Student</option>
+            <option value="2">Faculty</option>
+        </select>
+
+        <button onclick="register()">Register</button>
+
+        <p class="message" id="message"></p>
+
+        <p>Already have account? <a href="/">Login</a></p>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+</body>
+</html>

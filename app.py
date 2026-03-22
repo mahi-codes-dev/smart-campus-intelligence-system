@@ -170,6 +170,11 @@ def delete_student(id):
 # def test_mock():
 #     return "Mock route test working"
 
+
+@app.route("/register")
+def register_page():
+    return render_template("register.html")
+
 if __name__ == "__main__":
     #print(app.url_map)
     app.run(debug=True)

@@ -56,13 +56,13 @@ body {
     font-weight: bold;
 }
 
-/* ================= DASHBOARD LAYOUT ================= */
+/* ================= DASHBOARD ================= */
 
 .layout {
     display: flex;
 }
 
-/* 🔹 Sidebar */
+/* Sidebar */
 .sidebar {
     width: 230px;
     height: 100vh;
@@ -73,7 +73,6 @@ body {
 
 .sidebar h2 {
     margin-bottom: 30px;
-    font-size: 20px;
 }
 
 .sidebar ul {
@@ -86,7 +85,6 @@ body {
     margin-bottom: 10px;
     border-radius: 8px;
     cursor: pointer;
-    transition: 0.2s;
 }
 
 .sidebar li:hover {
@@ -97,13 +95,12 @@ body {
     background: #2563eb;
 }
 
-/* 🔹 Main */
+/* Main */
 .main {
     flex: 1;
-    background: #f5f7fa;
 }
 
-/* 🔹 Topbar */
+/* Topbar */
 .topbar {
     display: flex;
     justify-content: space-between;
@@ -120,24 +117,18 @@ body {
     border-radius: 5px;
 }
 
-/* 🔹 Dashboard */
+/* Dashboard */
 .dashboard-container {
     padding: 30px;
 }
 
-.welcome {
-    margin-bottom: 20px;
-    color: #555;
-}
-
-/* 🔹 Grid */
 .grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
 }
 
-/* 🔹 Cards */
+/* Cards */
 .card {
     background: white;
     padding: 20px;
@@ -150,48 +141,25 @@ body {
     transform: translateY(-5px);
 }
 
-/* 🔹 Highlight Card */
+/* Highlight */
 .highlight {
     border-left: 5px solid #2563eb;
     transform: scale(1.03);
 }
 
-/* 🔹 Score */
+/* Hero */
+.hero-card {
+    grid-column: span 2;
+}
+
+/* Score */
 #readinessScore {
     font-size: 28px;
     font-weight: bold;
     color: #2563eb;
 }
 
-/* 🔹 Leaderboard */
-.leaderboard ul {
-    list-style: none;
-    padding: 0;
-}
-
-.leaderboard li {
-    padding: 10px;
-    border-bottom: 1px solid #eee;
-}
-
-/* 🔹 Risk */
-.success {
-    color: green;
-    font-weight: bold;
-}
-
-.danger {
-    color: red;
-    font-weight: bold;
-}
-
-/* Hero Section */
-/* HERO CARD */
-.hero-card {
-    grid-column: span 2;   /* 🔥 Takes 2 columns */
-}
-
-/* Progress bar */
+/* Progress */
 .progress-bar {
     width: 100%;
     height: 8px;
@@ -205,5 +173,48 @@ body {
     background: #2563eb;
     width: 0%;
     border-radius: 5px;
-    transition: width 0.5s ease;
+}
+
+/* Leaderboard */
+.leaderboard-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.leaderboard-item:hover {
+    background: #f1f5f9;
+}
+
+.score {
+    font-weight: bold;
+    color: #2563eb;
+}
+
+/* Risk */
+.success {
+    color: green;
+    font-weight: bold;
+}
+
+.danger {
+    color: red;
+    font-weight: bold;
+}
+
+/* Chart */
+canvas {
+    margin-top: 20px;
+}
+
+
+/* REGISTER */
+/* Register dropdown */
+.login-card select {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 6px;
+    border: 1px solid #ccc;
 }
