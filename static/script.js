@@ -57,14 +57,10 @@ function login() {
     .then(data => {
         if (data.token) {
 
-            // ✅ Store token
             localStorage.setItem("token", data.token);
-
-            // ✅ Store user info
             localStorage.setItem("user_email", data.user.email);
             localStorage.setItem("role_id", data.user.role_id);
 
-            // 🔥 ROLE BASED REDIRECT
             if (data.user.role_id === 3) {
                 window.location.href = "/student-dashboard";
             }
@@ -84,7 +80,7 @@ function login() {
     });
 }
 
-function loadDashboard() {
+async function loadDashboard() {
     const token = localStorage.getItem("token");
 
     if (!token) {
@@ -92,23 +88,33 @@ function loadDashboard() {
         return;
     }
 
-    const studentId = 4;
+    try {
+        // ✅ NEW API CALL (FIXED)
+        const response = await fetch("/student/dashboard", {
+            headers: { "Authorization": "Bearer " + token }
+        });
 
-    fetch(`/readiness/${studentId}`, {
-        headers: { "Authorization": "Bearer " + token }
-    })
-    .then(res => res.json())
-    .then(data => {
+        const data = await response.json();
 
-        document.getElementById("readinessScore").innerText = data.final_score;
+        console.log("Dashboard Data:", data);
+
+        // ✅ FIXED KEYS
+        document.getElementById("readinessScore").innerText = data.readiness_score;
         document.getElementById("status").innerText = data.status;
         document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
 
         const risk = document.getElementById("risk");
-        risk.innerText = data.risk_status;
-        risk.className = data.risk_status === "At Risk" ? "danger" : "success";
+        risk.innerText = data.risk_level;
+        risk.className = data.risk_level === "At Risk" ? "danger" : "success";
 
-        document.getElementById("progressFill").style.width = data.final_score + "%";
+        document.getElementById("progressFill").style.width = data.readiness_score + "%";
+
+        // 🔥 OPTIONAL: Fetch detailed readiness for chart
+        const detailed = await fetch("/readiness/5", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+
+        const detailData = await detailed.json();
 
         // 🔥 CHART
         const ctx = document.getElementById("performanceChart");
@@ -124,16 +130,20 @@ function loadDashboard() {
                 datasets: [{
                     label: "Performance",
                     data: [
-                        data.attendance,
-                        data.marks,
-                        data.skills_score,
-                        data.mock_score
+                        detailData.attendance,
+                        detailData.marks,
+                        detailData.skills_score,
+                        detailData.mock_score
                     ]
                 }]
             }
         });
-    });
 
+    } catch (error) {
+        console.error("Error loading dashboard:", error);
+    }
+
+    // 🔥 TOP STUDENTS (UNCHANGED)
     fetch("/top-students", {
         headers: { "Authorization": "Bearer " + token }
     })

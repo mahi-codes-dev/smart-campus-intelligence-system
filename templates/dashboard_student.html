@@ -4,64 +4,70 @@
     <title>Student Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body onload="loadStudentDashboard()">
+<body>
 
-<div class="dashboard-container">
-    <h1>🎓 Student Dashboard</h1>
-    <p>Welcome, <span id="userEmail"></span></p>
+<div class="layout">
 
-    <div class="card">
-        <h3>Readiness Score</h3>
-        <p id="score"></p>
+    <div class="sidebar">
+        <h2>Smart Campus</h2>
+        <ul>
+            <li class="active">Dashboard</li>
+            <li>My Progress</li>
+            <li>Skills</li>
+        </ul>
+    </div>
 
-        <div class="progress-bar">
-            <div id="progressFill"></div>
+    <div class="main">
+
+        <div class="topbar">
+            <span>Welcome, <span id="userEmail"></span></span>
+            <button onclick="logout()">Logout</button>
         </div>
+
+        <div class="dashboard-container">
+
+            <h1>🎓 Student Dashboard</h1>
+
+            <div class="grid">
+
+                <div class="card highlight hero-card">
+                    <h3>Readiness Score</h3>
+                    <p id="readinessScore">Loading...</p>
+
+                    <div class="progress-bar">
+                        <div id="progressFill"></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Status</h3>
+                    <p id="status">Loading...</p>
+                </div>
+
+                <div class="card">
+                    <h3>Risk Level</h3>
+                    <p id="risk">Loading...</p>
+                </div>
+
+            </div>
+
+            <!-- 🔥 Chart -->
+            <div class="card">
+                <h2>Performance Breakdown</h2>
+                <canvas id="performanceChart"></canvas>
+            </div>
+
+        </div>
+
     </div>
 
-    <div class="card">
-        <h3>Status</h3>
-        <p id="status"></p>
-    </div>
-
-    <div class="card">
-        <h3>Risk Level</h3>
-        <p id="risk"></p>
-    </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
 <script>
-function loadStudentDashboard() {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-        window.location.href = "/";
-        return;
-    }
-
-    document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
-
-    // 🔥 TEMP (next step we fix properly)
-    const studentId = 6;  
-
-    fetch(`/readiness/${studentId}`, {
-        headers: {
-            "Authorization": "Bearer " + token
-        }
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("score").innerText = data.final_score;
-        document.getElementById("status").innerText = data.status;
-
-        const risk = document.getElementById("risk");
-        risk.innerText = data.risk_status;
-
-        risk.className = data.risk_status === "At Risk" ? "danger" : "success";
-
-        document.getElementById("progressFill").style.width = data.final_score + "%";
-    });
-}
+    loadDashboard();
 </script>
 
 </body>
