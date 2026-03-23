@@ -11,7 +11,6 @@ student_bp = Blueprint("student_bp", __name__)
 @student_bp.route("/students")
 @token_required
 @role_required("Admin")
-@role_required("Student")  # 🔥 ALLOW STUDENTS TO ACCESS THIS TOO
 def get_students():
     try:
         students = fetch_all_students()
@@ -23,6 +22,7 @@ def get_students():
 # ✅ UPDATED DASHBOARD ROUTE (REAL IMPLEMENTATION)
 @student_bp.route('/student/dashboard', methods=['GET'])
 @token_required
+@role_required("Student")
 def student_dashboard_api():
     try:
         # 🔥 Get user from JWT
