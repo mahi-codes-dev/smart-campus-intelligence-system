@@ -42,3 +42,35 @@ def get_all_students_performance():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+    
+@faculty_bp.route("/faculty/marks", methods=["POST"])
+@token_required
+@role_required("Faculty")
+def add_marks():
+    try:
+        from flask import request
+
+        data = request.get_json()
+
+        student_id = data["student_id"]
+        subject_id = data["subject_id"]
+        marks = data["marks"]
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # 🔥 Insert marks
+        cur.execute("""
+            INSERT INTO marks (student_id, subject_id, marks)
+            VALUES (%s, %s, %s)
+        """, (student_id, subject_id, marks))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({"message": "Marks added successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
