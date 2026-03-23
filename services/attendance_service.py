@@ -1,20 +1,23 @@
 from database import get_db_connection
 
-def mark_attendance(student_id, subject_id, date, status):
+
+# ✅ ADD ATTENDANCE (DATE AUTO FROM DB)
+def mark_attendance(student_id, subject_id, status):
     conn = get_db_connection()
     cur = conn.cursor()
 
     cur.execute("""
-        INSERT INTO attendance (student_id, subject_id, date, status)
-        VALUES (%s, %s, %s, %s)
-    """, (student_id, subject_id, date, status))
+        INSERT INTO attendance (student_id, subject_id, status)
+        VALUES (%s, %s, %s)
+    """, (student_id, subject_id, status))
 
     conn.commit()
     cur.close()
     conn.close()
 
 
-def get_attendance():
+# ✅ GET ATTENDANCE FOR SPECIFIC STUDENT
+def get_attendance(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -23,7 +26,9 @@ def get_attendance():
         FROM attendance a
         JOIN students s ON a.student_id = s.id
         JOIN subjects sub ON a.subject_id = sub.id
-    """)
+        WHERE a.student_id = %s
+        ORDER BY a.date DESC
+    """, (student_id,))
 
     rows = cur.fetchall()
 
