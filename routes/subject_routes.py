@@ -12,9 +12,13 @@ def add_subject():
     try:
         data = request.get_json()
 
-        name = data["name"]
-        code = data["code"]
-        department = data["department"]
+        name = data.get("name")
+        code = data.get("code")
+        department = data.get("department")
+
+        # ✅ Validation
+        if not name or not code or not department:
+            return jsonify({"error": "name, code, and department are required"}), 400
 
         create_subject(name, code, department)
 

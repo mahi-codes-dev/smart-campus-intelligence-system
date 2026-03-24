@@ -1,8 +1,18 @@
 from database import get_db_connection
 
+
 def create_subject(name, code, department):
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # ✅ Check duplicate code
+    cur.execute("SELECT id FROM subjects WHERE code = %s", (code,))
+    existing = cur.fetchone()
+
+    if existing:
+        cur.close()
+        conn.close()
+        raise Exception("Subject code already exists")
 
     cur.execute("""
         INSERT INTO subjects (name, code, department)
@@ -18,7 +28,12 @@ def get_all_subjects():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM subjects;")
+    cur.execute("""
+        SELECT id, name, code, department
+        FROM subjects
+        ORDER BY id ASC
+    """)
+
     rows = cur.fetchall()
 
     subjects = []
