@@ -12,7 +12,9 @@ from routes.readiness_routes import readiness_bp
 from routes.skills_routes import skills_bp
 from routes.mock_routes import mock_bp
 from routes.faculty_routes import faculty_bp
+from routes.student_dashboard_routes import student_dashboard_bp
 from flask import render_template
+
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +29,7 @@ app.register_blueprint(readiness_bp)
 app.register_blueprint(skills_bp)
 app.register_blueprint(mock_bp)
 app.register_blueprint(faculty_bp)
+app.register_blueprint(student_dashboard_bp)
 
 @app.route("/")
 def home():
