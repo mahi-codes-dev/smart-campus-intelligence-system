@@ -34,7 +34,7 @@ def get_student_skills(student_id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT sk.name
+        SELECT DISTINCT sk.name
         FROM student_skills ss
         JOIN skills sk ON ss.skill_id = sk.id
         WHERE ss.student_id = %s

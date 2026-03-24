@@ -4,30 +4,22 @@ import jwt
 
 SECRET_KEY = "smartcampussecret123"
 
+from flask import request
 
-# ✅ TOKEN REQUIRED (FIXED)
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
 
-        # 🔥 Get token from header safely
         if "Authorization" in request.headers:
-            auth_header = request.headers["Authorization"]
-            parts = auth_header.split(" ")
-
-            if len(parts) == 2:
-                token = parts[1]
+            token = request.headers["Authorization"].split(" ")[1]
 
         if not token:
             return jsonify({"error": "Token is missing"}), 401
 
         try:
             data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-
-            # 🔥 VERY IMPORTANT: Attach user to request
-            request.user = data
-
+            request.user = data   # ✅ ADD THIS LINE
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401
         except jwt.InvalidTokenError:
@@ -36,7 +28,6 @@ def token_required(f):
         return f(*args, **kwargs)
 
     return decorated
-
 
 # ✅ ROLE REQUIRED (UPDATED TO USE request.user)
 def role_required(required_role):
