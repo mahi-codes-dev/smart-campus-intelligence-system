@@ -20,9 +20,10 @@ def get_mock_scores(student_id):
     cur = conn.cursor()
 
     cur.execute("""
-        SELECT score, test_name
+        SELECT score, test_name, created_at
         FROM mock_tests
         WHERE student_id = %s
+        ORDER BY created_at DESC
     """, (student_id,))
 
     rows = cur.fetchall()
@@ -31,7 +32,8 @@ def get_mock_scores(student_id):
     for row in rows:
         results.append({
             "score": row[0],
-            "test_name": row[1]
+            "test_name": row[1],
+            "date": str(row[2])
         })
 
     cur.close()

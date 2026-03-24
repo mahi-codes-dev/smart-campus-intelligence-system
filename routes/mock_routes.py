@@ -5,6 +5,7 @@ from auth.auth_middleware import token_required, role_required
 mock_bp = Blueprint("mock_bp", __name__)
 
 
+# Add mock test (Faculty only)
 @mock_bp.route("/mock-tests", methods=["POST"])
 @token_required
 @role_required("Faculty")
@@ -12,9 +13,13 @@ def create_mock():
     try:
         data = request.get_json()
 
-        student_id = data["student_id"]
-        score = data["score"]
-        test_name = data["test_name"]
+        student_id = data.get("student_id")
+        score = data.get("score")
+        test_name = data.get("test_name", "Mock Test")
+
+        # Validation
+        if not student_id or score is None:
+            return jsonify({"error": "student_id and score are required"}), 400
 
         add_mock_test(student_id, score, test_name)
 
@@ -24,6 +29,7 @@ def create_mock():
         return jsonify({"error": str(e)}), 500
 
 
+# Get mock tests for student
 @mock_bp.route("/mock-tests/<int:student_id>", methods=["GET"])
 @token_required
 def fetch_mock(student_id):
