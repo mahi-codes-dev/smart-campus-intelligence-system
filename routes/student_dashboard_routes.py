@@ -19,7 +19,7 @@ def student_dashboard():
         conn = get_db_connection()
         cur = conn.cursor()
 
-        cur.execute("SELECT id FROM students WHERE user_id = %s", (user_id,))
+        cur.execute("SELECT id FROM students WHERE user_id = %s", (student_id,  ))
         student = cur.fetchone()
 
         if not student:
