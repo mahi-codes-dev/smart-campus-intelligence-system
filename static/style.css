@@ -208,7 +208,7 @@ button:last-child {
 .dashboard-container h1 {
     font-size: 28px;
     background: linear-gradient(90deg, var(--primary), var(--secondary));
-    -webkit-background-clip: text;
+    /* -webkit-background-clip: text; */
     color: transparent;
 }
 
@@ -241,10 +241,10 @@ button:last-child {
     border-radius: 18px;
     padding: 1px;
     background: linear-gradient(120deg, transparent, var(--primary), transparent);
-    -webkit-mask: 
+    /* -mask: 
         linear-gradient(#fff 0 0) content-box, 
         linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
+    -webkit-mask-composite: xor; */
     opacity: 0;
     transition: 0.3s;
 }
@@ -292,7 +292,7 @@ button:last-child {
 .red { color: var(--danger); font-weight: bold; }
 
 /* ================= LEADERBOARD ================= */
-
+-webkit
 .leaderboard-item {
     display: flex;
     justify-content: space-between;
