@@ -8,6 +8,7 @@
 
 <div class="layout">
 
+    <!-- Sidebar -->
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
@@ -17,23 +18,29 @@
         </ul>
     </div>
 
+    <!-- Main -->
     <div class="main">
 
+        <!-- Topbar -->
         <div class="topbar">
-            <span>Welcome, <span id="userEmail"></span></span>
+        <span>Welcome, <span id="userEmail"></span></span>
+        <div>
+            <button onclick="toggleTheme()">🌙</button>
             <button onclick="logout()">Logout</button>
         </div>
+    </div>
+        
 
         <div class="dashboard-container">
 
             <h1>🎓 Student Dashboard</h1>
 
+            <!-- KPI GRID -->
             <div class="grid">
 
                 <div class="card highlight hero-card">
                     <h3>Readiness Score</h3>
                     <p id="readinessScore">Loading...</p>
-
                     <div class="progress-bar">
                         <div id="progressFill"></div>
                     </div>
@@ -49,12 +56,54 @@
                     <p id="risk">Loading...</p>
                 </div>
 
+                <div class="card">
+                    <h3>Placement Prediction</h3>
+                    <p id="placement">Loading...</p>
+                </div>
+
             </div>
 
-            <!-- 🔥 Chart -->
+            <!-- Chart -->
             <div class="card">
                 <h2>Performance Breakdown</h2>
                 <canvas id="performanceChart"></canvas>
+            </div>
+
+            <!-- Insights -->
+            <div class="card">
+                <h2>Smart Insights</h2>
+                <ul id="insightsList"></ul>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="card">
+                <h2>Top Students</h2>
+                <ul id="topStudents"></ul>
+            </div>
+
+            <!-- Metrics -->
+            <div class="grid">
+
+                <div class="card">
+                    <h3>Attendance</h3>
+                    <p id="attendance">--</p>
+                </div>
+
+                <div class="card">
+                    <h3>Marks</h3>
+                    <p id="marks">--</p>
+                </div>
+
+                <div class="card">
+                    <h3>Mock Score</h3>
+                    <p id="mock">--</p>
+                </div>
+
+                <div class="card">
+                    <h3>Skills Score</h3>
+                    <p id="skills">--</p>
+                </div>
+
             </div>
 
         </div>

@@ -1,63 +1,10 @@
-/* RESET */
 body {
     margin: 0;
     font-family: 'Segoe UI', sans-serif;
     background: #f5f7fa;
 }
 
-/* ================= LOGIN ================= */
-
-.login-body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-}
-
-.login-container {
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-
-.login-card {
-    background: white;
-    padding: 40px;
-    width: 350px;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    text-align: center;
-}
-
-.login-card input {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-}
-
-.login-card button {
-    width: 100%;
-    padding: 10px;
-    background: #2563eb;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-.login-card button:hover {
-    background: #1d4ed8;
-}
-
-.message {
-    margin-top: 10px;
-    font-weight: bold;
-}
-
-/* ================= DASHBOARD ================= */
-
+/* Layout */
 .layout {
     display: flex;
 }
@@ -81,8 +28,7 @@ body {
 }
 
 .sidebar li {
-    padding: 12px 15px;
-    margin-bottom: 10px;
+    padding: 12px;
     border-radius: 8px;
     cursor: pointer;
 }
@@ -124,32 +70,36 @@ body {
 
 .grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
 }
 
 /* Cards */
 .card {
-    background: white;
+    background: rgba(255,255,255,0.95);
+    backdrop-filter: blur(10px);
     padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    transition: 0.2s;
+    border-radius: 16px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    transition: 0.3s;
 }
 
 .card:hover {
     transform: translateY(-5px);
 }
 
-/* Highlight */
 .highlight {
     border-left: 5px solid #2563eb;
-    transform: scale(1.03);
 }
 
-/* Hero */
 .hero-card {
     grid-column: span 2;
+    background: linear-gradient(135deg, #2563eb, #06b6d4);
+    color: white;
+}
+
+.hero-card #readinessScore {
+    color: white;
 }
 
 /* Score */
@@ -161,25 +111,29 @@ body {
 
 /* Progress */
 .progress-bar {
-    width: 100%;
     height: 8px;
     background: #e5e7eb;
     border-radius: 5px;
-    margin-top: 15px;
+    margin-top: 10px;
 }
 
 #progressFill {
     height: 100%;
-    background: #2563eb;
     width: 0%;
-    border-radius: 5px;
+    background: linear-gradient(to right, #4f46e5, #06b6d4);
+    transition: width 1s ease;
 }
+
+/* Status Colors */
+.green { color: #16a34a; font-weight: bold; }
+.yellow { color: #ca8a04; font-weight: bold; }
+.red { color: #dc2626; font-weight: bold; }
 
 /* Leaderboard */
 .leaderboard-item {
     display: flex;
     justify-content: space-between;
-    padding: 12px;
+    padding: 10px;
     border-radius: 8px;
 }
 
@@ -187,34 +141,57 @@ body {
     background: #f1f5f9;
 }
 
-.score {
-    font-weight: bold;
-    color: #2563eb;
-}
-
-/* Risk */
-.success {
-    color: green;
-    font-weight: bold;
-}
-
-.danger {
-    color: red;
-    font-weight: bold;
-}
-
 /* Chart */
 canvas {
     margin-top: 20px;
 }
 
+/* 🌙 DARK MODE */
+body.dark {
+    background: #0f172a;
+    color: white;
+}
 
-/* REGISTER */
-/* Register dropdown */
-.login-card select {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+body.dark .card {
+    background: rgba(30, 41, 59, 0.8);
+    color: white;
+}
+
+body.dark .topbar {
+    background: #1e293b;
+}
+
+body.dark .sidebar {
+    background: linear-gradient(180deg, #020617, #0f172a);
+}
+
+body.dark .leaderboard-item:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+.card {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeIn 0.5s forwards;
+}
+
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+.card:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+button {
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+button:hover {
+    transform: scale(1.05);
 }

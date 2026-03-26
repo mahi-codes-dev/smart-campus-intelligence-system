@@ -1,3 +1,5 @@
+print("🔥 THIS FILE IS RUNNING: student_dashboard_service.py")
+
 from database import get_db_connection
 from services.mock_service import get_average_mock_score, get_mock_trend
 from services.prediction_service import predict_placement_from_score
@@ -54,6 +56,7 @@ def get_student_dashboard_data(student_id):
     # 🔥 NEW FEATURES
     trend = get_mock_trend(student_id)
     prediction = predict_placement_from_score(student_id, final_score)
+    print("DEBUG PREDICTION:", prediction)  # Debug log
 
     return {
         "attendance": round(attendance, 2),

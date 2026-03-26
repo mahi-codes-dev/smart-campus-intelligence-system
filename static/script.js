@@ -83,7 +83,6 @@ function login() {
     });
 }
 
-
 async function loadDashboard() {
     const token = localStorage.getItem("token");
 
@@ -93,54 +92,51 @@ async function loadDashboard() {
     }
 
     try {
-        // ✅ SECURE API CALL (NO student_id)
         const response = await fetch("/student/dashboard", {
             headers: { "Authorization": "Bearer " + token }
         });
 
         const data = await response.json();
+        console.log("Dashboard:", data);
 
-        console.log("Dashboard Data:", data);
+        document.getElementById("userEmail").innerText =
+            localStorage.getItem("user_email");
 
-        // ✅ FIXED KEYS (MATCH BACKEND)
-        document.getElementById("readinessScore").innerText = data.readiness_score + "%";
-        document.getElementById("status").innerText = data.status;
-        document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
+        document.getElementById("readinessScore").innerText =
+            data.readiness_score + "%";
 
-        const risk = document.getElementById("risk");
-        risk.innerText = data.status;
-        risk.className = data.status === "At Risk" ? "danger" : "success";
+        document.getElementById("progressFill").style.width =
+            data.readiness_score + "%";
 
-        document.getElementById("progressFill").style.width = data.readiness_score + "%";
+        document.getElementById("attendance").innerText =
+            data.attendance + "%";
 
-        // 🔥 CHART (NO HARDCODED ID)
-        const ctx = document.getElementById("performanceChart");
+        document.getElementById("marks").innerText = data.marks;
+        document.getElementById("mock").innerText = data.mock_score;
+        document.getElementById("skills").innerText = data.skills_score;
 
-        if (window.myChart) {
-            window.myChart.destroy();
-        }
+        // Status
+        const statusEl = document.getElementById("status");
+        statusEl.innerText = data.status;
+        applyStatusStyle(statusEl, data.status);
 
-        window.myChart = new Chart(ctx, {
-            type: "bar",
-            data: {
-                labels: ["Attendance", "Marks", "Skills", "Mock"],
-                datasets: [{
-                    label: "Performance",
-                    data: [
-                        data.attendance,
-                        data.marks,
-                        data.skills_score,
-                        data.mock_score
-                    ]
-                }]
-            }
-        });
+        // Risk
+        const riskEl = document.getElementById("risk");
+        riskEl.innerText = data.risk_level;
+        applyRiskStyle(riskEl, data.risk_level);
 
-    } catch (error) {
-        console.error("Error loading dashboard:", error);
+        // Placement FIX
+        document.getElementById("placement").innerText =
+            data.placement_status || "Not Available";
+
+        renderChart(data);
+        renderInsights(data);
+
+    } catch (err) {
+        console.error("Error:", err);
     }
 
-    // 🔥 TOP STUDENTS
+    // Leaderboard
     fetch("/top-students", {
         headers: { "Authorization": "Bearer " + token }
     })
@@ -152,15 +148,12 @@ async function loadDashboard() {
         data.forEach((student, index) => {
             const li = document.createElement("li");
 
-            let medal = "";
-            if (index === 0) medal = "🥇";
-            else if (index === 1) medal = "🥈";
-            else if (index === 2) medal = "🥉";
+            let medal = ["🥇","🥈","🥉"][index] || "";
 
             li.innerHTML = `
                 <div class="leaderboard-item">
-                    <span><b>${medal} ${student.name}</b></span>
-                    <span class="score">${student.score}</span>
+                    <span>${medal} ${student.name}</span>
+                    <span>${student.final_score}</span>
                 </div>
             `;
 
@@ -169,7 +162,91 @@ async function loadDashboard() {
     });
 }
 
+/* Status */
+function applyStatusStyle(el, status) {
+    el.className = "";
 
+    if (status === "Excellent") el.classList.add("green");
+    else if (status === "Moderate") el.classList.add("yellow");
+    else el.classList.add("red");
+}
+
+/* Risk */
+function applyRiskStyle(el, risk) {
+    el.className = "";
+
+    if (risk === "Safe") el.classList.add("green");
+    else if (risk === "Warning") el.classList.add("yellow");
+    else el.classList.add("red");
+}
+
+/* Chart */
+function renderChart(data) {
+    const ctx = document.getElementById("performanceChart");
+
+    if (window.myChart) window.myChart.destroy();
+
+    window.myChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["Attendance", "Marks", "Mock", "Skills"],
+            datasets: [{
+                data: [
+                    data.attendance,
+                    data.marks,
+                    data.mock_score,
+                    data.skills_score * 10
+                ]
+            }]
+        },
+        options: {
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+/* Insights */
+function renderInsights(data) {
+    const list = document.getElementById("insightsList");
+    list.innerHTML = "";
+
+    const insights = [];
+
+    if (data.attendance < 75) insights.push("⚠ Improve attendance");
+    else insights.push("✅ Good attendance");
+
+    if (data.marks < 60) insights.push("📉 Improve marks");
+    else insights.push("💪 Strong marks");
+
+    if (data.mock_score < 60) insights.push("📊 Practice mocks");
+    else insights.push("🚀 Good mock performance");
+
+    insights.forEach(text => {
+        const li = document.createElement("li");
+        li.innerText = text;
+        list.appendChild(li);
+    });
+}
+
+function toggleTheme() {
+    document.body.classList.toggle("dark");
+
+    // Save preference
+    const isDark = document.body.classList.contains("dark");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+}
+
+// Load saved theme
+(function () {
+    const theme = localStorage.getItem("theme");
+    if (theme === "dark") {
+        document.body.classList.add("dark");
+    }
+})();
+
+/* Logout */
 function logout() {
     localStorage.removeItem("token");
     window.location.href = "/";
