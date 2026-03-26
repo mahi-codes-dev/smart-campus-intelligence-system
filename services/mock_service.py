@@ -58,3 +58,34 @@ def get_average_mock_score(student_id):
     conn.close()
 
     return float(result)
+
+
+# 🔥 NEW: TREND FUNCTION
+def get_mock_trend(student_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT score
+        FROM mock_tests
+        WHERE student_id = %s
+        ORDER BY created_at DESC
+        LIMIT 3
+    """, (student_id,))
+
+    scores = [float(row[0]) for row in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+
+    if len(scores) < 2:
+        return "Not enough data"
+
+    # latest → older
+    if len(scores) == 3:
+        if scores[0] > scores[1] > scores[2]:
+            return "Improving"
+        elif scores[0] < scores[1] < scores[2]:
+            return "Declining"
+
+    return "Stable"

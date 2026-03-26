@@ -1,21 +1,20 @@
 from database import get_db_connection
-from services.mock_service import get_average_mock_score
+from services.mock_service import get_average_mock_score, get_mock_trend
 
 
 def calculate_student_dashboard(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Attendance %
+    # Attendance
     cur.execute("""
-        SELECT 
-            COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*) 
+        SELECT COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*)
         FROM attendance
         WHERE student_id = %s
     """, (student_id,))
     attendance = float(cur.fetchone()[0] or 0)
 
-    # Marks avg
+    # Marks
     cur.execute("""
         SELECT AVG(marks)
         FROM marks
@@ -23,7 +22,7 @@ def calculate_student_dashboard(student_id):
     """, (student_id,))
     marks = float(cur.fetchone()[0] or 0)
 
-    # Skills count
+    # Skills
     cur.execute("""
         SELECT COUNT(*)
         FROM student_skills
@@ -34,10 +33,8 @@ def calculate_student_dashboard(student_id):
     cur.close()
     conn.close()
 
-    # Mock score
     mock_score = float(get_average_mock_score(student_id))
 
-    # Final score
     final_score = (attendance * 0.3) + (marks * 0.4) + (mock_score * 0.2) + (skills * 2)
 
     if final_score >= 80:
@@ -47,17 +44,21 @@ def calculate_student_dashboard(student_id):
     else:
         status = "At Risk"
 
+    # 🔥 TREND
+    trend = get_mock_trend(student_id)
+
     return {
         "attendance": round(attendance, 2),
         "marks": round(marks, 2),
         "mock_score": round(mock_score, 2),
         "skills_count": skills,
         "final_score": round(final_score, 2),
-        "status": status
+        "status": status,
+        "trend": trend
     }
 
 
-def get_all_students_dashboard(filter_status=None,sort_order=None):
+def get_all_students_dashboard(filter_status=None, sort_order=None):
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -67,12 +68,10 @@ def get_all_students_dashboard(filter_status=None,sort_order=None):
     result = []
 
     for student in students:
-        student_id = student[0]
-        name = student[1]
+        student_id, name = student
 
         data = calculate_student_dashboard(student_id)
 
-        # Apply filter
         if filter_status and data["status"].lower() != filter_status.lower():
             continue
 
@@ -85,9 +84,9 @@ def get_all_students_dashboard(filter_status=None,sort_order=None):
     cur.close()
     conn.close()
 
-    # Apply sorting
+    # Sorting
     if sort_order == "desc":
-        result.sort(key=lambda x: x["final_score"],reverse=True)
+        result.sort(key=lambda x: x["final_score"], reverse=True)
     elif sort_order == "asc":
         result.sort(key=lambda x: x["final_score"])
 
