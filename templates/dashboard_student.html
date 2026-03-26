@@ -2,7 +2,12 @@
 <html>
 <head>
     <title>Student Dashboard</title>
+
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
@@ -12,9 +17,9 @@
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
-            <li class="active">Dashboard</li>
-            <li>My Progress</li>
-            <li>Skills</li>
+            <li class="active"><i class="fas fa-chart-line"></i> Dashboard</li>
+            <li><i class="fas fa-user-graduate"></i> My Progress</li>
+            <li><i class="fas fa-code"></i> Skills</li>
         </ul>
     </div>
 
@@ -23,13 +28,12 @@
 
         <!-- Topbar -->
         <div class="topbar">
-        <span>Welcome, <span id="userEmail"></span></span>
-        <div>
-            <button onclick="toggleTheme()">🌙</button>
-            <button onclick="logout()">Logout</button>
+            <span>Welcome, <span id="userEmail"></span></span>
+            <div>
+                <button onclick="toggleTheme()">🌙</button>
+                <button onclick="logout()">Logout</button>
+            </div>
         </div>
-    </div>
-        
 
         <div class="dashboard-container">
 
@@ -39,7 +43,7 @@
             <div class="grid">
 
                 <div class="card highlight hero-card">
-                    <h3>Readiness Score</h3>
+                    <h3><i class="fas fa-bullseye"></i> Readiness Score</h3>
                     <p id="readinessScore">Loading...</p>
                     <div class="progress-bar">
                         <div id="progressFill"></div>
@@ -47,17 +51,17 @@
                 </div>
 
                 <div class="card">
-                    <h3>Status</h3>
+                    <h3><i class="fas fa-signal"></i> Status</h3>
                     <p id="status">Loading...</p>
                 </div>
 
                 <div class="card">
-                    <h3>Risk Level</h3>
+                    <h3><i class="fas fa-exclamation-triangle"></i> Risk</h3>
                     <p id="risk">Loading...</p>
                 </div>
 
                 <div class="card">
-                    <h3>Placement Prediction</h3>
+                    <h3><i class="fas fa-briefcase"></i> Placement</h3>
                     <p id="placement">Loading...</p>
                 </div>
 

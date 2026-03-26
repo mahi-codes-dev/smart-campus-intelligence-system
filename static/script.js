@@ -97,7 +97,7 @@ async function loadDashboard() {
         });
 
         const data = await response.json();
-        console.log("Dashboard:", data);
+        console.log(data);
 
         document.getElementById("userEmail").innerText =
             localStorage.getItem("user_email");
@@ -105,12 +105,15 @@ async function loadDashboard() {
         document.getElementById("readinessScore").innerText =
             data.readiness_score + "%";
 
-        document.getElementById("progressFill").style.width =
-            data.readiness_score + "%";
+        const progress = document.getElementById("progressFill");
+        progress.style.width = data.readiness_score + "%";
 
-        document.getElementById("attendance").innerText =
-            data.attendance + "%";
+        // Dynamic color
+        if (data.readiness_score >= 80) progress.style.background = "#16a34a";
+        else if (data.readiness_score >= 60) progress.style.background = "#eab308";
+        else progress.style.background = "#dc2626";
 
+        document.getElementById("attendance").innerText = data.attendance + "%";
         document.getElementById("marks").innerText = data.marks;
         document.getElementById("mock").innerText = data.mock_score;
         document.getElementById("skills").innerText = data.skills_score;
@@ -125,15 +128,14 @@ async function loadDashboard() {
         riskEl.innerText = data.risk_level;
         applyRiskStyle(riskEl, data.risk_level);
 
-        // Placement FIX
         document.getElementById("placement").innerText =
             data.placement_status || "Not Available";
 
         renderChart(data);
         renderInsights(data);
 
-    } catch (err) {
-        console.error("Error:", err);
+    } catch (e) {
+        console.error(e);
     }
 
     // Leaderboard
@@ -145,15 +147,14 @@ async function loadDashboard() {
         const list = document.getElementById("topStudents");
         list.innerHTML = "";
 
-        data.forEach((student, index) => {
+        data.forEach((student, i) => {
             const li = document.createElement("li");
-
-            let medal = ["🥇","🥈","🥉"][index] || "";
+            const medal = ["🥇","🥈","🥉"][i] || "";
 
             li.innerHTML = `
                 <div class="leaderboard-item">
                     <span>${medal} ${student.name}</span>
-                    <span>${student.final_score}</span>
+                    <span>${student.final_score || "--"}</span>
                 </div>
             `;
 
@@ -200,9 +201,7 @@ function renderChart(data) {
             }]
         },
         options: {
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 }
@@ -230,18 +229,16 @@ function renderInsights(data) {
     });
 }
 
+/* Theme */
 function toggleTheme() {
     document.body.classList.toggle("dark");
-
-    // Save preference
-    const isDark = document.body.classList.contains("dark");
-    localStorage.setItem("theme", isDark ? "dark" : "light");
+    localStorage.setItem("theme",
+        document.body.classList.contains("dark") ? "dark" : "light"
+    );
 }
 
-// Load saved theme
 (function () {
-    const theme = localStorage.getItem("theme");
-    if (theme === "dark") {
+    if (localStorage.getItem("theme") === "dark") {
         document.body.classList.add("dark");
     }
 })();
