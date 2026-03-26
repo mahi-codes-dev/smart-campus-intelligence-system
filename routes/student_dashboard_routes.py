@@ -1,7 +1,9 @@
 from flask import Blueprint, jsonify, request
 from services.student_dashboard_service import get_student_dashboard_data
+from services.prediction_service import predict_placement_from_score
 from auth.auth_middleware import token_required, role_required
 from database import get_db_connection
+
 
 student_dashboard_bp = Blueprint("student_dashboard_bp", __name__)
 
@@ -11,7 +13,7 @@ student_dashboard_bp = Blueprint("student_dashboard_bp", __name__)
 @role_required("Student")
 def student_dashboard():
     try:
-        user_id = request.user["user_id"]
+        student_id = request.user["user_id"]
 
         # 🔥 Map user → student
         conn = get_db_connection()

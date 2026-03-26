@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from services.mock_service import add_mock_test, get_mock_scores
 from auth.auth_middleware import token_required, role_required
+from utils.response import success_response, error_response
+from utils.validators import validate_required_fields
 
 mock_bp = Blueprint("mock_bp", __name__)
 
@@ -13,20 +15,28 @@ def create_mock():
     try:
         data = request.get_json()
 
-        student_id = data.get("student_id")
-        score = data.get("score")
-        test_name = data.get("test_name", "Mock Test")
+        # ✅ Validation
+        valid, error = validate_required_fields(data, ["student_id", "score", "test_name"])
+        if not valid:
+            return error_response(error)
 
-        # Validation
-        if not student_id or score is None:
-            return jsonify({"error": "student_id and score are required"}), 400
+        student_id = data["student_id"]
+        score = data["score"]
+        test_name = data["test_name"]
 
         add_mock_test(student_id, score, test_name)
 
-        return jsonify({"message": "Mock test added"}), 201
+        return success_response(
+            data = {
+                "student_id": student_id,
+                "score": score,
+                "test_name": test_name
+            },
+            message="Mock test added", status=201
+        )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return error_response(str(e), 500)
 
 
 # Get mock tests for student

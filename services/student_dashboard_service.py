@@ -1,5 +1,6 @@
 from database import get_db_connection
 from services.mock_service import get_average_mock_score
+from services.prediction_service import predict_placement_from_score
 
 def get_student_dashboard_data(student_id):
     conn = get_db_connection()
@@ -7,12 +8,12 @@ def get_student_dashboard_data(student_id):
 
     # Attendance %
     cur.execute("""
-        SELECT 
-            COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*) 
+        SELECT
+            COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*)
         FROM attendance
         WHERE student_id = %s
     """, (student_id,))
-    attendance = cur.fetchone()[0] or 0
+    attendance = float(cur.fetchone()[0] or 0)
 
     # Average Marks
     cur.execute("""
@@ -20,7 +21,7 @@ def get_student_dashboard_data(student_id):
         FROM marks
         WHERE student_id = %s
     """, (student_id,))
-    marks = cur.fetchone()[0] or 0
+    marks = float(cur.fetchone()[0] or 0)
 
     # Skills Count
     cur.execute("""
@@ -52,5 +53,6 @@ def get_student_dashboard_data(student_id):
         "mock_score": round(mock_score, 2),
         "skills_count": skills,
         "final_score": round(final_score, 2),
-        "status": status
+        "status": status,
+        "placement_prediction": predict_placement_from_score(student_id, final_score)
     }

@@ -14,6 +14,10 @@ from routes.mock_routes import mock_bp
 from routes.faculty_routes import faculty_bp
 from routes.student_dashboard_routes import student_dashboard_bp
 from routes.faculty_dashboard_routes import faculty_dashboard_bp
+from routes.student_skill_routes import student_skill_bp
+from routes.admin_dashboard_routes import admin_dashboard_bp
+from routes.prediction_routes import prediction_bp
+# from routes.readiness_routes import get_top_students
 from flask import render_template
 
 
@@ -32,6 +36,10 @@ app.register_blueprint(mock_bp)
 app.register_blueprint(faculty_bp)
 app.register_blueprint(student_dashboard_bp)
 app.register_blueprint(faculty_dashboard_bp)
+app.register_blueprint(student_skill_bp)
+app.register_blueprint(admin_dashboard_bp)
+app.register_blueprint(prediction_bp)
+# app.register_blueprint(get_top_students)  # 🔥 NEW BLUEPRINT FOR TOP STUDENTS
 
 @app.route("/")
 def home():
