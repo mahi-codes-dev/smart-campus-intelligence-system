@@ -36,6 +36,7 @@ function register() {
     });
 }
 
+
 function login() {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
@@ -57,10 +58,12 @@ function login() {
     .then(data => {
         if (data.token) {
 
+            // ✅ Store token
             localStorage.setItem("token", data.token);
             localStorage.setItem("user_email", data.user.email);
             localStorage.setItem("role_id", data.user.role_id);
 
+            // 🔥 Role-based redirect
             if (data.user.role_id === 3) {
                 window.location.href = "/student-dashboard";
             }
@@ -80,6 +83,7 @@ function login() {
     });
 }
 
+
 async function loadDashboard() {
     const token = localStorage.getItem("token");
 
@@ -89,7 +93,7 @@ async function loadDashboard() {
     }
 
     try {
-        // ✅ NEW API CALL (FIXED)
+        // ✅ SECURE API CALL (NO student_id)
         const response = await fetch("/student/dashboard", {
             headers: { "Authorization": "Bearer " + token }
         });
@@ -98,25 +102,18 @@ async function loadDashboard() {
 
         console.log("Dashboard Data:", data);
 
-        // ✅ FIXED KEYS
-        document.getElementById("readinessScore").innerText = data.readiness_score;
+        // ✅ FIXED KEYS (MATCH BACKEND)
+        document.getElementById("readinessScore").innerText = data.readiness_score + "%";
         document.getElementById("status").innerText = data.status;
         document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
 
         const risk = document.getElementById("risk");
-        risk.innerText = data.risk_level;
-        risk.className = data.risk_level === "At Risk" ? "danger" : "success";
+        risk.innerText = data.status;
+        risk.className = data.status === "At Risk" ? "danger" : "success";
 
         document.getElementById("progressFill").style.width = data.readiness_score + "%";
 
-        // 🔥 OPTIONAL: Fetch detailed readiness for chart
-        const detailed = await fetch("/readiness/5", {
-            headers: { "Authorization": "Bearer " + token }
-        });
-
-        const detailData = await detailed.json();
-
-        // 🔥 CHART
+        // 🔥 CHART (NO HARDCODED ID)
         const ctx = document.getElementById("performanceChart");
 
         if (window.myChart) {
@@ -130,10 +127,10 @@ async function loadDashboard() {
                 datasets: [{
                     label: "Performance",
                     data: [
-                        detailData.attendance,
-                        detailData.marks,
-                        detailData.skills_score,
-                        detailData.mock_score
+                        data.attendance,
+                        data.marks,
+                        data.skills_score,
+                        data.mock_score
                     ]
                 }]
             }
@@ -143,7 +140,7 @@ async function loadDashboard() {
         console.error("Error loading dashboard:", error);
     }
 
-    // 🔥 TOP STUDENTS (UNCHANGED)
+    // 🔥 TOP STUDENTS
     fetch("/top-students", {
         headers: { "Authorization": "Bearer " + token }
     })
@@ -171,6 +168,7 @@ async function loadDashboard() {
         });
     });
 }
+
 
 function logout() {
     localStorage.removeItem("token");
