@@ -17,9 +17,17 @@
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
-            <li class="active"><i class="fas fa-chart-line"></i> Dashboard</li>
-            <li><i class="fas fa-user-graduate"></i> My Progress</li>
-            <li><i class="fas fa-code"></i> Skills</li>
+    <li class="active" onclick="go('/student-dashboard')">
+        <i class="fas fa-chart-line"></i> Dashboard
+    </li>
+
+            <li onclick="go('/student-progress')">
+            <i class="fas fa-user-graduate"></i> My Progress
+        </li>
+
+            <li onclick="go('/student-skills')">
+            <i class="fas fa-code"></i> Skills
+        </li>
         </ul>
     </div>
 

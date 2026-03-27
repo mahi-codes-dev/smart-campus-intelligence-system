@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Skills</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+<div class="layout">
+
+    <div class="sidebar">
+        <h2>Smart Campus</h2>
+        <ul>
+    <li onclick="go('/student-dashboard')">
+        <i class="fas fa-chart-line"></i> Dashboard
+    </li>
+
+    <li onclick="go('/student-progress')">
+        <i class="fas fa-user-graduate"></i> My Progress
+    </li>
+
+    <li class="active" onclick="go('/student-skills')">
+        <i class="fas fa-code"></i> Skills
+    </li>
+</ul>
+    </div>
+
+    <div class="main">
+
+        <div class="topbar">
+            <span>Welcome, <span id="userEmail"></span></span>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div class="dashboard-container">
+            <h1>🛠 My Skills</h1>
+
+            <div class="card">
+                <h3>Add Skill</h3>
+                <input type="text" id="skillInput" placeholder="Enter skill (e.g. Python)">
+                <button onclick="addSkill()">Add</button>
+            </div>
+
+            <div class="card">
+                <h3>Your Skills</h3>
+                <ul id="skillsList"></ul>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+
+<script>
+    loadSkills();
+</script>
+
+</body>
+</html>

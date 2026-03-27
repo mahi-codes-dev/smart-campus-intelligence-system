@@ -199,6 +199,13 @@ def student_dashboard():
 def faculty_dashboard():
     return render_template('dashboard_faculty.html')
 
+@app.route('/student-progress')
+def student_progress():
+    return render_template('student_progress.html')
+
+@app.route('/student-skills')
+def student_skills():
+    return render_template('student_skills.html')
 
 if __name__ == "__main__":
     #print(app.url_map)
