@@ -15,6 +15,50 @@ def add_mock_test(student_id, score, test_name):
     conn.close()
 
 
+def save_mock_test(student_id, score, test_name):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT id
+        FROM mock_tests
+        WHERE student_id = %s AND test_name = %s
+        ORDER BY created_at DESC NULLS LAST, id DESC
+        LIMIT 1
+        """,
+        (student_id, test_name),
+    )
+    existing = cur.fetchone()
+
+    if existing:
+        cur.execute(
+            """
+            UPDATE mock_tests
+            SET score = %s,
+                test_name = %s
+            WHERE id = %s
+            """,
+            (score, test_name, existing[0]),
+        )
+        action = "updated"
+    else:
+        cur.execute(
+            """
+            INSERT INTO mock_tests (student_id, score, test_name)
+            VALUES (%s, %s, %s)
+            """,
+            (student_id, score, test_name),
+        )
+        action = "created"
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return action
+
+
 def get_mock_scores(student_id):
     conn = get_db_connection()
     cur = conn.cursor()

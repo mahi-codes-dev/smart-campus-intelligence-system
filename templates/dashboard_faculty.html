@@ -3,21 +3,200 @@
 <head>
     <title>Faculty Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
-<div class="dashboard-container">
-    <h1>👨‍🏫 Faculty Dashboard</h1>
-    <p>Welcome, <span id="userEmail"></span></p>
+<div class="layout">
+    <div class="sidebar">
+        <h2>Smart Campus</h2>
+        <ul>
+            <li class="active" onclick="go('/faculty-dashboard')">
+                <i class="fas fa-chalkboard-teacher"></i> Faculty Dashboard
+            </li>
+            <li onclick="focusFacultySection('attendanceSection')">
+                <i class="fas fa-user-check"></i> Manage Attendance
+            </li>
+            <li onclick="focusFacultySection('marksSection')">
+                <i class="fas fa-marker"></i> Manage Marks
+            </li>
+            <li onclick="focusFacultySection('mockSection')">
+                <i class="fas fa-file-signature"></i> Manage Mock Tests
+            </li>
+        </ul>
+    </div>
 
-    <div class="card">
-        <h3>Analytics Section</h3>
-        <p>Charts will come here (we will move from old dashboard)</p>
+    <div class="main">
+        <div class="topbar">
+            <span>Welcome, <span id="userEmail"></span></span>
+            <div>
+                <button class="toggle-button" onclick="toggleTheme()">Theme</button>
+                <button class="logout-button" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="dashboard-container">
+            <div class="section-heading">
+                <div>
+                    <h1>Faculty Control Panel</h1>
+                    <p class="subtle-text">Manage attendance, marks, and mock test performance for students.</p>
+                </div>
+                <button class="primary-button" onclick="loadFacultyDashboard()">Refresh Data</button>
+            </div>
+
+            <div class="grid faculty-summary-grid">
+                <div class="card metric-card">
+                    <h3>Total Students</h3>
+                    <p id="facultyStudentCount">0</p>
+                </div>
+
+                <div class="card metric-card">
+                    <h3>Selected Student</h3>
+                    <p id="facultySelectedStudent">None</p>
+                </div>
+
+                <div class="card metric-card">
+                    <h3>Available Subjects</h3>
+                    <p id="facultySubjectCount">0</p>
+                </div>
+
+                <div class="card metric-card">
+                    <h3>Last Action</h3>
+                    <p id="facultyActionState">Waiting</p>
+                </div>
+            </div>
+
+            <div class="card faculty-message-card" id="facultyMessageCard" hidden>
+                <p id="facultyMessageText"></p>
+            </div>
+
+            <div class="card faculty-table-card">
+                <div class="section-heading">
+                    <div>
+                        <h2>Students</h2>
+                        <span class="subtle-text">Select a student, then choose the action to manage academic data.</span>
+                    </div>
+                </div>
+
+                <div class="faculty-table-wrapper">
+                    <table class="faculty-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyStudentsTable">
+                            <tr>
+                                <td colspan="4">Loading students...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid faculty-management-grid">
+                <div class="card" id="attendanceSection">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Manage Attendance</h2>
+                            <span class="subtle-text">Save subject-wise attendance percentage.</span>
+                        </div>
+                    </div>
+
+                    <form class="faculty-form" onsubmit="submitAttendance(event)">
+                        <div class="faculty-field">
+                            <label for="attendanceStudent">Student</label>
+                            <input class="text-input" id="attendanceStudent" type="text" readonly placeholder="Select a student from the table">
+                            <input id="attendanceStudentId" type="hidden">
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="attendanceSubject">Subject</label>
+                            <select class="text-input" id="attendanceSubject"></select>
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="attendancePercentage">Attendance %</label>
+                            <input class="text-input" id="attendancePercentage" type="number" min="0" max="100" placeholder="Enter attendance percentage">
+                        </div>
+
+                        <button class="primary-button" type="submit">Save Attendance</button>
+                    </form>
+                </div>
+
+                <div class="card" id="marksSection">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Manage Marks</h2>
+                            <span class="subtle-text">Create or update marks for a selected subject.</span>
+                        </div>
+                    </div>
+
+                    <form class="faculty-form" onsubmit="submitMarks(event)">
+                        <div class="faculty-field">
+                            <label for="marksStudent">Student</label>
+                            <input class="text-input" id="marksStudent" type="text" readonly placeholder="Select a student from the table">
+                            <input id="marksStudentId" type="hidden">
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="marksSubject">Subject</label>
+                            <select class="text-input" id="marksSubject"></select>
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="marksExamType">Exam Type</label>
+                            <input class="text-input" id="marksExamType" type="text" placeholder="Example: Midterm">
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="marksValue">Marks</label>
+                            <input class="text-input" id="marksValue" type="number" min="0" max="100" placeholder="Enter marks">
+                        </div>
+
+                        <button class="primary-button" type="submit">Save Marks</button>
+                    </form>
+                </div>
+
+                <div class="card" id="mockSection">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Manage Mock Tests</h2>
+                            <span class="subtle-text">Save or update mock test scores for placement preparation.</span>
+                        </div>
+                    </div>
+
+                    <form class="faculty-form" onsubmit="submitMockTest(event)">
+                        <div class="faculty-field">
+                            <label for="mockStudent">Student</label>
+                            <input class="text-input" id="mockStudent" type="text" readonly placeholder="Select a student from the table">
+                            <input id="mockStudentId" type="hidden">
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="mockTestName">Test Name</label>
+                            <input class="text-input" id="mockTestName" type="text" placeholder="Example: Aptitude Test 1">
+                        </div>
+
+                        <div class="faculty-field">
+                            <label for="mockScore">Score</label>
+                            <input class="text-input" id="mockScore" type="number" min="0" max="100" placeholder="Enter mock score">
+                        </div>
+
+                        <button class="primary-button" type="submit">Save Mock Test</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
+<script src="{{ url_for('static', filename='script.js') }}"></script>
 <script>
-    document.getElementById("userEmail").innerText = localStorage.getItem("user_email");
+    loadFacultyDashboard();
 </script>
 
 </body>

@@ -18,6 +18,7 @@ from routes.faculty_dashboard_routes import faculty_dashboard_bp
 from routes.student_skill_routes import student_skill_bp
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.prediction_routes import prediction_bp
+from services.student_service import ensure_student_table_consistency
 # from routes.readiness_routes import get_top_students
 from flask import render_template, render_template_string
 
@@ -27,6 +28,12 @@ load_dotenv()
 
 app = Flask(__name__)
 BASE_DIR = Path(__file__).resolve().parent
+
+try:
+    ensure_student_table_consistency()
+except Exception as schema_error:
+    print("STUDENT_SCHEMA_SYNC_ERROR:", schema_error)
+
 app.register_blueprint(student_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(subject_bp)
@@ -73,21 +80,7 @@ def health_check():
 @app.route("/create-table")
 def create_table():
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS students (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(100),
-                email VARCHAR(100) UNIQUE,
-                department VARCHAR(100)
-            );
-        """)
-
-        conn.commit()
-        cur.close()
-        conn.close()
+        ensure_student_table_consistency()
 
         return "Students table created successfully 🎯"
 

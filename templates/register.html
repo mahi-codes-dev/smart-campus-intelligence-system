@@ -16,11 +16,13 @@
         <input type="email" id="email" placeholder="Enter Email">
         <input type="password" id="password" placeholder="Enter Password">
 
-        <!-- 🔥 Role Selection -->
         <select id="role">
-            <option value="3">Student</option>
-            <option value="2">Faculty</option>
+            <option value="">Loading roles...</option>
         </select>
+
+        <div id="departmentField">
+            <input type="text" id="department" placeholder="Enter Department">
+        </div>
 
         <button onclick="register()">Register</button>
 
@@ -32,6 +34,9 @@
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
+<script>
+    loadRegistrationForm();
+</script>
 
 </body>
 </html>

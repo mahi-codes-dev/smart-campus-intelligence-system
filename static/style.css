@@ -509,3 +509,87 @@ body.dark .leaderboard-item:hover {
         align-items: stretch;
     }
 }
+
+.faculty-summary-grid,
+.faculty-management-grid {
+    margin-top: 18px;
+}
+
+.faculty-message-card {
+    margin-top: 18px;
+    border-left: 4px solid transparent;
+}
+
+.faculty-message-card--success {
+    border-left-color: var(--success);
+}
+
+.faculty-message-card--error {
+    border-left-color: var(--danger);
+}
+
+.faculty-table-card {
+    margin-top: 18px;
+}
+
+.faculty-table-wrapper {
+    overflow-x: auto;
+    margin-top: 16px;
+}
+
+.faculty-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.faculty-table th,
+.faculty-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.faculty-table th {
+    color: var(--muted-light);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.faculty-action-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.faculty-table-button {
+    font-size: 13px;
+    padding: 8px 12px;
+}
+
+.faculty-form {
+    display: grid;
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.faculty-field {
+    display: grid;
+    gap: 6px;
+}
+
+.faculty-field label {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+body.dark .faculty-table th,
+body.dark .faculty-table td {
+    border-bottom-color: #334155;
+}
+
+@media (max-width: 768px) {
+    .faculty-action-group {
+        flex-direction: column;
+    }
+}

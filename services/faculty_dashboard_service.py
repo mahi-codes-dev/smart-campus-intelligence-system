@@ -8,7 +8,7 @@ def calculate_student_dashboard(student_id):
 
     # Attendance
     cur.execute("""
-        SELECT COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*)
+        SELECT COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0)
         FROM attendance
         WHERE student_id = %s
     """, (student_id,))
@@ -62,13 +62,24 @@ def get_all_students_dashboard(filter_status=None, sort_order=None):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("SELECT id, name FROM students")
+    cur.execute(
+        """
+        SELECT
+            s.id,
+            COALESCE(NULLIF(s.name, ''), u.name) AS name,
+            COALESCE(NULLIF(s.email, ''), u.email) AS email,
+            COALESCE(s.department, 'Not Assigned') AS department
+        FROM students s
+        LEFT JOIN users u ON s.user_id = u.id
+        ORDER BY s.id ASC
+        """
+    )
     students = cur.fetchall()
 
     result = []
 
     for student in students:
-        student_id, name = student
+        student_id, name, email, department = student
 
         data = calculate_student_dashboard(student_id)
 
@@ -76,8 +87,11 @@ def get_all_students_dashboard(filter_status=None, sort_order=None):
             continue
 
         result.append({
+            "id": student_id,
             "student_id": student_id,
             "name": name,
+            "email": email,
+            "department": department,
             **data
         })
 

@@ -1,3 +1,6 @@
+from datetime import date, timedelta
+from math import gcd
+
 from database import get_db_connection
 
 
@@ -10,6 +13,65 @@ def mark_attendance(student_id, subject_id, status):
         INSERT INTO attendance (student_id, subject_id, status)
         VALUES (%s, %s, %s)
     """, (student_id, subject_id, status))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def save_attendance_percentage(student_id, subject_id, attendance_percentage):
+    percentage = int(round(float(attendance_percentage)))
+
+    if percentage < 0 or percentage > 100:
+        raise ValueError("Attendance percentage must be between 0 and 100")
+
+    if percentage == 0:
+        present_count = 0
+        total_count = 1
+    elif percentage == 100:
+        present_count = 1
+        total_count = 1
+    else:
+        common_divisor = gcd(percentage, 100)
+        present_count = percentage // common_divisor
+        total_count = 100 // common_divisor
+
+    absent_count = total_count - present_count
+    today = date.today()
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        DELETE FROM attendance
+        WHERE student_id = %s AND subject_id = %s
+        """,
+        (student_id, subject_id),
+    )
+
+    for index in range(present_count):
+        cur.execute(
+            """
+            INSERT INTO attendance (student_id, subject_id, date, status)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (student_id, subject_id, today - timedelta(days=index), "Present"),
+        )
+
+    for index in range(absent_count):
+        cur.execute(
+            """
+            INSERT INTO attendance (student_id, subject_id, date, status)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                student_id,
+                subject_id,
+                today - timedelta(days=present_count + index),
+                "Absent",
+            ),
+        )
 
     conn.commit()
     cur.close()

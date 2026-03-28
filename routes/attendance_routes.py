@@ -1,5 +1,9 @@
 from flask import Blueprint, request, jsonify
-from services.attendance_service import mark_attendance, get_attendance
+from services.attendance_service import (
+    mark_attendance,
+    get_attendance,
+    save_attendance_percentage,
+)
 from auth.auth_middleware import token_required, role_required
 import jwt
 
@@ -14,15 +18,33 @@ SECRET_KEY = "smartcampussecret123"
 @role_required("Faculty")
 def add_attendance():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+        print("FACULTY_ATTENDANCE_REQUEST:", data)
 
-        # 🔹 Validation
-        if not all(k in data for k in ("student_id", "subject_id", "status")):
+        if not all(k in data for k in ("student_id", "subject_id")):
             return jsonify({"error": "Missing required fields"}), 400
 
         student_id = data["student_id"]
         subject_id = data["subject_id"]
-        status = data["status"].capitalize()
+
+        if "attendance_percentage" in data:
+            save_attendance_percentage(
+                student_id,
+                subject_id,
+                data["attendance_percentage"],
+            )
+
+            return jsonify({
+                "message": "Attendance percentage saved successfully",
+                "student_id": student_id,
+                "subject_id": subject_id,
+                "attendance_percentage": int(round(float(data["attendance_percentage"]))),
+            }), 200
+
+        if "status" not in data:
+            return jsonify({"error": "status or attendance_percentage is required"}), 400
+
+        status = str(data["status"]).capitalize()
 
         # 🔹 Insert (date auto handled by DB)
         mark_attendance(student_id, subject_id, status)

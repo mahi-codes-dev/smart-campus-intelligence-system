@@ -1,5 +1,6 @@
 from database import get_db_connection
 
+
 def add_marks(student_id, subject_id, marks, exam_type):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -12,6 +13,52 @@ def add_marks(student_id, subject_id, marks, exam_type):
     conn.commit()
     cur.close()
     conn.close()
+
+
+def save_marks(student_id, subject_id, marks, exam_type=None):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT id
+        FROM marks
+        WHERE student_id = %s
+          AND subject_id = %s
+          AND exam_type IS NOT DISTINCT FROM %s
+        ORDER BY created_at DESC NULLS LAST, id DESC
+        LIMIT 1
+        """,
+        (student_id, subject_id, exam_type),
+    )
+    existing = cur.fetchone()
+
+    if existing:
+        cur.execute(
+            """
+            UPDATE marks
+            SET marks = %s,
+                exam_type = %s
+            WHERE id = %s
+            """,
+            (marks, exam_type, existing[0]),
+        )
+        action = "updated"
+    else:
+        cur.execute(
+            """
+            INSERT INTO marks (student_id, subject_id, marks, exam_type)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (student_id, subject_id, marks, exam_type),
+        )
+        action = "created"
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return action
 
 
 def get_marks():

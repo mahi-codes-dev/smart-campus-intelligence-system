@@ -8,7 +8,7 @@ def calculate_readiness(student_id):
     cur.execute(
         """
         SELECT
-            COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / COUNT(*)
+            COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0)
         FROM attendance
         WHERE student_id = %s
         """,
