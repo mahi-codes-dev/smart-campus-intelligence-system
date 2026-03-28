@@ -13,3 +13,7 @@ __pycache__/
 
 # OS files
 .DS_Store
+
+# Local scratch files
+_tmp_source.txt
+static/_tmp_copy.txt

@@ -1,56 +1,73 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>Student Dashboard</title>
-
-    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body>
 
 <div class="layout">
-
-    <!-- Sidebar -->
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
-    <li class="active" onclick="go('/student-dashboard')">
-        <i class="fas fa-chart-line"></i> Dashboard
-    </li>
-
+            <li class="active" onclick="go('/student-dashboard')">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </li>
             <li onclick="go('/student-progress')">
-            <i class="fas fa-user-graduate"></i> My Progress
-        </li>
-
+                <i class="fas fa-user-graduate"></i> My Progress
+            </li>
             <li onclick="go('/student-skills')">
-            <i class="fas fa-code"></i> Skills
-        </li>
+                <i class="fas fa-code"></i> Skills
+            </li>
         </ul>
     </div>
 
-    <!-- Main -->
     <div class="main">
-
-        <!-- Topbar -->
         <div class="topbar">
             <span>Welcome, <span id="userEmail"></span></span>
             <div>
-                <button onclick="toggleTheme()">🌙</button>
-                <button onclick="logout()">Logout</button>
+                <button class="toggle-button" onclick="toggleTheme()">Theme</button>
+                <button class="logout-button" onclick="logout()">Logout</button>
             </div>
         </div>
 
         <div class="dashboard-container">
+            <h1>Student Dashboard</h1>
 
-            <h1>🎓 Student Dashboard</h1>
+            <div class="grid profile-grid">
+                <div class="card profile-card">
+                    <div class="section-heading">
+                        <h2>Student Profile</h2>
+                        <span class="subtle-text">Personal snapshot</span>
+                    </div>
+                    <div class="profile-details">
+                        <div class="profile-row">
+                            <span>Name</span>
+                            <strong id="profileName">Loading...</strong>
+                        </div>
+                        <div class="profile-row">
+                            <span>Email</span>
+                            <strong id="profileEmail">Loading...</strong>
+                        </div>
+                        <div class="profile-row">
+                            <span>Department</span>
+                            <strong id="profileDepartment">Loading...</strong>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- KPI GRID -->
+                <div class="card placement-details-card">
+                    <div class="section-heading">
+                        <h2>Placement Explanation</h2>
+                        <span class="subtle-text">Why this readiness outcome was predicted</span>
+                    </div>
+                    <ul id="placementReasons" class="reason-list"></ul>
+                </div>
+            </div>
+
             <div class="grid">
-
-                <div class="card highlight hero-card">
+                <div class="card hero-card">
                     <h3><i class="fas fa-bullseye"></i> Readiness Score</h3>
                     <p id="readinessScore">Loading...</p>
                     <div class="progress-bar">
@@ -72,61 +89,54 @@
                     <h3><i class="fas fa-briefcase"></i> Placement</h3>
                     <p id="placement">Loading...</p>
                 </div>
-
             </div>
 
-            <!-- Chart -->
             <div class="card">
                 <h2>Performance Breakdown</h2>
+                <div class="breakdown-summary">
+                    <span class="metric-chip metric-chip--success" id="strengthText">&#127919; Strength: --</span>
+                    <span class="metric-chip metric-chip--danger" id="weaknessText">&#9888; Weak Area: --</span>
+                </div>
                 <canvas id="performanceChart"></canvas>
             </div>
 
-            <!-- Insights -->
             <div class="card">
                 <h2>Smart Insights</h2>
                 <ul id="insightsList"></ul>
             </div>
 
-            <!-- Leaderboard -->
             <div class="card">
                 <h2>Top Students</h2>
                 <ul id="topStudents"></ul>
             </div>
 
-            <!-- Metrics -->
             <div class="grid">
-
-                <div class="card">
+                <div class="card metric-card">
                     <h3>Attendance</h3>
                     <p id="attendance">--</p>
                 </div>
 
-                <div class="card">
+                <div class="card metric-card">
                     <h3>Marks</h3>
                     <p id="marks">--</p>
                 </div>
 
-                <div class="card">
+                <div class="card metric-card">
                     <h3>Mock Score</h3>
                     <p id="mock">--</p>
                 </div>
 
-                <div class="card">
+                <div class="card metric-card">
                     <h3>Skills Score</h3>
                     <p id="skills">--</p>
                 </div>
-
             </div>
-
         </div>
-
     </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 <script>
     loadDashboard();
 </script>

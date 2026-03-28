@@ -1,4 +1,4 @@
-/* ================= ROOT DESIGN SYSTEM ================= */
+﻿/* ================= ROOT DESIGN SYSTEM ================= */
 
 :root {
     --primary: #4f46e5;
@@ -15,6 +15,8 @@
 
     --text-dark: #0f172a;
     --text-light: #ffffff;
+    --muted-light: #64748b;
+    --muted-dark: #cbd5e1;
 }
 
 /* ================= GLOBAL ================= */
@@ -28,6 +30,7 @@ body {
     font-family: 'Inter', 'Segoe UI', sans-serif;
     background: var(--bg-light);
     color: var(--text-dark);
+    line-height: 1.5;
 }
 
 /* ================= AUTH ================= */
@@ -157,9 +160,34 @@ button:hover {
     opacity: 0.9;
 }
 
-button:last-child {
+.primary-button {
+    background: var(--primary);
+    color: white;
+}
+
+.toggle-button {
+    background: #e2e8f0;
+    color: var(--text-dark);
+}
+
+.topbar button:last-child,
+.logout-button {
     background: var(--danger);
     color: white;
+}
+
+.text-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: white;
+    color: var(--text-dark);
+}
+
+.text-input:focus {
+    outline: none;
+    border-color: var(--primary);
 }
 
 /* ================= DASHBOARD ================= */
@@ -172,6 +200,23 @@ button:last-child {
     font-size: 26px;
     margin-bottom: 20px;
     color: var(--text-dark);
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.section-heading h2,
+.section-heading h3 {
+    margin: 0;
+}
+
+.subtle-text {
+    color: var(--muted-light);
+    font-size: 14px;
 }
 
 /* ================= GRID ================= */
@@ -194,6 +239,53 @@ button:last-child {
 
 .card:hover {
     transform: translateY(-4px);
+}
+
+.profile-grid {
+    margin-bottom: 18px;
+}
+
+.profile-card,
+.placement-details-card {
+    grid-column: span 2;
+}
+
+.profile-details {
+    display: grid;
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.profile-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 10px;
+}
+
+.profile-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.reason-list,
+#insightsList,
+#topStudents {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0 0;
+}
+
+.reason-list li,
+#insightsList li {
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.reason-list li:last-child,
+#insightsList li:last-child {
+    border-bottom: none;
 }
 
 /* ================= HERO CARD ================= */
@@ -224,6 +316,33 @@ button:last-child {
     transition: width 0.6s ease;
 }
 
+.breakdown-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.metric-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.metric-chip--success {
+    background: rgba(22, 163, 74, 0.12);
+    color: var(--success);
+}
+
+.metric-chip--danger {
+    background: rgba(220, 38, 38, 0.12);
+    color: var(--danger);
+}
+
 /* ================= STATUS COLORS ================= */
 
 .green { color: var(--success); font-weight: bold; }
@@ -243,11 +362,65 @@ button:last-child {
     background: #f1f5f9;
 }
 
-/* ================= INSIGHTS ================= */
+.metric-card p,
+.hero-card p {
+    margin: 8px 0;
+    font-size: 28px;
+    font-weight: 700;
+}
 
-#insightsList li {
-    padding: 8px 0;
-    border-bottom: 1px solid #eee;
+.metric-note {
+    display: inline-block;
+    margin-top: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted-light);
+}
+
+.metric-card--best {
+    border: 1px solid rgba(22, 163, 74, 0.35);
+    box-shadow: 0 10px 24px rgba(22, 163, 74, 0.12);
+}
+
+.metric-card--best .metric-note {
+    color: var(--success);
+}
+
+.metric-card--worst {
+    border: 1px solid rgba(220, 38, 38, 0.35);
+    box-shadow: 0 10px 24px rgba(220, 38, 38, 0.12);
+}
+
+.metric-card--worst .metric-note {
+    color: var(--danger);
+}
+
+.skill-form {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.skills-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.skill-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: rgba(79, 70, 229, 0.12);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.empty-state {
+    color: var(--muted-light);
+    margin: 8px 0 0;
 }
 
 /* ================= CHART ================= */
@@ -271,6 +444,29 @@ body.dark .topbar {
     background: #1e293b;
 }
 
+body.dark .toggle-button {
+    background: rgba(255,255,255,0.08);
+    color: var(--text-light);
+}
+
+body.dark .text-input {
+    background: #0f172a;
+    border-color: #334155;
+    color: var(--text-light);
+}
+
+body.dark .subtle-text,
+body.dark .metric-note,
+body.dark .empty-state {
+    color: var(--muted-dark);
+}
+
+body.dark .profile-row,
+body.dark .reason-list li,
+body.dark #insightsList li {
+    border-bottom-color: #334155;
+}
+
 body.dark .leaderboard-item:hover {
     background: rgba(255,255,255,0.05);
 }
@@ -280,6 +476,11 @@ body.dark .leaderboard-item:hover {
 @media (max-width: 1024px) {
     .grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .profile-card,
+    .placement-details-card {
+        grid-column: span 2;
     }
 }
 
@@ -296,7 +497,15 @@ body.dark .leaderboard-item:hover {
         grid-template-columns: 1fr;
     }
 
-    .hero-card {
+    .hero-card,
+    .profile-card,
+    .placement-details-card {
         grid-column: span 1;
+    }
+
+    .skill-form,
+    .section-heading {
+        flex-direction: column;
+        align-items: stretch;
     }
 }

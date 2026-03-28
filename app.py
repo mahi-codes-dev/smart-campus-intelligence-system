@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 import psycopg2
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 from database import get_db_connection
 from routes.student_routes import student_bp
@@ -18,13 +19,14 @@ from routes.student_skill_routes import student_skill_bp
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.prediction_routes import prediction_bp
 # from routes.readiness_routes import get_top_students
-from flask import render_template
+from flask import render_template, render_template_string
 
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+BASE_DIR = Path(__file__).resolve().parent
 app.register_blueprint(student_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(subject_bp)

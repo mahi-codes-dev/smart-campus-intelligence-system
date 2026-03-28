@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <title>My Progress</title>
@@ -8,70 +8,72 @@
 <body>
 
 <div class="layout">
-
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
-    <li onclick="go('/student-dashboard')">
-        <i class="fas fa-chart-line"></i> Dashboard
-    </li>
-
-    <li class="active" onclick="go('/student-progress')">
-        <i class="fas fa-user-graduate"></i> My Progress
-    </li>
-
-    <li onclick="go('/student-skills')">
-        <i class="fas fa-code"></i> Skills
-    </li>
-</ul>
+            <li onclick="go('/student-dashboard')">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </li>
+            <li class="active" onclick="go('/student-progress')">
+                <i class="fas fa-user-graduate"></i> My Progress
+            </li>
+            <li onclick="go('/student-skills')">
+                <i class="fas fa-code"></i> Skills
+            </li>
+        </ul>
     </div>
 
     <div class="main">
-
         <div class="topbar">
             <span>Welcome, <span id="userEmail"></span></span>
-            <button onclick="logout()">Logout</button>
+            <button class="logout-button" onclick="logout()">Logout</button>
         </div>
 
         <div class="dashboard-container">
-            <h1>📊 My Progress</h1>
+            <h1>My Progress</h1>
 
             <div class="grid">
-                <div class="card">
+                <div class="card metric-card" id="attendanceCard">
                     <h3>Attendance</h3>
                     <p id="attendance"></p>
+                    <span class="metric-note" id="attendanceNote"></span>
                 </div>
 
-                <div class="card">
+                <div class="card metric-card" id="marksCard">
                     <h3>Marks</h3>
                     <p id="marks"></p>
+                    <span class="metric-note" id="marksNote"></span>
                 </div>
 
-                <div class="card">
+                <div class="card metric-card" id="mockCard">
                     <h3>Mock Score</h3>
                     <p id="mock"></p>
+                    <span class="metric-note" id="mockNote"></span>
                 </div>
 
-                <div class="card">
+                <div class="card metric-card" id="skillsCard">
                     <h3>Skills Score</h3>
                     <p id="skills"></p>
+                    <span class="metric-note" id="skillsNote"></span>
                 </div>
             </div>
 
             <div class="card">
-                <h2>📈 Performance Chart</h2>
+                <div class="section-heading">
+                    <h2>Performance Chart</h2>
+                    <div class="breakdown-summary">
+                        <span class="metric-chip metric-chip--success" id="progressStrengthText">Best Area: --</span>
+                        <span class="metric-chip metric-chip--danger" id="progressWeaknessText">Needs Improvement: --</span>
+                    </div>
+                </div>
                 <canvas id="performanceChart"></canvas>
             </div>
-
         </div>
-
     </div>
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 <script>
     loadProgress();
 </script>

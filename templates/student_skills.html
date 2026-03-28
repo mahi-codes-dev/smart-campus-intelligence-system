@@ -8,53 +8,58 @@
 <body>
 
 <div class="layout">
-
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
-    <li onclick="go('/student-dashboard')">
-        <i class="fas fa-chart-line"></i> Dashboard
-    </li>
-
-    <li onclick="go('/student-progress')">
-        <i class="fas fa-user-graduate"></i> My Progress
-    </li>
-
-    <li class="active" onclick="go('/student-skills')">
-        <i class="fas fa-code"></i> Skills
-    </li>
-</ul>
+            <li onclick="go('/student-dashboard')">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </li>
+            <li onclick="go('/student-progress')">
+                <i class="fas fa-user-graduate"></i> My Progress
+            </li>
+            <li class="active" onclick="go('/student-skills')">
+                <i class="fas fa-code"></i> Skills
+            </li>
+        </ul>
     </div>
 
     <div class="main">
-
         <div class="topbar">
             <span>Welcome, <span id="userEmail"></span></span>
-            <button onclick="logout()">Logout</button>
+            <button class="logout-button" onclick="logout()">Logout</button>
         </div>
 
         <div class="dashboard-container">
-            <h1>🛠 My Skills</h1>
+            <h1>My Skills</h1>
+
+            <div class="card skill-summary-card">
+                <div class="section-heading">
+                    <h3>Total Skills</h3>
+                    <span class="subtle-text" id="skillsCount">0 skills added</span>
+                </div>
+                <p class="empty-state" id="skillsSummaryMessage">
+                    Add your skills to make your student profile more complete.
+                </p>
+            </div>
 
             <div class="card">
                 <h3>Add Skill</h3>
-                <input type="text" id="skillInput" placeholder="Enter skill (e.g. Python)">
-                <button onclick="addSkill()">Add</button>
+                <div class="skill-form">
+                    <input class="text-input" type="text" id="skillInput" placeholder="Enter skill (e.g. Python)">
+                    <button class="primary-button" onclick="addSkill()">Add</button>
+                </div>
             </div>
 
             <div class="card">
                 <h3>Your Skills</h3>
-                <ul id="skillsList"></ul>
+                <p class="empty-state" id="skillsEmptyState" hidden>No skills added yet. Start by adding your first skill.</p>
+                <div id="skillsList" class="skills-chip-list"></div>
             </div>
-
         </div>
-
     </div>
-
 </div>
 
 <script src="{{ url_for('static', filename='script.js') }}"></script>
-
 <script>
     loadSkills();
 </script>
