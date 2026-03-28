@@ -5,11 +5,9 @@ from services.attendance_service import (
     save_attendance_percentage,
 )
 from auth.auth_middleware import token_required, role_required
-import jwt
+from services.student_service import get_student_record_by_user_id
 
 attendance_bp = Blueprint("attendance_bp", __name__)
-
-SECRET_KEY = "smartcampussecret123"
 
 
 # ✅ ADD ATTENDANCE (FACULTY ONLY)
@@ -61,14 +59,14 @@ def add_attendance():
 @role_required("Student")
 def view_attendance():
     try:
-        token = request.headers["Authorization"].split(" ")[1]
-        data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        student = get_student_record_by_user_id(request.user["user_id"])
+        if not student:
+            return jsonify({"error": "Student not found"}), 404
 
-        student_id = data["user_id"]  # 🔥 real user mapping
-
-        attendance = get_attendance(student_id)
+        attendance = get_attendance(student["id"])
 
         return jsonify(attendance), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+

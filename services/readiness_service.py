@@ -1,6 +1,30 @@
 from database import get_db_connection
 
 
+def _fetch_students_with_department():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT
+            s.id,
+            COALESCE(NULLIF(s.name, ''), u.name) AS name,
+            COALESCE(NULLIF(s.email, ''), u.email) AS email,
+            COALESCE(NULLIF(s.department, ''), 'Not Assigned') AS department
+        FROM students s
+        LEFT JOIN users u ON s.user_id = u.id
+        ORDER BY s.id ASC
+        """
+    )
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return rows
+
+
 def calculate_readiness(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
@@ -82,15 +106,9 @@ def calculate_readiness(student_id):
 
 
 def get_top_students(limit=5):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute("SELECT id, name FROM students")
-    students = cur.fetchall()
-
     results = []
 
-    for student in students:
+    for student in _fetch_students_with_department():
         student_id = student[0]
         student_name = student[1]
         data = calculate_readiness(student_id)
@@ -98,6 +116,8 @@ def get_top_students(limit=5):
         results.append({
             "student_id": student_id,
             "name": student_name,
+            "email": student[2],
+            "department": student[3],
             "score": data["final_score"],
             "final_score": data["final_score"],
             "status": data["status"],
@@ -105,7 +125,50 @@ def get_top_students(limit=5):
 
     results.sort(key=lambda item: item["score"], reverse=True)
 
-    cur.close()
-    conn.close()
-
     return results[:limit]
+
+
+def get_top_students_by_department(limit_per_department=3):
+    department_map = {}
+
+    for student_id, name, email, department in _fetch_students_with_department():
+        data = calculate_readiness(student_id)
+        department_map.setdefault(department, []).append({
+            "student_id": student_id,
+            "name": name,
+            "email": email,
+            "department": department,
+            "score": data["final_score"],
+            "status": data["status"],
+        })
+
+    results = []
+
+    for department, students in sorted(department_map.items()):
+        students.sort(key=lambda item: item["score"], reverse=True)
+        results.append({
+            "department": department,
+            "students": students[:limit_per_department],
+        })
+
+    return results
+
+
+def get_low_performing_students(threshold=60):
+    results = []
+
+    for student_id, name, email, department in _fetch_students_with_department():
+        data = calculate_readiness(student_id)
+
+        if data["final_score"] < threshold:
+            results.append({
+                "student_id": student_id,
+                "name": name,
+                "email": email,
+                "department": department,
+                "score": data["final_score"],
+                "status": data["status"],
+            })
+
+    results.sort(key=lambda item: item["score"])
+    return results

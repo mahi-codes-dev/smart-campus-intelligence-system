@@ -1,18 +1,30 @@
+import os
 from flask import Blueprint, request, jsonify
 from database import get_db_connection
 import bcrypt
 import jwt
 import datetime
+from dotenv import load_dotenv
+from auth.auth_middleware import SECRET_KEY, JWT_ALGORITHM
 from services.student_service import ensure_student_table_consistency, sync_student_record
 
 auth_bp = Blueprint("auth_bp", __name__)
+
+load_dotenv()
+
+JWT_EXP_HOURS_RAW = os.getenv("JWT_EXP_HOURS")
+
+if not JWT_EXP_HOURS_RAW:
+    raise RuntimeError("JWT_EXP_HOURS is not configured in environment variables")
+
+JWT_EXP_HOURS = int(JWT_EXP_HOURS_RAW)
 
 
 def _get_dashboard_path(role_name):
     role_to_path = {
         "student": "/student-dashboard",
         "faculty": "/faculty-dashboard",
-        "admin": "/dashboard",
+        "admin": "/admin-dashboard",
     }
 
     return role_to_path.get((role_name or "").lower(), "/")
@@ -163,8 +175,8 @@ def login():
             "user_id": user[0],
             "email": user[2],
             "role_id": user[4],
-            "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2)
-        }, "smartcampussecret123", algorithm="HS256")
+            "exp": datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=JWT_EXP_HOURS)
+        }, SECRET_KEY, algorithm=JWT_ALGORITHM)
 
         role_name = user[5] or ""
         dashboard_path = _get_dashboard_path(role_name)

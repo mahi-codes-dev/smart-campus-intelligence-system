@@ -1,0 +1,99 @@
+from flask import Blueprint, jsonify, request
+
+from auth.auth_middleware import token_required, role_required
+from services.admin_service import get_admin_stats, get_all_users, delete_user
+from services.subject_service import create_subject, delete_subject, get_all_subjects
+
+admin_bp = Blueprint("admin_bp", __name__)
+
+
+@admin_bp.route("/admin/stats", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_stats():
+    try:
+        data = get_admin_stats()
+        return jsonify(data), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/users", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_users():
+    try:
+        users = get_all_users()
+        return jsonify(users), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/subject", methods=["POST"])
+@token_required
+@role_required("Admin")
+def create_admin_subject():
+    try:
+        data = request.get_json() or {}
+        print("ADMIN_SUBJECT_CREATE_REQUEST:", data)
+
+        name = (data.get("name") or "").strip()
+        code = (data.get("code") or "").strip()
+        department = (data.get("department") or "").strip()
+
+        if not name or not code or not department:
+            return jsonify({"error": "name, code, and department are required"}), 400
+
+        create_subject(name, code, department)
+        return jsonify({"message": "Subject added successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/subjects", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_subjects():
+    try:
+        return jsonify(get_all_subjects()), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/subject/<int:subject_id>", methods=["DELETE"])
+@token_required
+@role_required("Admin")
+def remove_admin_subject(subject_id):
+    try:
+        deleted_subject = delete_subject(subject_id)
+        return jsonify({
+            "message": "Subject deleted successfully",
+            "subject": deleted_subject,
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/user/<int:user_id>", methods=["DELETE"])
+@token_required
+@role_required("Admin")
+def remove_user(user_id):
+    try:
+        print("ADMIN_DELETE_USER_REQUEST:", {"user_id": user_id, "requested_by": request.user["user_id"]})
+        deleted_user = delete_user(user_id, current_user_id=request.user["user_id"])
+        return jsonify({
+            "message": "User deleted successfully",
+            "user": deleted_user,
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

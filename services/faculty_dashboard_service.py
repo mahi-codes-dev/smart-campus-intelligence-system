@@ -1,5 +1,9 @@
 from database import get_db_connection
-from services.mock_service import get_average_mock_score, get_mock_trend
+from services.attendance_service import get_attendance
+from services.marks_service import get_marks_by_student, get_subject_wise_marks
+from services.mock_service import get_average_mock_score, get_mock_scores, get_mock_trend
+from services.student_dashboard_service import get_student_dashboard_data
+from services.student_service import get_student_profile
 
 
 def calculate_student_dashboard(student_id):
@@ -105,3 +109,24 @@ def get_all_students_dashboard(filter_status=None, sort_order=None):
         result.sort(key=lambda x: x["final_score"])
 
     return result
+
+
+def get_student_detail(student_id):
+    dashboard = get_student_dashboard_data(student_id)
+
+    return {
+        "profile": get_student_profile(student_id),
+        "overview": {
+            "attendance": dashboard["attendance"],
+            "marks": dashboard["marks"],
+            "mock_score": dashboard["mock_score"],
+            "readiness_score": dashboard["readiness_score"],
+            "status": dashboard["status"],
+        },
+        "subject_performance": get_subject_wise_marks(student_id),
+        "marks_history": get_marks_by_student(student_id),
+        "attendance_history": get_attendance(student_id),
+        "mock_scores": get_mock_scores(student_id),
+        "placement_reasons": dashboard["placement_reasons"],
+        "insights": dashboard["insights"],
+    }

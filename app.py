@@ -17,8 +17,11 @@ from routes.student_dashboard_routes import student_dashboard_bp
 from routes.faculty_dashboard_routes import faculty_dashboard_bp
 from routes.student_skill_routes import student_skill_bp
 from routes.admin_dashboard_routes import admin_dashboard_bp
+from routes.admin_routes import admin_bp
 from routes.prediction_routes import prediction_bp
+from services.marks_service import ensure_marks_table_consistency
 from services.student_service import ensure_student_table_consistency
+from services.subject_service import ensure_subject_table_consistency
 # from routes.readiness_routes import get_top_students
 from flask import render_template, render_template_string
 
@@ -31,6 +34,8 @@ BASE_DIR = Path(__file__).resolve().parent
 
 try:
     ensure_student_table_consistency()
+    ensure_subject_table_consistency()
+    ensure_marks_table_consistency()
 except Exception as schema_error:
     print("STUDENT_SCHEMA_SYNC_ERROR:", schema_error)
 
@@ -47,6 +52,7 @@ app.register_blueprint(student_dashboard_bp)
 app.register_blueprint(faculty_dashboard_bp)
 app.register_blueprint(student_skill_bp)
 app.register_blueprint(admin_dashboard_bp)
+app.register_blueprint(admin_bp)
 app.register_blueprint(prediction_bp)
 # app.register_blueprint(get_top_students)  # 🔥 NEW BLUEPRINT FOR TOP STUDENTS
 
@@ -195,6 +201,11 @@ def student_progress():
 @app.route('/student-skills')
 def student_skills():
     return render_template('student_skills.html')
+
+@app.route('/admin-dashboard')
+@app.route('/dashboard')
+def admin_dashboard_page():
+    return render_template('dashboard_admin.html')
 
 if __name__ == "__main__":
     #print(app.url_map)

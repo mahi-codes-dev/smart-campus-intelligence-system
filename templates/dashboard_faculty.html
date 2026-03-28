@@ -97,6 +97,92 @@
                 </div>
             </div>
 
+            <div class="card faculty-table-card" id="facultyDetailSection">
+                <div class="section-heading">
+                    <div>
+                        <h2>Student Detail Profile</h2>
+                        <span class="subtle-text">Detailed academic view for the selected student.</span>
+                    </div>
+                </div>
+
+                <div class="grid profile-grid">
+                    <div class="card profile-card">
+                        <div class="section-heading">
+                            <h3>Profile</h3>
+                            <span class="subtle-text" id="facultyDetailStatus">Waiting</span>
+                        </div>
+                        <div class="profile-details">
+                            <div class="profile-row">
+                                <span>Name</span>
+                                <strong id="facultyDetailName">Select a student</strong>
+                            </div>
+                            <div class="profile-row">
+                                <span>Email</span>
+                                <strong id="facultyDetailEmail">--</strong>
+                            </div>
+                            <div class="profile-row">
+                                <span>Department</span>
+                                <strong id="facultyDetailDepartment">--</strong>
+                            </div>
+                            <div class="profile-row">
+                                <span>Readiness Score</span>
+                                <strong id="facultyDetailReadiness">--</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card placement-details-card">
+                        <div class="section-heading">
+                            <h3>Performance Summary</h3>
+                            <span class="subtle-text">Latest academic metrics</span>
+                        </div>
+                        <ul class="reason-list" id="facultyDetailSummary">
+                            <li>Select a student to load profile details.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="faculty-table-wrapper">
+                    <table class="faculty-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Code</th>
+                                <th>Average Marks</th>
+                                <th>Latest Marks</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyDetailMarksTable">
+                            <tr>
+                                <td colspan="4">Select a student to view subject-wise marks.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="grid profile-grid">
+                    <div class="card profile-card">
+                        <div class="section-heading">
+                            <h3>Attendance History</h3>
+                            <span class="subtle-text">Recent attendance records</span>
+                        </div>
+                        <ul class="reason-list" id="facultyDetailAttendanceList">
+                            <li>Select a student to view attendance.</li>
+                        </ul>
+                    </div>
+
+                    <div class="card placement-details-card">
+                        <div class="section-heading">
+                            <h3>Mock Tests</h3>
+                            <span class="subtle-text">Latest mock test scores</span>
+                        </div>
+                        <ul class="reason-list" id="facultyDetailMockList">
+                            <li>Select a student to view mock scores.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
             <div class="grid faculty-management-grid">
                 <div class="card" id="attendanceSection">
                     <div class="section-heading">
@@ -194,7 +280,8 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='script.js') }}"></script>
+<script src="{{ url_for('static', filename='shared.js') }}"></script>
+<script src="{{ url_for('static', filename='faculty.js') }}"></script>
 <script>
     loadFacultyDashboard();
 </script>

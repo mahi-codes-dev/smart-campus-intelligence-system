@@ -1,10 +1,19 @@
 from functools import wraps
+import os
 from flask import request, jsonify
 import jwt
+from dotenv import load_dotenv
 
-SECRET_KEY = "smartcampussecret123"
+load_dotenv()
 
-from flask import request
+SECRET_KEY = os.getenv("JWT_SECRET")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET is not configured in environment variables")
+
+if not JWT_ALGORITHM:
+    raise RuntimeError("JWT_ALGORITHM is not configured in environment variables")
 
 def token_required(f):
     @wraps(f)
@@ -18,7 +27,7 @@ def token_required(f):
             return jsonify({"error": "Token is missing"}), 401
 
         try:
-            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            data = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
             request.user = data   # ✅ ADD THIS LINE
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401

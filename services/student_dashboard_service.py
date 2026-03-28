@@ -1,4 +1,5 @@
 from services.mock_service import get_mock_trend
+from services.marks_service import get_subject_wise_marks
 from services.prediction_service import predict_placement_from_score
 from services.readiness_service import calculate_readiness
 from services.student_service import get_student_profile
@@ -99,4 +100,5 @@ def get_student_dashboard_data(student_id):
         "placement_status": prediction["placement_status"],
         "placement_reasons": prediction["reasons"],
         "profile": get_student_profile(student_id),
+        "subject_performance": get_subject_wise_marks(student_id),
     }
