@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from database import get_db_connection
+from auth.auth_middleware import token_required, role_required
 from routes.student_routes import student_bp
 from auth.auth_routes import auth_bp
 from routes.subject_routes import subject_bp
@@ -19,7 +20,10 @@ from routes.student_skill_routes import student_skill_bp
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.admin_routes import admin_bp
 from routes.prediction_routes import prediction_bp
+from services.attendance_service import ensure_attendance_table_consistency
 from services.marks_service import ensure_marks_table_consistency
+from services.mock_service import ensure_mock_tests_table_consistency
+from services.skills_service import ensure_skills_table_consistency
 from services.student_service import ensure_student_table_consistency
 from services.subject_service import ensure_subject_table_consistency
 # from routes.readiness_routes import get_top_students
@@ -36,6 +40,9 @@ try:
     ensure_student_table_consistency()
     ensure_subject_table_consistency()
     ensure_marks_table_consistency()
+    ensure_attendance_table_consistency()
+    ensure_mock_tests_table_consistency()
+    ensure_skills_table_consistency()
 except Exception as schema_error:
     print("STUDENT_SCHEMA_SYNC_ERROR:", schema_error)
 
@@ -84,6 +91,8 @@ def health_check():
     
 
 @app.route("/create-table")
+@token_required
+@role_required("Admin")
 def create_table():
     try:
         ensure_student_table_consistency()
@@ -95,6 +104,8 @@ def create_table():
     
 
 @app.route("/add-student", methods=["POST"])
+@token_required
+@role_required("Admin")
 def add_student():
     try:
         data = request.get_json()
@@ -127,6 +138,8 @@ def add_student():
     
 
 @app.route("/update-student/<int:id>", methods=["PUT"])
+@token_required
+@role_required("Admin")
 def update_student(id):
     try:
         data = request.get_json()
@@ -157,6 +170,8 @@ def update_student(id):
     
 
 @app.route("/delete-student/<int:id>", methods=["DELETE"])
+@token_required
+@role_required("Admin")
 def delete_student(id):
     try:
         conn = get_db_connection()
@@ -201,6 +216,10 @@ def student_progress():
 @app.route('/student-skills')
 def student_skills():
     return render_template('student_skills.html')
+
+@app.route('/student-profile')
+def student_profile():
+    return render_template('student_profile.html')
 
 @app.route('/admin-dashboard')
 @app.route('/dashboard')

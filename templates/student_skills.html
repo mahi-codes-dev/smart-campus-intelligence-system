@@ -20,6 +20,9 @@
             <li class="active" onclick="go('/student-skills')">
                 <i class="fas fa-code"></i> Skills
             </li>
+            <li onclick="go('/student-profile')">
+                <i class="fas fa-id-card"></i> Profile
+            </li>
         </ul>
     </div>
 
@@ -46,6 +49,11 @@
                 <h3>Add Skill</h3>
                 <div class="skill-form">
                     <input class="text-input" type="text" id="skillInput" placeholder="Enter skill (e.g. Python)">
+                    <select class="text-input" id="skillLevel">
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate" selected>Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                    </select>
                     <button class="primary-button" onclick="addSkill()">Add</button>
                 </div>
             </div>

@@ -27,7 +27,8 @@ def create_skill():
 @role_required("Faculty")
 def assign_skill_to_student():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+        print("FACULTY_ASSIGN_SKILL_REQUEST:", data)
 
         if not all(key in data for key in ("student_id", "skill_id")):
             return jsonify({"error": "Missing fields"}), 400
@@ -35,9 +36,12 @@ def assign_skill_to_student():
         student_id = data["student_id"]
         skill_id = data["skill_id"]
 
-        assign_skill(student_id, skill_id)
+        action = assign_skill(student_id, skill_id, data.get("skill_level"))
 
-        return jsonify({"message": "Skill assigned"}), 201
+        return jsonify({
+            "message": "Skill updated" if action == "updated" else "Skill assigned",
+            "skill_level": data.get("skill_level") or "Intermediate",
+        }), 201
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

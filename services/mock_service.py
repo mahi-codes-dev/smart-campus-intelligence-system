@@ -1,9 +1,61 @@
 from database import get_db_connection
+from services.student_service import ensure_student_table_consistency
+
+_MOCK_SCHEMA_READY = False
+
+
+def ensure_mock_tests_table_consistency(connection=None):
+    global _MOCK_SCHEMA_READY
+
+    if _MOCK_SCHEMA_READY:
+        return
+
+    conn = connection or get_db_connection()
+    cur = conn.cursor()
+
+    ensure_student_table_consistency(conn)
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS mock_tests (
+            id SERIAL PRIMARY KEY,
+            student_id INTEGER,
+            score INTEGER,
+            test_name VARCHAR(150),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    cur.execute("ALTER TABLE mock_tests ADD COLUMN IF NOT EXISTS student_id INTEGER")
+    cur.execute("ALTER TABLE mock_tests ADD COLUMN IF NOT EXISTS score INTEGER")
+    cur.execute("ALTER TABLE mock_tests ADD COLUMN IF NOT EXISTS test_name VARCHAR(150)")
+    cur.execute("ALTER TABLE mock_tests ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    cur.execute("ALTER TABLE mock_tests DROP CONSTRAINT IF EXISTS mock_tests_student_id_fkey")
+    cur.execute(
+        """
+        ALTER TABLE mock_tests
+        ADD CONSTRAINT mock_tests_student_id_fkey
+        FOREIGN KEY (student_id) REFERENCES students(id)
+        ON DELETE CASCADE
+        """
+    )
+
+    if connection is None:
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        cur.close()
+
+    _MOCK_SCHEMA_READY = True
 
 
 def add_mock_test(student_id, score, test_name):
     conn = get_db_connection()
     cur = conn.cursor()
+
+    ensure_mock_tests_table_consistency(conn)
 
     cur.execute("""
         INSERT INTO mock_tests (student_id, score, test_name)
@@ -18,6 +70,8 @@ def add_mock_test(student_id, score, test_name):
 def save_mock_test(student_id, score, test_name):
     conn = get_db_connection()
     cur = conn.cursor()
+
+    ensure_mock_tests_table_consistency(conn)
 
     cur.execute(
         """
@@ -63,6 +117,8 @@ def get_mock_scores(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    ensure_mock_tests_table_consistency(conn)
+
     cur.execute("""
         SELECT score, test_name, created_at
         FROM mock_tests
@@ -90,6 +146,8 @@ def get_average_mock_score(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
+    ensure_mock_tests_table_consistency(conn)
+
     cur.execute("""
         SELECT AVG(score)
         FROM mock_tests
@@ -108,6 +166,8 @@ def get_average_mock_score(student_id):
 def get_mock_trend(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
+
+    ensure_mock_tests_table_consistency(conn)
 
     cur.execute("""
         SELECT score

@@ -19,6 +19,27 @@ function setUser() {
     }
 }
 
+function requireAuth(expectedRoles = []) {
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+        window.location.href = "/";
+        return false;
+    }
+
+    if (Array.isArray(expectedRoles) && expectedRoles.length) {
+        const currentRole = (localStorage.getItem("role_name") || "").toLowerCase();
+        const allowedRoles = expectedRoles.map((role) => String(role).toLowerCase());
+
+        if (!allowedRoles.includes(currentRole)) {
+            window.location.href = "/";
+            return false;
+        }
+    }
+
+    return true;
+}
+
 async function fetchJson(path, options = {}) {
     const token = localStorage.getItem("token");
     const headers = { ...(options.headers || {}) };
@@ -249,6 +270,101 @@ function renderSubjectPerformance(subjects, tableId = "subjectPerformanceTable")
         row.appendChild(averageCell);
         row.appendChild(latestCell);
         body.appendChild(row);
+    });
+}
+
+function renderSubjectPerformanceChart(subjects, canvasId = "subjectPerformanceChart") {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === "undefined") {
+        return;
+    }
+
+    const labels = Array.isArray(subjects) ? subjects.map((subject) => subject.subject_code || subject.subject_name || "--") : [];
+    const values = Array.isArray(subjects) ? subjects.map((subject) => Number(subject.average_marks || 0)) : [];
+    const chartKey = "__chart_" + canvasId;
+
+    if (window[chartKey]) {
+        window[chartKey].destroy();
+    }
+
+    window[chartKey] = new Chart(canvas, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Average Marks",
+                data: values,
+                borderColor: "#06b6d4",
+                backgroundColor: "rgba(6, 182, 212, 0.18)",
+                fill: true,
+                tension: 0.3,
+            }],
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false,
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                },
+            },
+        },
+    });
+}
+
+function renderAlerts(alerts, containerId = "studentAlerts") {
+    const container = document.getElementById(containerId);
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = "";
+
+    if (!Array.isArray(alerts) || !alerts.length) {
+        const empty = document.createElement("div");
+        empty.className = "alert-card alert-card--success";
+        empty.innerHTML = `
+            <strong>No active alerts</strong>
+            <p>Your current academic indicators look stable.</p>
+        `;
+        container.appendChild(empty);
+        return;
+    }
+
+    alerts.forEach((alertItem) => {
+        const card = document.createElement("div");
+        const severity = (alertItem.severity || "warning").toLowerCase();
+        card.className = `alert-card alert-card--${severity}`;
+        card.innerHTML = `
+            <strong>${alertItem.title || "Alert"}</strong>
+            <p>${alertItem.message || ""}</p>
+        `;
+        container.appendChild(card);
+    });
+}
+
+function renderProfileSummary(summary, listId = "profileSummaryList") {
+    const list = document.getElementById(listId);
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = "";
+
+    [
+        `Readiness Score: ${formatPercent(summary?.readiness_score || 0)}`,
+        `Current Status: ${summary?.status || "--"}`,
+        `Best Subject: ${summary?.best_subject || "Not available"}`,
+        `Needs Attention: ${summary?.weakest_subject || "Not available"}`,
+    ].forEach((text) => {
+        const li = document.createElement("li");
+        li.innerText = text;
+        list.appendChild(li);
     });
 }
 

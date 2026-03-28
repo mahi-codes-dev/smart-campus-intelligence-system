@@ -13,6 +13,7 @@ student_skill_bp = Blueprint("student_skill_bp", __name__)
 def add_skill():
     try:
         data = request.get_json() or {}
+        print("STUDENT_SKILL_ADD_REQUEST:", data)
         student = get_student_record_by_user_id(request.user["user_id"])
 
         if not student:
@@ -34,12 +35,13 @@ def add_skill():
 
             skill_id = get_or_create_skill(skill_name)
 
-        assign_skill(student_id, skill_id)
+        action = assign_skill(student_id, skill_id, data.get("skill_level"))
 
         return jsonify({
-            "message": "Skill added successfully",
+            "message": "Skill updated successfully" if action == "updated" else "Skill added successfully",
             "student_id": student_id,
             "skill_id": skill_id,
+            "skill_level": data.get("skill_level") or "Intermediate",
         }), 201
 
     except Exception as e:
@@ -50,6 +52,11 @@ def add_skill():
 @token_required
 def get_skills(student_id):
     try:
+        if request.user.get("role_id") == 3:
+            student = get_student_record_by_user_id(request.user["user_id"])
+            if not student or student["id"] != student_id:
+                return jsonify({"error": "Students can only view their own skills"}), 403
+
         skills = get_student_skills(student_id)
         return jsonify(skills), 200
 

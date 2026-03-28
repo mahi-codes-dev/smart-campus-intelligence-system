@@ -3,8 +3,14 @@ function getAdminState() {
         window.adminState = {
             users: [],
             subjects: [],
+            topStudentsByDepartment: [],
+            lowPerformers: [],
+            departmentAverageScores: [],
+            departments: [],
             userSearch: "",
             subjectSearch: "",
+            analyticsSearch: "",
+            analyticsDepartment: "All",
             userPage: 1,
             subjectPage: 1,
             pageSize: 5,
@@ -32,6 +38,129 @@ function showAdminMessage(message, type = "success") {
 function setAdminLastSync() {
     const now = new Date();
     setText("adminLastSync", now.toLocaleTimeString());
+}
+
+function populateAdminAnalyticsDepartments(departments, selectedDepartment) {
+    const filter = document.getElementById("adminAnalyticsDepartmentFilter");
+    if (!filter) {
+        return;
+    }
+
+    const uniqueDepartments = Array.from(new Set((departments || []).filter(Boolean))).sort();
+    filter.innerHTML = "";
+
+    ["All", ...uniqueDepartments].forEach((department) => {
+        const option = document.createElement("option");
+        option.value = department;
+        option.innerText = department;
+        filter.appendChild(option);
+    });
+
+    filter.value = ["All", ...uniqueDepartments].includes(selectedDepartment) ? selectedDepartment : "All";
+}
+
+function filterAdminUsers() {
+    const state = getAdminState();
+    const term = state.userSearch.toLowerCase();
+
+    return state.users.filter((user) =>
+        [user.name, user.email, user.role]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(term))
+    );
+}
+
+function filterAdminSubjects() {
+    const state = getAdminState();
+    const term = state.subjectSearch.toLowerCase();
+
+    return state.subjects.filter((subject) =>
+        [subject.name, subject.code, subject.department]
+            .filter(Boolean)
+            .some((value) => value.toLowerCase().includes(term))
+    );
+}
+
+function filterAdminLowPerformers() {
+    const state = getAdminState();
+    const term = state.analyticsSearch.toLowerCase();
+
+    return state.lowPerformers.filter((student) => {
+        const matchesSearch = !term || (student.name || "").toLowerCase().includes(term);
+        const matchesDepartment = state.analyticsDepartment === "All" || student.department === state.analyticsDepartment;
+        return matchesSearch && matchesDepartment;
+    });
+}
+
+function filterAdminTopStudentsByDepartment() {
+    const state = getAdminState();
+    const term = state.analyticsSearch.toLowerCase();
+
+    return (state.topStudentsByDepartment || [])
+        .filter((group) => state.analyticsDepartment === "All" || group.department === state.analyticsDepartment)
+        .map((group) => ({
+            ...group,
+            students: (group.students || []).filter((student) => !term || (student.name || "").toLowerCase().includes(term)),
+        }))
+        .filter((group) => group.students.length);
+}
+
+function paginateItems(items, page, pageSize) {
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const safePage = Math.min(Math.max(page, 1), totalPages);
+    const start = (safePage - 1) * pageSize;
+
+    return {
+        items: items.slice(start, start + pageSize),
+        page: safePage,
+        totalPages,
+    };
+}
+
+function updatePaginationControls(prefix, page, totalPages, totalItems) {
+    setText(prefix + "PageInfo", `Page ${page} of ${totalPages}`);
+    setText(prefix + "CountInfo", `${totalItems} total`);
+
+    const prevButton = document.getElementById(prefix + "Prev");
+    const nextButton = document.getElementById(prefix + "Next");
+
+    if (prevButton) {
+        prevButton.disabled = page <= 1;
+    }
+    if (nextButton) {
+        nextButton.disabled = page >= totalPages;
+    }
+}
+
+function renderAdminDepartmentAverages(items) {
+    const state = getAdminState();
+    const body = document.getElementById("adminDepartmentAverageTable");
+    if (!body) {
+        return;
+    }
+
+    body.innerHTML = "";
+
+    const filteredItems = state.analyticsDepartment === "All"
+        ? (items || [])
+        : (items || []).filter((item) => item.department === state.analyticsDepartment);
+
+    if (!Array.isArray(filteredItems) || !filteredItems.length) {
+        const row = document.createElement("tr");
+        row.innerHTML = '<td colspan="3">No department averages available yet.</td>';
+        body.appendChild(row);
+        return;
+    }
+
+    filteredItems.forEach((item) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${item.department}</td>
+            <td>${formatValue(item.average_score)}</td>
+            <td>${formatValue(item.student_count)}</td>
+        `;
+        body.appendChild(row);
+    });
 }
 
 function renderAdminTopStudentsByDepartment(groups) {
@@ -82,55 +211,6 @@ function renderAdminLowPerformers(users) {
         li.innerText = `${user.name} - ${user.department} - Score ${formatValue(user.score)}`;
         list.appendChild(li);
     });
-}
-
-function filterAdminUsers() {
-    const state = getAdminState();
-    const term = state.userSearch.toLowerCase();
-
-    return state.users.filter((user) =>
-        [user.name, user.email, user.role]
-            .filter(Boolean)
-            .some((value) => value.toLowerCase().includes(term))
-    );
-}
-
-function filterAdminSubjects() {
-    const state = getAdminState();
-    const term = state.subjectSearch.toLowerCase();
-
-    return state.subjects.filter((subject) =>
-        [subject.name, subject.code, subject.department]
-            .filter(Boolean)
-            .some((value) => value.toLowerCase().includes(term))
-    );
-}
-
-function paginateItems(items, page, pageSize) {
-    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-    const safePage = Math.min(Math.max(page, 1), totalPages);
-    const start = (safePage - 1) * pageSize;
-
-    return {
-        items: items.slice(start, start + pageSize),
-        page: safePage,
-        totalPages,
-    };
-}
-
-function updatePaginationControls(prefix, page, totalPages, totalItems) {
-    setText(prefix + "PageInfo", `Page ${page} of ${totalPages}`);
-    setText(prefix + "CountInfo", `${totalItems} total`);
-
-    const prevButton = document.getElementById(prefix + "Prev");
-    const nextButton = document.getElementById(prefix + "Next");
-
-    if (prevButton) {
-        prevButton.disabled = page <= 1;
-    }
-    if (nextButton) {
-        nextButton.disabled = page >= totalPages;
-    }
 }
 
 function renderAdminUsers() {
@@ -243,6 +323,13 @@ function renderAdminSubjects() {
     updatePaginationControls("adminSubjects", paginated.page, paginated.totalPages, filtered.length);
 }
 
+function renderAdminAnalytics() {
+    const state = getAdminState();
+    renderAdminDepartmentAverages(state.departmentAverageScores || []);
+    renderAdminTopStudentsByDepartment(filterAdminTopStudentsByDepartment());
+    renderAdminLowPerformers(filterAdminLowPerformers());
+}
+
 function initializeAdminControls() {
     const state = getAdminState();
     if (state.initialized) {
@@ -251,6 +338,8 @@ function initializeAdminControls() {
 
     const userSearch = document.getElementById("adminUsersSearch");
     const subjectSearch = document.getElementById("adminSubjectsSearch");
+    const analyticsSearch = document.getElementById("adminAnalyticsSearch");
+    const analyticsDepartment = document.getElementById("adminAnalyticsDepartmentFilter");
     const userPrev = document.getElementById("adminUsersPrev");
     const userNext = document.getElementById("adminUsersNext");
     const subjectPrev = document.getElementById("adminSubjectsPrev");
@@ -269,6 +358,20 @@ function initializeAdminControls() {
             state.subjectSearch = event.target.value.trim();
             state.subjectPage = 1;
             renderAdminSubjects();
+        });
+    }
+
+    if (analyticsSearch) {
+        analyticsSearch.addEventListener("input", (event) => {
+            state.analyticsSearch = event.target.value.trim();
+            renderAdminAnalytics();
+        });
+    }
+
+    if (analyticsDepartment) {
+        analyticsDepartment.addEventListener("change", (event) => {
+            state.analyticsDepartment = event.target.value;
+            renderAdminAnalytics();
         });
     }
 
@@ -340,6 +443,10 @@ async function loadAdminSubjects() {
 }
 
 async function loadAdminDashboard() {
+    if (!requireAuth(["Admin"])) {
+        return;
+    }
+
     if (!document.getElementById("adminUsersTable")) {
         return;
     }
@@ -353,12 +460,18 @@ async function loadAdminDashboard() {
             loadUsers(),
             loadAdminSubjects(),
         ]);
+        const state = getAdminState();
+
+        state.topStudentsByDepartment = stats.top_students_by_department || [];
+        state.lowPerformers = stats.low_performers || [];
+        state.departmentAverageScores = stats.department_average_scores || [];
+        state.departments = stats.departments || [];
 
         setText("adminTotalStudents", formatValue(stats.total_students));
         setText("adminTotalFaculty", formatValue(stats.total_faculty));
         setText("adminTotalUsers", formatValue(stats.total_users));
-        renderAdminTopStudentsByDepartment(stats.top_students_by_department || []);
-        renderAdminLowPerformers(stats.low_performers || []);
+        populateAdminAnalyticsDepartments(state.departments, state.analyticsDepartment);
+        renderAdminAnalytics();
         setAdminLastSync();
     } catch (error) {
         console.error(error);

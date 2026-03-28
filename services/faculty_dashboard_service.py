@@ -1,114 +1,83 @@
-from database import get_db_connection
 from services.attendance_service import get_attendance
 from services.marks_service import get_marks_by_student, get_subject_wise_marks
-from services.mock_service import get_average_mock_score, get_mock_scores, get_mock_trend
+from services.mock_service import get_mock_scores, get_mock_trend
+from services.readiness_service import get_all_scored_students
 from services.student_dashboard_service import get_student_dashboard_data
-from services.student_service import get_student_profile
+from services.student_service import get_all_departments, get_student_profile
 
 
 def calculate_student_dashboard(student_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    # Attendance
-    cur.execute("""
-        SELECT COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0)
-        FROM attendance
-        WHERE student_id = %s
-    """, (student_id,))
-    attendance = float(cur.fetchone()[0] or 0)
-
-    # Marks
-    cur.execute("""
-        SELECT AVG(marks)
-        FROM marks
-        WHERE student_id = %s
-    """, (student_id,))
-    marks = float(cur.fetchone()[0] or 0)
-
-    # Skills
-    cur.execute("""
-        SELECT COUNT(*)
-        FROM student_skills
-        WHERE student_id = %s
-    """, (student_id,))
-    skills = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
-
-    mock_score = float(get_average_mock_score(student_id))
-
-    final_score = (attendance * 0.3) + (marks * 0.4) + (mock_score * 0.2) + (skills * 2)
-
-    if final_score >= 80:
-        status = "Excellent"
-    elif final_score >= 60:
-        status = "Moderate"
-    else:
-        status = "At Risk"
-
-    # 🔥 TREND
-    trend = get_mock_trend(student_id)
+    dashboard = get_student_dashboard_data(student_id)
 
     return {
-        "attendance": round(attendance, 2),
-        "marks": round(marks, 2),
-        "mock_score": round(mock_score, 2),
-        "skills_count": skills,
-        "final_score": round(final_score, 2),
-        "status": status,
-        "trend": trend
+        "attendance": dashboard["attendance"],
+        "marks": dashboard["marks"],
+        "mock_score": dashboard["mock_score"],
+        "skills_count": dashboard["skills_count"],
+        "final_score": dashboard["readiness_score"],
+        "status": dashboard["status"],
+        "trend": dashboard["trend"],
+        "risk_status": dashboard["risk_level"],
     }
 
 
-def get_all_students_dashboard(filter_status=None, sort_order=None):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT
-            s.id,
-            COALESCE(NULLIF(s.name, ''), u.name) AS name,
-            COALESCE(NULLIF(s.email, ''), u.email) AS email,
-            COALESCE(s.department, 'Not Assigned') AS department
-        FROM students s
-        LEFT JOIN users u ON s.user_id = u.id
-        ORDER BY s.id ASC
-        """
+def get_all_students_dashboard(filter_status=None, sort_order=None, search=None, department=None):
+    students = get_all_scored_students(
+        search=search,
+        department=department,
+        status=filter_status,
+        sort_order=sort_order or "desc",
     )
-    students = cur.fetchall()
 
-    result = []
-
+    results = []
     for student in students:
-        student_id, name, email, department = student
-
-        data = calculate_student_dashboard(student_id)
-
-        if filter_status and data["status"].lower() != filter_status.lower():
-            continue
-
-        result.append({
-            "id": student_id,
-            "student_id": student_id,
-            "name": name,
-            "email": email,
-            "department": department,
-            **data
+        results.append({
+            "id": student["student_id"],
+            "student_id": student["student_id"],
+            "name": student["name"],
+            "email": student["email"],
+            "department": student["department"],
+            "attendance": student["attendance"],
+            "marks": student["marks"],
+            "mock_score": student["mock_score"],
+            "skills_count": student["skills_count"],
+            "final_score": student["final_score"],
+            "status": student["status"],
+            "risk_status": student["risk_status"],
+            "trend": get_mock_trend(student["student_id"]),
         })
 
-    cur.close()
-    conn.close()
+    return results
 
-    # Sorting
-    if sort_order == "desc":
-        result.sort(key=lambda x: x["final_score"], reverse=True)
-    elif sort_order == "asc":
-        result.sort(key=lambda x: x["final_score"])
 
-    return result
+def get_faculty_dashboard_summary(search=None, department=None, filter_status=None, sort_order=None):
+    students = get_all_students_dashboard(
+        filter_status=filter_status,
+        sort_order=sort_order,
+        search=search,
+        department=department,
+    )
+
+    total_students = len(students)
+    average_marks = round(
+        sum(float(student["marks"] or 0) for student in students) / total_students,
+        2,
+    ) if total_students else 0
+
+    at_risk_students = [
+        student for student in students
+        if float(student["final_score"] or 0) < 60 or student["risk_status"] == "At Risk"
+    ]
+
+    return {
+        "summary": {
+            "total_students": total_students,
+            "average_marks": average_marks,
+            "at_risk_count": len(at_risk_students),
+            "departments": get_all_departments(),
+        },
+        "at_risk_students": at_risk_students[:8],
+    }
 
 
 def get_student_detail(student_id):
@@ -122,6 +91,7 @@ def get_student_detail(student_id):
             "mock_score": dashboard["mock_score"],
             "readiness_score": dashboard["readiness_score"],
             "status": dashboard["status"],
+            "risk_level": dashboard["risk_level"],
         },
         "subject_performance": get_subject_wise_marks(student_id),
         "marks_history": get_marks_by_student(student_id),
@@ -129,4 +99,6 @@ def get_student_detail(student_id):
         "mock_scores": get_mock_scores(student_id),
         "placement_reasons": dashboard["placement_reasons"],
         "insights": dashboard["insights"],
+        "alerts": dashboard["alerts"],
+        "profile_summary": dashboard["profile_summary"],
     }

@@ -4,6 +4,8 @@ function getFacultyState() {
             students: [],
             subjects: [],
             selectedStudentId: null,
+            search: "",
+            department: "All",
         };
     }
 
@@ -59,6 +61,25 @@ function populateFacultySubjectOptions(subjects) {
     });
 }
 
+function populateFacultyDepartmentFilter(departments, selectedDepartment) {
+    const filter = document.getElementById("facultyDepartmentFilter");
+    if (!filter) {
+        return;
+    }
+
+    const values = Array.from(new Set((departments || []).filter(Boolean))).sort();
+    filter.innerHTML = "";
+
+    ["All", ...values].forEach((department) => {
+        const option = document.createElement("option");
+        option.value = department;
+        option.innerText = department;
+        filter.appendChild(option);
+    });
+
+    filter.value = selectedDepartment && ["All", ...values].includes(selectedDepartment) ? selectedDepartment : "All";
+}
+
 function setFacultyStudentSelection(student) {
     const state = getFacultyState();
     state.selectedStudentId = student ? student.student_id : null;
@@ -97,7 +118,7 @@ function renderFacultyStudents(students) {
     if (!students.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
-        cell.colSpan = 4;
+        cell.colSpan = 5;
         cell.innerText = "No students found.";
         row.appendChild(cell);
         body.appendChild(row);
@@ -109,12 +130,14 @@ function renderFacultyStudents(students) {
         const nameCell = document.createElement("td");
         const emailCell = document.createElement("td");
         const departmentCell = document.createElement("td");
+        const statusCell = document.createElement("td");
         const actionCell = document.createElement("td");
         const actionGroup = document.createElement("div");
 
         nameCell.innerText = student.name || "--";
         emailCell.innerText = student.email || "--";
         departmentCell.innerText = student.department || "--";
+        statusCell.innerText = student.status || "--";
 
         actionGroup.className = "faculty-action-group";
 
@@ -135,7 +158,38 @@ function renderFacultyStudents(students) {
         row.appendChild(nameCell);
         row.appendChild(emailCell);
         row.appendChild(departmentCell);
+        row.appendChild(statusCell);
         row.appendChild(actionCell);
+        body.appendChild(row);
+    });
+}
+
+function renderFacultyRiskStudents(students) {
+    const body = document.getElementById("facultyRiskTable");
+    if (!body) {
+        return;
+    }
+
+    body.innerHTML = "";
+
+    if (!Array.isArray(students) || !students.length) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 4;
+        cell.innerText = "No at-risk students for the current filter.";
+        row.appendChild(cell);
+        body.appendChild(row);
+        return;
+    }
+
+    students.forEach((student) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${student.name || "--"}</td>
+            <td>${student.department || "--"}</td>
+            <td>${formatValue(student.marks)}</td>
+            <td>${student.status || "--"}</td>
+        `;
         body.appendChild(row);
     });
 }
@@ -153,6 +207,7 @@ function renderFacultyDetailSummary(detail) {
         "Average Marks: " + formatValue(detail.overview?.marks),
         "Mock Score: " + formatValue(detail.overview?.mock_score),
         "Status: " + (detail.overview?.status || "--"),
+        "Risk: " + (detail.overview?.risk_level || "--"),
     ].forEach((text) => {
         const li = document.createElement("li");
         li.innerText = text;
@@ -230,28 +285,71 @@ function selectFacultyStudent(studentId, sectionId) {
     }
 }
 
+function initializeFacultyControls() {
+    const state = getFacultyState();
+    const searchInput = document.getElementById("facultySearch");
+    const departmentFilter = document.getElementById("facultyDepartmentFilter");
+
+    if (searchInput && !searchInput.dataset.bound) {
+        searchInput.addEventListener("input", (event) => {
+            state.search = event.target.value.trim();
+            loadFacultyDashboard();
+        });
+        searchInput.dataset.bound = "true";
+    }
+
+    if (departmentFilter && !departmentFilter.dataset.bound) {
+        departmentFilter.addEventListener("change", (event) => {
+            state.department = event.target.value;
+            loadFacultyDashboard();
+        });
+        departmentFilter.dataset.bound = "true";
+    }
+}
+
 async function loadFacultyDashboard() {
+    if (!requireAuth(["Faculty"])) {
+        return;
+    }
+
     if (!document.getElementById("facultyStudentsTable")) {
         return;
     }
 
     setUser();
+    initializeFacultyControls();
 
     try {
-        const [students, subjects] = await Promise.all([
-            fetchJson("/faculty/dashboard"),
-            fetchJson("/subjects"),
-        ]);
         const state = getFacultyState();
+        const params = new URLSearchParams();
+
+        if (state.search) {
+            params.set("search", state.search);
+        }
+        if (state.department && state.department !== "All") {
+            params.set("department", state.department);
+        }
+
+        const suffix = params.toString() ? "?" + params.toString() : "";
+
+        const [students, subjects, summaryData] = await Promise.all([
+            fetchJson("/faculty/dashboard" + suffix),
+            fetchJson("/subjects"),
+            fetchJson("/faculty/summary" + suffix),
+        ]);
 
         state.students = Array.isArray(students) ? students : [];
         state.subjects = Array.isArray(subjects) ? subjects : [];
 
-        setText("facultyStudentCount", state.students.length);
+        setText("facultyStudentCount", formatValue(summaryData.summary?.total_students || state.students.length));
+        setText("facultyAverageMarks", formatValue(summaryData.summary?.average_marks || 0));
+        setText("facultyAtRiskCount", formatValue(summaryData.summary?.at_risk_count || 0));
         setText("facultySubjectCount", state.subjects.length);
 
+        populateFacultyDepartmentFilter(summaryData.summary?.departments || [], state.department);
         populateFacultySubjectOptions(state.subjects);
         renderFacultyStudents(state.students);
+        renderFacultyRiskStudents(summaryData.at_risk_students || []);
 
         const selected = state.students.find(
             (student) => Number(student.student_id) === Number(state.selectedStudentId)

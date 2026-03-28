@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from services.mock_service import add_mock_test, get_mock_scores, save_mock_test
 from auth.auth_middleware import token_required, role_required
+from services.student_service import get_student_record_by_user_id
 from utils.response import success_response, error_response
 from utils.validators import validate_required_fields
 
@@ -77,6 +78,11 @@ def update_mock():
 @token_required
 def fetch_mock(student_id):
     try:
+        if request.user.get("role_id") == 3:
+            student = get_student_record_by_user_id(request.user["user_id"])
+            if not student or student["id"] != student_id:
+                return jsonify({"error": "Students can only view their own mock tests"}), 403
+
         data = get_mock_scores(student_id)
         return jsonify(data), 200
 

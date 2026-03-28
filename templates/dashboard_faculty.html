@@ -51,18 +51,43 @@
                 </div>
 
                 <div class="card metric-card">
-                    <h3>Selected Student</h3>
-                    <p id="facultySelectedStudent">None</p>
+                    <h3>Average Marks</h3>
+                    <p id="facultyAverageMarks">0</p>
+                </div>
+
+                <div class="card metric-card">
+                    <h3>Students At Risk</h3>
+                    <p id="facultyAtRiskCount">0</p>
                 </div>
 
                 <div class="card metric-card">
                     <h3>Available Subjects</h3>
                     <p id="facultySubjectCount">0</p>
                 </div>
+            </div>
 
-                <div class="card metric-card">
-                    <h3>Last Action</h3>
-                    <p id="facultyActionState">Waiting</p>
+            <div class="grid profile-grid">
+                <div class="card profile-card">
+                    <div class="section-heading">
+                        <h3>Selected Student</h3>
+                        <span class="subtle-text" id="facultyActionState">Waiting</span>
+                    </div>
+                    <p id="facultySelectedStudent">None</p>
+                </div>
+
+                <div class="card placement-details-card">
+                    <div class="section-heading">
+                        <div>
+                            <h3>Search and Filter</h3>
+                            <span class="subtle-text">Find students by name and department.</span>
+                        </div>
+                    </div>
+                    <div class="table-toolbar">
+                        <input class="text-input table-search" id="facultySearch" type="search" placeholder="Search student by name or email">
+                        <select class="text-input table-search" id="facultyDepartmentFilter">
+                            <option value="All">All Departments</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -85,12 +110,40 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Department</th>
+                                <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="facultyStudentsTable">
                             <tr>
-                                <td colspan="4">Loading students...</td>
+                                <td colspan="5">Loading students...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card faculty-table-card">
+                <div class="section-heading">
+                    <div>
+                        <h2>Students At Risk</h2>
+                        <span class="subtle-text">Students who need immediate academic attention.</span>
+                    </div>
+                </div>
+
+                <div class="faculty-table-wrapper">
+                    <table class="faculty-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Department</th>
+                                <th>Average Marks</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyRiskTable">
+                            <tr>
+                                <td colspan="4">Loading at-risk students...</td>
                             </tr>
                         </tbody>
                     </table>

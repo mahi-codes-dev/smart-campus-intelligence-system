@@ -423,6 +423,8 @@ button:disabled {
 .skill-chip {
     display: inline-flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 10px;
     padding: 8px 14px;
     border-radius: 999px;
     background: rgba(79, 70, 229, 0.12);
@@ -430,9 +432,71 @@ button:disabled {
     font-weight: 600;
 }
 
+.skill-chip small {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.7);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.skill-chip--beginner {
+    background: rgba(234, 179, 8, 0.16);
+    color: #a16207;
+}
+
+.skill-chip--intermediate {
+    background: rgba(6, 182, 212, 0.16);
+    color: #0f766e;
+}
+
+.skill-chip--advanced {
+    background: rgba(22, 163, 74, 0.16);
+    color: #166534;
+}
+
 .empty-state {
     color: var(--muted-light);
     margin: 8px 0 0;
+}
+
+.alert-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+}
+
+.alert-card {
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+}
+
+.alert-card strong {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.alert-card p {
+    margin: 0;
+    color: var(--muted-light);
+}
+
+.alert-card--success {
+    background: rgba(22, 163, 74, 0.08);
+    border-color: rgba(22, 163, 74, 0.22);
+}
+
+.alert-card--warning {
+    background: rgba(234, 179, 8, 0.12);
+    border-color: rgba(234, 179, 8, 0.24);
+}
+
+.alert-card--danger {
+    background: rgba(220, 38, 38, 0.1);
+    border-color: rgba(220, 38, 38, 0.22);
 }
 
 .table-toolbar {
@@ -507,6 +571,14 @@ body.dark .leaderboard-item:hover {
 
 body.dark .message {
     color: #fca5a5;
+}
+
+body.dark .alert-card p {
+    color: var(--muted-dark);
+}
+
+body.dark .skill-chip small {
+    background: rgba(15, 23, 42, 0.35);
 }
 
 .toast-container {

@@ -2,17 +2,84 @@ from datetime import date, timedelta
 from math import gcd
 
 from database import get_db_connection
+from services.student_service import ensure_student_table_consistency
+from services.subject_service import ensure_subject_table_consistency
+
+_ATTENDANCE_SCHEMA_READY = False
 
 
-# ✅ ADD ATTENDANCE (DATE AUTO FROM DB)
+def ensure_attendance_table_consistency(connection=None):
+    global _ATTENDANCE_SCHEMA_READY
+
+    if _ATTENDANCE_SCHEMA_READY:
+        return
+
+    conn = connection or get_db_connection()
+    cur = conn.cursor()
+
+    ensure_student_table_consistency(conn)
+    ensure_subject_table_consistency(conn)
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS attendance (
+            id SERIAL PRIMARY KEY,
+            student_id INTEGER,
+            subject_id INTEGER,
+            date DATE NOT NULL DEFAULT CURRENT_DATE,
+            status VARCHAR(20),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS student_id INTEGER")
+    cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS subject_id INTEGER")
+    cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS date DATE NOT NULL DEFAULT CURRENT_DATE")
+    cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS status VARCHAR(20)")
+    cur.execute("ALTER TABLE attendance ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    cur.execute("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_student_id_fkey")
+    cur.execute("ALTER TABLE attendance DROP CONSTRAINT IF EXISTS attendance_subject_id_fkey")
+    cur.execute(
+        """
+        ALTER TABLE attendance
+        ADD CONSTRAINT attendance_student_id_fkey
+        FOREIGN KEY (student_id) REFERENCES students(id)
+        ON DELETE CASCADE
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE attendance
+        ADD CONSTRAINT attendance_subject_id_fkey
+        FOREIGN KEY (subject_id) REFERENCES subjects(id)
+        ON DELETE CASCADE
+        """
+    )
+
+    if connection is None:
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        cur.close()
+
+    _ATTENDANCE_SCHEMA_READY = True
+
+
 def mark_attendance(student_id, subject_id, status):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("""
+    ensure_attendance_table_consistency(conn)
+
+    cur.execute(
+        """
         INSERT INTO attendance (student_id, subject_id, status)
         VALUES (%s, %s, %s)
-    """, (student_id, subject_id, status))
+        """,
+        (student_id, subject_id, status),
+    )
 
     conn.commit()
     cur.close()
@@ -41,6 +108,8 @@ def save_attendance_percentage(student_id, subject_id, attendance_percentage):
 
     conn = get_db_connection()
     cur = conn.cursor()
+
+    ensure_attendance_table_consistency(conn)
 
     cur.execute(
         """
@@ -78,19 +147,23 @@ def save_attendance_percentage(student_id, subject_id, attendance_percentage):
     conn.close()
 
 
-# ✅ GET ATTENDANCE FOR SPECIFIC STUDENT
 def get_attendance(student_id):
     conn = get_db_connection()
     cur = conn.cursor()
 
-    cur.execute("""
+    ensure_attendance_table_consistency(conn)
+
+    cur.execute(
+        """
         SELECT a.id, s.name, sub.name, a.date, a.status
         FROM attendance a
         JOIN students s ON a.student_id = s.id
         JOIN subjects sub ON a.subject_id = sub.id
         WHERE a.student_id = %s
         ORDER BY a.date DESC
-    """, (student_id,))
+        """,
+        (student_id,),
+    )
 
     rows = cur.fetchall()
 
@@ -101,7 +174,7 @@ def get_attendance(student_id):
             "student": row[1],
             "subject": row[2],
             "date": str(row[3]),
-            "status": row[4]
+            "status": row[4],
         })
 
     cur.close()

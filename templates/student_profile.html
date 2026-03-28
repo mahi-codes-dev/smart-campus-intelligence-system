@@ -1,7 +1,7 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
-    <title>Student Dashboard</title>
+    <title>Student Profile</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
@@ -11,7 +11,7 @@
     <div class="sidebar">
         <h2>Smart Campus</h2>
         <ul>
-            <li class="active" onclick="go('/student-dashboard')">
+            <li onclick="go('/student-dashboard')">
                 <i class="fas fa-chart-line"></i> Dashboard
             </li>
             <li onclick="go('/student-progress')">
@@ -20,7 +20,7 @@
             <li onclick="go('/student-skills')">
                 <i class="fas fa-code"></i> Skills
             </li>
-            <li onclick="go('/student-profile')">
+            <li class="active" onclick="go('/student-profile')">
                 <i class="fas fa-id-card"></i> Profile
             </li>
         </ul>
@@ -36,13 +36,18 @@
         </div>
 
         <div class="dashboard-container">
-            <h1>Student Dashboard</h1>
+            <div class="section-heading">
+                <div>
+                    <h1>Student Profile</h1>
+                    <p class="subtle-text">Full academic profile with readiness summary and subject-wise performance.</p>
+                </div>
+            </div>
 
             <div class="grid profile-grid">
                 <div class="card profile-card">
                     <div class="section-heading">
-                        <h2>Student Profile</h2>
-                        <span class="subtle-text">Personal snapshot</span>
+                        <h2>Profile Details</h2>
+                        <span class="subtle-text">Live student information</span>
                     </div>
                     <div class="profile-details">
                         <div class="profile-row">
@@ -59,65 +64,72 @@
                         </div>
                     </div>
                     <ul class="reason-list" id="profileSummaryList">
-                        <li>Loading summary...</li>
+                        <li>Loading performance summary...</li>
                     </ul>
                 </div>
 
                 <div class="card placement-details-card">
                     <div class="section-heading">
-                        <h2>Placement Explanation</h2>
-                        <span class="subtle-text">Why this readiness outcome was predicted</span>
+                        <h2>Performance Snapshot</h2>
+                        <span class="subtle-text">Overall profile status</span>
                     </div>
-                    <ul id="placementReasons" class="reason-list"></ul>
-                </div>
-            </div>
-
-            <div class="grid">
-                <div class="card hero-card">
-                    <h3><i class="fas fa-bullseye"></i> Readiness Score</h3>
-                    <p id="readinessScore">Loading...</p>
-                    <div class="progress-bar">
-                        <div id="progressFill"></div>
+                    <div class="profile-details">
+                        <div class="profile-row">
+                            <span>Readiness Score</span>
+                            <strong id="profileReadiness">--</strong>
+                        </div>
+                        <div class="profile-row">
+                            <span>Status</span>
+                            <strong id="profileStatus">--</strong>
+                        </div>
+                        <div class="profile-row">
+                            <span>Risk Level</span>
+                            <strong id="profileRisk">--</strong>
+                        </div>
+                        <div class="profile-row">
+                            <span>Placement Outlook</span>
+                            <strong id="profilePlacement">--</strong>
+                        </div>
                     </div>
                 </div>
-
-                <div class="card">
-                    <h3><i class="fas fa-signal"></i> Status</h3>
-                    <p id="status">Loading...</p>
-                </div>
-
-                <div class="card">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Risk</h3>
-                    <p id="risk">Loading...</p>
-                </div>
-
-                <div class="card">
-                    <h3><i class="fas fa-briefcase"></i> Placement</h3>
-                    <p id="placement">Loading...</p>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2>Performance Breakdown</h2>
-                <div class="breakdown-summary">
-                    <span class="metric-chip metric-chip--success" id="strengthText">&#127919; Strength: --</span>
-                    <span class="metric-chip metric-chip--danger" id="weaknessText">&#9888; Weak Area: --</span>
-                </div>
-                <canvas id="performanceChart"></canvas>
             </div>
 
             <div class="card">
                 <div class="section-heading">
                     <div>
-                        <h2>Smart Alerts</h2>
-                        <span class="subtle-text">Actionable warnings based on attendance, marks, and mock performance.</span>
+                        <h2>Alerts</h2>
+                        <span class="subtle-text">Highlighted areas that need action.</span>
                     </div>
                 </div>
-                <div class="alert-grid" id="studentAlerts">
+                <div class="alert-grid" id="profileAlerts">
                     <div class="alert-card alert-card--warning">
                         <strong>Fetching alerts...</strong>
-                        <p>Please wait while the latest indicators are loaded.</p>
+                        <p>The latest academic alerts are loading.</p>
                     </div>
+                </div>
+            </div>
+
+            <div class="grid profile-grid">
+                <div class="card profile-card">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Placement Reasons</h2>
+                            <span class="subtle-text">Why the current placement outlook was predicted.</span>
+                        </div>
+                    </div>
+                    <ul id="placementReasons" class="reason-list">
+                        <li>Loading placement reasoning...</li>
+                    </ul>
+                </div>
+
+                <div class="card placement-details-card">
+                    <div class="section-heading">
+                        <div>
+                            <h2>Subject Trend</h2>
+                            <span class="subtle-text">Average marks across subjects.</span>
+                        </div>
+                    </div>
+                    <canvas id="profileSubjectPerformanceChart"></canvas>
                 </div>
             </div>
 
@@ -125,7 +137,7 @@
                 <div class="section-heading">
                     <div>
                         <h2>Subject-wise Performance</h2>
-                        <span class="subtle-text">Average performance across enrolled subjects.</span>
+                        <span class="subtle-text">Detailed marks summary by subject.</span>
                     </div>
                 </div>
                 <div class="faculty-table-wrapper">
@@ -138,45 +150,12 @@
                                 <th>Latest Marks</th>
                             </tr>
                         </thead>
-                        <tbody id="subjectPerformanceTable">
+                        <tbody id="profileSubjectPerformanceTable">
                             <tr>
                                 <td colspan="4">Loading subject performance...</td>
                             </tr>
                         </tbody>
                     </table>
-                </div>
-                <canvas id="subjectPerformanceChart"></canvas>
-            </div>
-
-            <div class="card">
-                <h2>Smart Insights</h2>
-                <ul id="insightsList"></ul>
-            </div>
-
-            <div class="card">
-                <h2>Top Students</h2>
-                <ul id="topStudents"></ul>
-            </div>
-
-            <div class="grid">
-                <div class="card metric-card">
-                    <h3>Attendance</h3>
-                    <p id="attendance">--</p>
-                </div>
-
-                <div class="card metric-card">
-                    <h3>Marks</h3>
-                    <p id="marks">--</p>
-                </div>
-
-                <div class="card metric-card">
-                    <h3>Mock Score</h3>
-                    <p id="mock">--</p>
-                </div>
-
-                <div class="card metric-card">
-                    <h3>Skills Score</h3>
-                    <p id="skills">--</p>
                 </div>
             </div>
         </div>
@@ -187,7 +166,7 @@
 <script src="{{ url_for('static', filename='shared.js') }}"></script>
 <script src="{{ url_for('static', filename='student.js') }}"></script>
 <script>
-    loadDashboard();
+    loadProfile();
 </script>
 
 </body>

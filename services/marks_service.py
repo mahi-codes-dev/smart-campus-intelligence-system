@@ -1,9 +1,21 @@
 from database import get_db_connection
+from services.student_service import ensure_student_table_consistency
+from services.subject_service import ensure_subject_table_consistency
+
+_MARKS_SCHEMA_READY = False
 
 
 def ensure_marks_table_consistency(connection=None):
+    global _MARKS_SCHEMA_READY
+
+    if _MARKS_SCHEMA_READY:
+        return
+
     conn = connection or get_db_connection()
     cur = conn.cursor()
+
+    ensure_student_table_consistency(conn)
+    ensure_subject_table_consistency(conn)
 
     cur.execute(
         """
@@ -23,6 +35,24 @@ def ensure_marks_table_consistency(connection=None):
     cur.execute("ALTER TABLE marks ADD COLUMN IF NOT EXISTS marks INTEGER")
     cur.execute("ALTER TABLE marks ADD COLUMN IF NOT EXISTS exam_type VARCHAR(100)")
     cur.execute("ALTER TABLE marks ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    cur.execute("ALTER TABLE marks DROP CONSTRAINT IF EXISTS marks_student_id_fkey")
+    cur.execute("ALTER TABLE marks DROP CONSTRAINT IF EXISTS marks_subject_id_fkey")
+    cur.execute(
+        """
+        ALTER TABLE marks
+        ADD CONSTRAINT marks_student_id_fkey
+        FOREIGN KEY (student_id) REFERENCES students(id)
+        ON DELETE CASCADE
+        """
+    )
+    cur.execute(
+        """
+        ALTER TABLE marks
+        ADD CONSTRAINT marks_subject_id_fkey
+        FOREIGN KEY (subject_id) REFERENCES subjects(id)
+        ON DELETE CASCADE
+        """
+    )
 
     if connection is None:
         conn.commit()
@@ -30,6 +60,8 @@ def ensure_marks_table_consistency(connection=None):
         conn.close()
     else:
         cur.close()
+
+    _MARKS_SCHEMA_READY = True
 
 
 def add_marks(student_id, subject_id, marks, exam_type):
@@ -200,3 +232,25 @@ def get_marks_by_student(student_id):
         }
         for row in rows
     ]
+
+
+def get_student_average_marks(student_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    ensure_marks_table_consistency(conn)
+
+    cur.execute(
+        """
+        SELECT COALESCE(AVG(marks), 0)
+        FROM marks
+        WHERE student_id = %s
+        """,
+        (student_id,),
+    )
+    average_marks = float(cur.fetchone()[0] or 0)
+
+    cur.close()
+    conn.close()
+
+    return round(average_marks, 2)
