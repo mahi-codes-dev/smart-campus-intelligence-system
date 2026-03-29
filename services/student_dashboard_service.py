@@ -1,5 +1,5 @@
 from services.mock_service import get_mock_trend
-from services.marks_service import get_subject_wise_marks
+from services.marks_service import get_subject_wise_marks, get_marks_timeline, get_subject_wise_trend
 from services.prediction_service import predict_placement_from_score
 from services.readiness_service import calculate_readiness, get_top_students
 from services.student_service import get_student_profile
@@ -94,8 +94,8 @@ def _build_performance_breakdown(attendance, marks, mock_score, skills_score):
     }
 
     return {
-        "strength": max(metrics, key=metrics.get),
-        "weakness": min(metrics, key=metrics.get),
+        "strength": max(metrics.items(), key=lambda x: x[1])[0],
+        "weakness": min(metrics.items(), key=lambda x: x[1])[0],
     }
 
 
@@ -118,6 +118,71 @@ def _build_profile_summary(profile, readiness_score, status, subject_performance
     }
 
 
+def _build_placement_score_breakdown(attendance, marks, mock_score, skills_score):
+    """
+    Build a detailed breakdown of placement score contribution.
+    Shows how each metric contributes to the final placement readiness score.
+    Weights: Attendance=30%, Marks=40%, Skills=20%, Mock=10%
+    """
+    total = 100
+    components = []
+    
+    # Calculate weighted contributions
+    attendance_contribution = (attendance * 0.30) / 100  # Convert from percentage
+    marks_contribution = (marks * 0.40) / 100
+    skills_contribution = (skills_score * 0.20) / 100
+    mock_contribution = (mock_score * 0.10) / 100
+    
+    final_weighted = (attendance_contribution + marks_contribution + 
+                        skills_contribution + mock_contribution)
+    
+    if final_weighted > 0:
+        # Normalize to percentages
+        attendance_percent = (attendance_contribution / final_weighted) * 100 if final_weighted > 0 else 0
+        marks_percent = (marks_contribution / final_weighted) * 100 if final_weighted > 0 else 0
+        skills_percent = (skills_contribution / final_weighted) * 100 if final_weighted > 0 else 0
+        mock_percent = (mock_contribution / final_weighted) * 100 if final_weighted > 0 else 0
+    else:
+        attendance_percent = marks_percent = skills_percent = mock_percent = 0
+
+    components = [
+        {
+            "metric": "Attendance",
+            "value": round(attendance, 2),
+            "weight": 30,
+            "contribution": round(attendance_percent, 2),
+            "status": "Good" if attendance >= 75 else "At Risk",
+        },
+        {
+            "metric": "Marks",
+            "value": round(marks, 2),
+            "weight": 40,
+            "contribution": round(marks_percent, 2),
+            "status": "Good" if marks >= 60 else "At Risk",
+        },
+        {
+            "metric": "Mock Tests",
+            "value": round(mock_score, 2),
+            "weight": 10,
+            "contribution": round(mock_percent, 2),
+            "status": "Good" if mock_score >= 60 else "At Risk",
+        },
+        {
+            "metric": "Skills",
+            "value": round(skills_score, 2),
+            "weight": 20,
+            "contribution": round(skills_percent, 2),
+            "status": "Good" if skills_score >= 50 else "At Risk",
+        },
+    ]
+
+    return {
+        "components": components,
+        "total_weight": 100,
+        "calculation_formula": "Final Score = (Attendance × 0.30) + (Marks × 0.40) + (Skills × 0.20) + (Mock × 0.10)",
+    }
+
+
 def get_student_dashboard_data(student_id):
     readiness = calculate_readiness(student_id)
     profile = get_student_profile(student_id)
@@ -135,6 +200,7 @@ def get_student_dashboard_data(student_id):
     alerts = _build_alerts(attendance, marks, mock_score)
     insights = _build_smart_insights(attendance, marks, mock_score, skills_score, subject_performance)
     breakdown = _build_performance_breakdown(attendance, marks, mock_score, skills_score)
+    placement_breakdown = _build_placement_score_breakdown(attendance, marks, mock_score, skills_score)
     prediction = predict_placement_from_score(
         student_id,
         final_score,
@@ -145,6 +211,10 @@ def get_student_dashboard_data(student_id):
             "skills_score": skills_score,
         },
     )
+    
+    # Get growth tracking data
+    marks_timeline = get_marks_timeline(student_id, limit=8)
+    subject_trends = get_subject_wise_trend(student_id)
 
     return {
         "attendance": round(attendance, 2),
@@ -161,10 +231,13 @@ def get_student_dashboard_data(student_id):
         "strength": breakdown["strength"],
         "weakness": breakdown["weakness"],
         "performance_breakdown": breakdown,
+        "placement_breakdown": placement_breakdown,
         "placement_status": prediction["placement_status"],
         "placement_reasons": prediction["reasons"],
         "profile": profile,
         "profile_summary": _build_profile_summary(profile, round(final_score, 2), status, subject_performance),
         "subject_performance": subject_performance,
+        "marks_timeline": marks_timeline,
+        "subject_trends": subject_trends,
         "top_students": get_top_students(),
     }

@@ -1,25 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Smart Campus Intelligence System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="login-body">
+<body class="auth-body">
 
-<div class="auth-container">
-    <div class="auth-card">
+<div class="auth-wrapper">
+    <div class="auth-split">
+        <!-- Left side - Branding -->
+        <div class="auth-branding">
+            <div class="branding-content">
+                <div class="branding-icon">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <h1>Smart Campus</h1>
+                <p>Intelligence System</p>
+                <div class="branding-features">
+                    <div class="feature">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analytics & Insights</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-users"></i>
+                        <span>Unified Platform</span>
+                    </div>
+                    <div class="feature">
+                        <i class="fas fa-shield-alt"></i>
+                        <span>Secure & Reliable</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <h2>Smart Campus Login</h2>
+        <!-- Right side - Login Form -->
+        <div class="auth-form-wrapper">
+            <div class="auth-card">
+                <div class="auth-header">
+                    <h2>Welcome Back</h2>
+                    <p>Sign in to your account to continue</p>
+                </div>
 
-        <input type="email" id="email" placeholder="Enter Email">
-        <input type="password" id="password" placeholder="Enter Password">
+                <form class="auth-form" id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input 
+                                type="email" 
+                                id="email" 
+                                name="email"
+                                placeholder="you@example.com"
+                                required
+                            >
+                        </div>
+                        <span class="error-message" id="emailError"></span>
+                    </div>
 
-        <p>New user? <a href="/register">Register here</a></p>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                name="password"
+                                placeholder="••••••••"
+                                required
+                            >
+                            <i class="fas fa-eye toggle-password" onclick="togglePassword(this)"></i>
+                        </div>
+                        <span class="error-message" id="passwordError"></span>
+                    </div>
 
-        <button onclick="login()">Login</button>
+                    <div class="form-footer">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" id="rememberMe">
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="forgot-link">Forgot password?</a>
+                    </div>
 
-        <p id="message" class="message"></p>
+                    <button type="button" onclick="login()" class="btn btn-primary btn-block">
+                        <span>Sign In</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
 
+                    <div class="message-container">
+                        <p id="message" class="message"></p>
+                    </div>
+                </form>
+
+                <div class="auth-divider">
+                    <span>New to Smart Campus?</span>
+                </div>
+
+                <a href="/register" class="btn btn-secondary btn-block">
+                    <span>Create Account</span>
+                    <i class="fas fa-user-plus"></i>
+                </a>
+
+                <div class="auth-footer">
+                    <p>By signing in, you agree to our <a href="#">Terms of Service</a></p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 

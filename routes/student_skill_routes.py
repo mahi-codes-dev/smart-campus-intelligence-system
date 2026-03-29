@@ -14,7 +14,7 @@ def add_skill():
     try:
         data = request.get_json() or {}
         print("STUDENT_SKILL_ADD_REQUEST:", data)
-        student = get_student_record_by_user_id(request.user["user_id"])
+        student = get_student_record_by_user_id(request.user["user_id"])  # type: ignore
 
         if not student:
             return jsonify({"error": "Student not found"}), 404
@@ -35,7 +35,7 @@ def add_skill():
 
             skill_id = get_or_create_skill(skill_name)
 
-        action = assign_skill(student_id, skill_id, data.get("skill_level"))
+        action = assign_skill(student_id, skill_id, data.get("skill_level") or "Intermediate")
 
         return jsonify({
             "message": "Skill updated successfully" if action == "updated" else "Skill added successfully",
@@ -52,8 +52,8 @@ def add_skill():
 @token_required
 def get_skills(student_id):
     try:
-        if request.user.get("role_id") == 3:
-            student = get_student_record_by_user_id(request.user["user_id"])
+        if request.user.get("role_id") == 3:  # type: ignore
+            student = get_student_record_by_user_id(request.user["user_id"])  # type: ignore
             if not student or student["id"] != student_id:
                 return jsonify({"error": "Students can only view their own skills"}), 403
 

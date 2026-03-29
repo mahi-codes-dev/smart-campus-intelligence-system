@@ -195,7 +195,8 @@ def sync_student_record(user_id, name, email, department, connection=None):
             (name, email, department, user_id),
         )
 
-    student_id = cur.fetchone()[0]
+    result = cur.fetchone()
+    student_id = result[0] if result else None
 
     if connection is None:
         conn.commit()

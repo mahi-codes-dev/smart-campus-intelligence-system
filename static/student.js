@@ -86,6 +86,21 @@ async function loadDashboard() {
         renderInsights(data.insights || []);
         renderChart(data);
         renderLeaderboard(data.top_students || []);
+
+        // NEW: Render placement score breakdown
+        if (data.placement_breakdown) {
+            renderPlacementBreakdown(data.placement_breakdown, "placementBreakdownContainer");
+        }
+
+        // NEW: Render growth tracking
+        if (data.marks_timeline && data.marks_timeline.length > 0) {
+            renderGrowthTimeline(data.marks_timeline, "growthTimelineChart");
+        }
+
+        // NEW: Render subject trends
+        if (data.subject_trends && data.subject_trends.length > 0) {
+            renderSubjectTrends(data.subject_trends, "subjectTrendsContainer");
+        }
     } catch (error) {
         console.error(error);
         showToast(error.message || "Unable to load dashboard.", "error");

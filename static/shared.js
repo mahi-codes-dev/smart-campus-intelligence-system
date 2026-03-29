@@ -539,3 +539,292 @@ function toggleTheme() {
         document.body.classList.add("dark");
     }
 })();
+
+/* ================= NEW FUNCTIONS FOR UI/UX IMPROVEMENTS ================= */
+
+/**
+ * Show loading state in a container
+ * @param {string} containerId - ID of the container
+ * @param {string} message - Loading message (default: "Fetching data...")
+ */
+function showLoadingState(containerId, message = "Fetching data...") {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="loading-state">
+            <div class="loading-spinner"></div>
+            <span class="fetching-data">${message}</span>
+        </div>
+    `;
+}
+
+/**
+ * Show empty state in a container
+ * @param {string} containerId - ID of the container
+ * @param {object} options - { title, message, icon }
+ */
+function showEmptyState(containerId, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const {
+        title = "No Data Available",
+        message = "There is no data to display at this moment.",
+        icon = "📊"
+    } = options;
+
+    container.innerHTML = `
+        <div class="empty-state-container">
+            <div class="empty-state-icon">${icon}</div>
+            <div class="empty-state-title">${title}</div>
+            <div class="empty-state-message">${message}</div>
+        </div>
+    `;
+}
+
+/**
+ * Show styled message instead of alert
+ * @param {string} containerId - ID of the container
+ * @param {object} options - { type, title, message, icon }
+ */
+function showStyledMessage(containerId, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const {
+        type = "info",  // info, success, warning, danger
+        title = "Message",
+        message = "",
+        icon = "ℹ️"
+    } = options;
+
+    const messageElement = document.createElement("div");
+    messageElement.className = `styled-message styled-message--${type}`;
+    messageElement.innerHTML = `
+        <span>${icon}</span>
+        <div>
+            <strong>${title}</strong>
+            ${message ? `<p>${message}</p>` : ""}
+        </div>
+    `;
+
+    container.appendChild(messageElement);
+}
+
+/**
+ * Render placement score breakdown
+ * @param {object} breakdown - breakdown data from backend
+ * @param {string} containerId - ID of the container
+ */
+function renderPlacementBreakdown(breakdown, containerId = "placementBreakdownContainer") {
+    const container = document.getElementById(containerId);
+    if (!container || !breakdown) return;
+
+    const { components = [], calculation_formula = "" } = breakdown;
+
+    let html = '<div class="placement-breakdown-card">';
+    html += '<h3 class="placement-breakdown-title">📊 Placement Score Breakdown</h3>';
+    html += '<div class="breakdown-components">';
+
+    components.forEach(comp => {
+        const statusClass = comp.status === "Good" ? "component-status--good" : "component-status--risk";
+        html += `
+            <div class="breakdown-component">
+                <div class="component-metric">${comp.metric}</div>
+                <div class="component-value">${formatValue(comp.value)}</div>
+                <div class="component-weight">Weight: ${comp.weight}%</div>
+                <div class="component-contribution">Contribution: ${formatValue(comp.contribution)}%</div>
+                <span class="component-status ${statusClass}">${comp.status}</span>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    
+    if (calculation_formula) {
+        html += `<div class="breakdown-formula">${calculation_formula}</div>`;
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+/**
+ * Render growth tracking timeline
+ * @param {array} marksTimeline - marks history data
+ * @param {string} canvasId - Canvas ID for chart
+ */
+function renderGrowthTimeline(marksTimeline, canvasId = "growthTimelineChart") {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === "undefined") return;
+
+    const chartKey = "__chart_" + canvasId;
+
+    if (window[chartKey]) {
+        window[chartKey].destroy();
+    }
+
+    const labels = marksTimeline.map(m => m.date ? new Date(m.date).toLocaleDateString() : "N/A");
+    const values = marksTimeline.map(m => Number(m.marks || 0));
+
+    window[chartKey] = new Chart(canvas, {
+        type: "line",
+        data: {
+            labels,
+            datasets: [{
+                label: "Performance Over Time",
+                data: values,
+                borderColor: "#4f46e5",
+                backgroundColor: "rgba(79, 70, 229, 0.12)",
+                fill: true,
+                tension: 0.4,
+                borderWidth: 2,
+                pointRadius: 5,
+                pointBackgroundColor: "#4f46e5",
+                pointBorderColor: "#ffffff",
+                pointBorderWidth: 2,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: true, labels: { boxWidth: 12 } },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    title: { display: true, text: "Marks" },
+                },
+            },
+        },
+    });
+}
+
+/**
+ * Render subject-wise trends
+ * @param {array} subjectTrends - trends data
+ * @param {string} containerId - Container ID
+ */
+function renderSubjectTrends(subjectTrends, containerId = "subjectTrendsContainer") {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!Array.isArray(subjectTrends) || !subjectTrends.length) {
+        showEmptyState(containerId, {
+            title: "No Trend Data",
+            message: "Insufficient data to analyze subject trends.",
+            icon: "📈"
+        });
+        return;
+    }
+
+    let html = '<div class="subject-trends">';
+
+    subjectTrends.forEach(trend => {
+        const trendClass = trend.trend === "Improving" ? "trend-indicator--improving" :
+                          trend.trend === "Declining" ? "trend-indicator--declining" :
+                          "trend-indicator--stable";
+
+        const emoji = trend.trend === "Improving" ? "📈" :
+                     trend.trend === "Declining" ? "📉" : "→";
+
+        html += `
+            <div class="trend-badge">
+                <div class="trend-subject">${trend.subject}</div>
+                <div class="trend-value">${formatValue(trend.latest)}</div>
+                <span class="trend-indicator ${trendClass}">${emoji} ${trend.trend}</span>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+/**
+ * Render enhanced skills display
+ * @param {object} skillsData - { count, score, skills_list }
+ * @param {string} containerId - Container ID
+ */
+function renderEnhancedSkills(skillsData, containerId = "skillsContainer") {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const { count = 0, score = 0, skills_list = [] } = skillsData;
+
+    let html = '<div class="skills-container">';
+    html += '<div class="skills-summary">';
+    html += `<div class="skills-count-badge">📚 ${count} ${count === 1 ? "Skill" : "Skills"} Added</div>`;
+    html += `<div class="skills-count-badge">⭐ Skill Score: ${formatValue(score)}%</div>`;
+    html += '</div>';
+
+    if (!Array.isArray(skills_list) || !skills_list.length) {
+        showEmptyState(containerId, {
+            title: "No Skills Added Yet",
+            message: "Add your first skill to showcase your abilities.",
+            icon: "💡"
+        });
+        return;
+    }
+
+    html += '<div class="skills-list-enhanced">';
+    skills_list.forEach(skill => {
+        const level = (skill.skill_level || "Intermediate").toLowerCase();
+        const skillName = skill.skill_name || skill.name || "Unknown Skill";
+
+        html += `
+            <div class="skill-badge-enhanced">
+                <div class="skill-name-enhanced">${skillName}</div>
+                <span class="skill-level-badge skill-level--${level}">${skill.skill_level || "Intermediate"}</span>
+            </div>
+        `;
+    });
+    html += '</div>';
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+/**
+ * Render at-risk students list with styled display
+ * @param {array} students - Array of at-risk students
+ * @param {string} containerId - Container ID
+ */
+function renderAtRiskStudents(students, containerId = "atRiskStudentsContainer") {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    if (!Array.isArray(students) || !students.length) {
+        showEmptyState(containerId, {
+            title: "No At-Risk Students",
+            message: "All students are performing satisfactorily.",
+            icon: "✅"
+        });
+        return;
+    }
+
+    let html = '<div class="faculty-table-wrapper"><table class="faculty-table"><thead><tr>';
+    html += '<th>Name</th><th>Department</th><th>Score</th><th>Risk Level</th><th>Action</th>';
+    html += '</tr></thead><tbody>';
+
+    students.forEach(student => {
+        const riskColor = student.final_score < 40 ? "red" : student.final_score < 60 ? "yellow" : "green";
+        const riskLabel = student.risk || (student.final_score < 60 ? "High Risk" : "Medium Risk");
+
+        html += `
+            <tr>
+                <td>${student.name || "N/A"}</td>
+                <td>${student.department || "N/A"}</td>
+                <td>${formatValue(student.final_score || 0)}%</td>
+                <td><span class="${riskColor}">${riskLabel}</span></td>
+                <td><button class="faculty-table-button primary-button" onclick="viewStudent(${student.student_id || student.id})">View</button></td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}

@@ -51,6 +51,10 @@ def get_all_students_dashboard(filter_status=None, sort_order=None, search=None,
 
 
 def get_faculty_dashboard_summary(search=None, department=None, filter_status=None, sort_order=None):
+    """
+    Get faculty dashboard summary with enhanced insights.
+    Includes: total students, average marks, at-risk count, students needing attention.
+    """
     students = get_all_students_dashboard(
         filter_status=filter_status,
         sort_order=sort_order,
@@ -68,15 +72,25 @@ def get_faculty_dashboard_summary(search=None, department=None, filter_status=No
         student for student in students
         if float(student["final_score"] or 0) < 60 or student["risk_status"] == "At Risk"
     ]
+    
+    # Students needing attention: those with warning status or specific metric issues
+    students_needing_attention = [
+        student for student in students
+        if (float(student["attendance"] or 0) < 75 or 
+            float(student["marks"] or 0) < 60 or
+            float(student["mock_score"] or 0) < 60)
+    ]
 
     return {
         "summary": {
             "total_students": total_students,
             "average_marks": average_marks,
             "at_risk_count": len(at_risk_students),
+            "students_needing_attention_count": len(students_needing_attention),
             "departments": get_all_departments(),
         },
-        "at_risk_students": at_risk_students[:8],
+        "at_risk_students": at_risk_students[:10],
+        "students_needing_attention": students_needing_attention[:10],
     }
 
 
@@ -101,4 +115,6 @@ def get_student_detail(student_id):
         "insights": dashboard["insights"],
         "alerts": dashboard["alerts"],
         "profile_summary": dashboard["profile_summary"],
+        "subject_trends": dashboard.get("subject_trends", []),
+        "marks_timeline": dashboard.get("marks_timeline", []),
     }

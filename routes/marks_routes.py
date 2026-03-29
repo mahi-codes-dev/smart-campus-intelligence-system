@@ -59,7 +59,8 @@ def update_marks():
 @token_required
 def fetch_marks():
     try:
-        if request.user.get("role_id") not in (1, 2):
+        user = request.environ.get("user")
+        if not user or user.get("role_id") not in (1, 2):
             return jsonify({"error": "Access denied"}), 403
 
         data = get_marks()

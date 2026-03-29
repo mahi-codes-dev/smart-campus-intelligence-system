@@ -248,9 +248,98 @@ def get_student_average_marks(student_id):
         """,
         (student_id,),
     )
-    average_marks = float(cur.fetchone()[0] or 0)
+    result = cur.fetchone()
+    average_marks = float(result[0] if result else 0)
 
     cur.close()
     conn.close()
 
     return round(average_marks, 2)
+
+
+def get_marks_timeline(student_id, limit=10):
+    """
+    Get subject-wise performance over time for growth tracking.
+    Returns marks history grouped by subject.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    ensure_marks_table_consistency(conn)
+
+    cur.execute(
+        """
+        SELECT
+            sub.name,
+            m.marks,
+            m.created_at,
+            m.exam_type
+        FROM marks m
+        JOIN subjects sub ON m.subject_id = sub.id
+        WHERE m.student_id = %s
+        ORDER BY m.created_at DESC
+        LIMIT %s
+        """,
+        (student_id, limit),
+    )
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return [
+        {
+            "subject": row[0],
+            "marks": row[1],
+            "date": str(row[2]) if row[2] else None,
+            "exam_type": row[3],
+        }
+        for row in reversed(rows)
+    ]
+
+
+def get_subject_wise_trend(student_id):
+    """
+    Get performance trend for each subject (improving/declining).
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    ensure_marks_table_consistency(conn)
+
+    cur.execute(
+        """
+        SELECT
+            sub.id,
+            sub.name,
+            ARRAY_AGG(m.marks ORDER BY m.created_at DESC) AS marks_history
+        FROM subjects sub
+        LEFT JOIN marks m ON m.subject_id = sub.id AND m.student_id = %s
+        GROUP BY sub.id, sub.name
+        HAVING COUNT(m.id) > 0
+        ORDER BY sub.name ASC
+        """,
+        (student_id,),
+    )
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    trends = []
+    for row in rows:
+        subject_id, subject_name, marks_hist = row
+        if marks_hist and len(marks_hist) >= 2:
+            latest = float(marks_hist[0])
+            previous = float(marks_hist[1])
+            trend = "Improving" if latest > previous else ("Declining" if latest < previous else "Stable")
+        else:
+            trend = "Insufficient Data"
+
+        trends.append({
+            "subject": subject_name,
+            "trend": trend,
+            "latest": float(marks_hist[0]) if marks_hist else None,
+        })
+
+    return trends
