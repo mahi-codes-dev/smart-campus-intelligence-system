@@ -1,103 +1,406 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <title>Student Dashboard</title>
+    <title>Student Dashboard - Smart Campus</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
-<body>
+<body class="dashboard-body">
 
 <div class="layout">
-    <div class="sidebar">
-        <h2>Smart Campus</h2>
-        <ul>
-            <li class="active" onclick="go('/student-dashboard')">
-                <i class="fas fa-chart-line"></i> Dashboard
-            </li>
-            <li onclick="go('/student-progress')">
-                <i class="fas fa-user-graduate"></i> My Progress
-            </li>
-            <li onclick="go('/student-skills')">
-                <i class="fas fa-code"></i> Skills
-            </li>
-            <li onclick="go('/student-profile')">
-                <i class="fas fa-id-card"></i> Profile
-            </li>
-        </ul>
+    <!-- Enhanced Sidebar -->
+    <div class="sidebar sidebar-premium">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-graduation-cap"></i>
+            </div>
+            <h2>Smart Campus</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="go('/student-dashboard')">
+                    <i class="fas fa-home nav-icon"></i>
+                    <span>Dashboard</span>
+                    <span class="nav-badge"></span>
+                </li>
+                <li class="nav-item" onclick="go('/student-progress')">
+                    <i class="fas fa-chart-line nav-icon"></i>
+                    <span>Progress</span>
+                </li>
+                <li class="nav-item" onclick="go('/student-skills')">
+                    <i class="fas fa-star nav-icon"></i>
+                    <span>Skills</span>
+                </li>
+                <li class="nav-item" onclick="go('/student-profile')">
+                    <i class="fas fa-user-circle nav-icon"></i>
+                    <span>Profile</span>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="sidebar-btn toggle-theme-btn" onclick="toggleTheme()" title="Toggle dark/light theme">
+                <i class="fas fa-moon"></i>
+                <span>Theme</span>
+            </button>
+            <button class="sidebar-btn logout-btn" onclick="logout()" title="Logout from your account">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </button>
+        </div>
     </div>
 
-    <div class="main">
-        <div class="topbar">
-            <span>Welcome, <span id="userEmail"></span></span>
-            <div>
-                <button class="toggle-button" onclick="toggleTheme()">Theme</button>
-                <button class="logout-button" onclick="logout()">Logout</button>
+    <!-- Main Content -->
+    <div class="main main-premium">
+        <!-- Enhanced Topbar -->
+        <div class="topbar topbar-premium">
+            <div class="topbar-left">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item active">Dashboard</span>
+                </div>
+            </div>
+            
+            <div class="topbar-center">
+                <h1 class="topbar-title">Welcome back, <span id="userFirstName">Student</span></h1>
+            </div>
+
+            <div class="topbar-right">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="userEmail">Loading...</span>
+                        <span class="user-role">Student</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="dashboard-container">
-            <h1>Student Dashboard</h1>
+        <!-- Dashboard Content -->
+        <div class="dashboard-container dashboard-premium">
+            <!-- Quick Stats Section -->
+            <div class="stats-section">
+                <h2 class="section-title">Key Metrics</h2>
+                <div class="stats-grid">
+                    <div class="stat-card stat-card-primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-bullseye"></i>
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Readiness Score</p>
+                            <p class="stat-value" id="readinessScore">--</p>
+                            <div class="stat-bar">
+                                <div class="stat-bar-fill" id="progressFill"></div>
+                            </div>
+                        </div>
+                    </div>
 
-            <div class="grid profile-grid">
-                <div class="card profile-card">
-                    <div class="section-heading">
-                        <h2>Student Profile</h2>
-                        <span class="subtle-text">Personal snapshot</span>
-                    </div>
-                    <div class="profile-details">
-                        <div class="profile-row">
-                            <span>Name</span>
-                            <strong id="profileName">Loading...</strong>
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-icon">
+                            <i class="fas fa-trophy"></i>
                         </div>
-                        <div class="profile-row">
-                            <span>Email</span>
-                            <strong id="profileEmail">Loading...</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Department</span>
-                            <strong id="profileDepartment">Loading...</strong>
+                        <div class="stat-content">
+                            <p class="stat-label">Placement Status</p>
+                            <p class="stat-value" id="placement">--</p>
+                            <p class="stat-subtitle" id="placementSubtitle">Opportunity ready</p>
                         </div>
                     </div>
-                    <ul class="reason-list" id="profileSummaryList">
-                        <li>Loading summary...</li>
-                    </ul>
-                </div>
 
-                <div class="card placement-details-card">
-                    <div class="section-heading">
-                        <h2>Placement Explanation</h2>
-                        <span class="subtle-text">Why this readiness outcome was predicted</span>
+                    <div class="stat-card stat-card-warning">
+                        <div class="stat-icon">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Risk Level</p>
+                            <p class="stat-value" id="risk">--</p>
+                            <p class="stat-subtitle">Performance priority</p>
+                        </div>
                     </div>
-                    <ul id="placementReasons" class="reason-list"></ul>
+
+                    <div class="stat-card stat-card-info">
+                        <div class="stat-icon">
+                            <i class="fas fa-signal"></i>
+                        </div>
+                        <div class="stat-content">
+                            <p class="stat-label">Overall Status</p>
+                            <p class="stat-value" id="status">--</p>
+                            <p class="stat-subtitle">Continuous growth</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid">
-                <div class="card hero-card">
-                    <h3><i class="fas fa-bullseye"></i> Readiness Score</h3>
-                    <p id="readinessScore">Loading...</p>
-                    <div class="progress-bar">
-                        <div id="progressFill"></div>
+            <!-- Profile & Placement Section -->
+            <div class="info-section">
+                <div class="grid-2col">
+                    <!-- Student Profile Card -->
+                    <div class="card card-premium">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h3 class="card-title">
+                                    <i class="fas fa-user-circle"></i>
+                                    Student Profile
+                                </h3>
+                            </div>
+                            <span class="card-badge">Personal</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="profile-section">
+                                <div class="profile-row">
+                                    <span class="profile-label">Full Name</span>
+                                    <span class="profile-value" id="profileName">Loading...</span>
+                                </div>
+                                <div class="profile-row">
+                                    <span class="profile-label">Email</span>
+                                    <span class="profile-value" id="profileEmail">Loading...</span>
+                                </div>
+                                <div class="profile-row">
+                                    <span class="profile-label">Department</span>
+                                    <span class="profile-value" id="profileDepartment">Loading...</span>
+                                </div>
+                            </div>
+                            <ul class="insight-list" id="profileSummaryList">
+                                <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Loading summary...</li>
+                            </ul>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card">
-                    <h3><i class="fas fa-signal"></i> Status</h3>
-                    <p id="status">Loading...</p>
-                </div>
-
-                <div class="card">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Risk</h3>
-                    <p id="risk">Loading...</p>
-                </div>
-
-                <div class="card">
-                    <h3><i class="fas fa-briefcase"></i> Placement</h3>
-                    <p id="placement">Loading...</p>
+                    <!-- Placement Explanation Card -->
+                    <div class="card card-premium">
+                        <div class="card-header">
+                            <div class="card-title-group">
+                                <h3 class="card-title">
+                                    <i class="fas fa-lightbulb"></i>
+                                    Why This Readiness?
+                                </h3>
+                            </div>
+                            <span class="card-badge insights">Insights</span>
+                        </div>
+                        <div class="card-body">
+                            <ul class="insight-list" id="placementReasons">
+                                <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Loading insights...</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="card">
+            <!-- Performance Section -->
+            <div class="performance-section">
+                <h2 class="section-title">Academic Performance</h2>
+                <div class="grid-2col">
+                    <div class="card card-premium">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-chart-bar"></i>
+                                Performance Breakdown
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-inline">
+                                <span class="metric-chip metric-chip-success">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span id="strengthText">Strength: --</span>
+                                </span>
+                            </div>
+                            <div class="metric-inline">
+                                <span class="metric-chip metric-chip-danger">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span id="weaknessText">Area to improve: --</span>
+                                </span>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="performanceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card card-premium">
+                        <div class="card-header">
+                            <h3 class="card-title">
+                                <i class="fas fa-list-check"></i>
+                                Key Metrics
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-icon attendance">
+                                        <i class="fas fa-calendar-check"></i>
+                                    </div>
+                                    <div class="metric-text">
+                                        <p class="metric-label">Attendance</p>
+                                        <p class="metric-large" id="attendance">--</p>
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-icon marks">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </div>
+                                    <div class="metric-text">
+                                        <p class="metric-label">Avg Marks</p>
+                                        <p class="metric-large" id="marks">--</p>
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-icon mock">
+                                        <i class="fas fa-book"></i>
+                                    </div>
+                                    <div class="metric-text">
+                                        <p class="metric-label">Mock Score</p>
+                                        <p class="metric-large" id="mock">--</p>
+                                    </div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-icon skills">
+                                        <i class="fas fa-star"></i>
+                                    </div>
+                                    <div class="metric-text">
+                                        <p class="metric-label">Skills</p>
+                                        <p class="metric-large" id="skills">--</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subject Performance Section -->
+            <div class="card card-premium">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-book"></i>
+                        Subject-wise Performance
+                    </h3>
+                    <span class="card-subtitle">Average marks across all enrolled subjects</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Code</th>
+                                    <th>Avg Marks</th>
+                                    <th>Latest Marks</th>
+                                    <th>Trend</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subjectPerformanceTable">
+                                <tr>
+                                    <td colspan="5" class="text-center loading">Loading subject data...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="subjectPerformanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Growth & Trends Section -->
+            <div class="grid-2col">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-chart-line"></i>
+                            Performance Growth
+                        </h3>
+                        <span class="card-subtitle">Track your improvement over time</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="growthTimelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-brain"></i>
+                            Subject Trends
+                        </h3>
+                        <span class="card-subtitle">Performance trend analysis</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="subjectTrendsContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart Alerts Section -->
+            <div class="card card-premium">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-bell"></i>
+                        Smart Alerts
+                    </h3>
+                    <span class="card-subtitle">Actionable insights based on your performance</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert-grid" id="studentAlerts">
+                        <div class="alert-card alert-info">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <strong>Loading alerts...</strong>
+                            <p>Please wait while the latest indicators are analyzed.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Insights Section -->
+            <div class="grid-2col">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-lightbulb"></i>
+                            Smart Insights
+                        </h3>
+                        <span class="card-subtitle">Personalized recommendations</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="insight-list custom-scrollbar" id="insightsList">
+                            <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Loading insights...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-crown"></i>
+                            Top Performers
+                        </h3>
+                        <span class="card-subtitle">Benchmark your performance</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="insight-list custom-scrollbar" id="topStudents">
+                            <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Loading top performers...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placement Breakdown Section -->
+            <div id="placementBreakdownContainer"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='shared.js') }}"></script>
+<script src="{{ url_for('static', filename='student.js') }}"></script>
+<script>
+    loadDashboard();
+</script>
+
+</body>
+</html>
                 <h2>Performance Breakdown</h2>
                 <div class="breakdown-summary">
                     <span class="metric-chip metric-chip--success" id="strengthText">&#127919; Strength: --</span>

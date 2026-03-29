@@ -1,246 +1,338 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Admin Dashboard</title>
+    <title>Admin Dashboard - Smart Campus</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
-<body>
+<body class="dashboard-body">
 
 <div class="layout">
-    <div class="sidebar">
-        <h2>Smart Campus</h2>
-        <ul>
-            <li class="active" onclick="go('/admin-dashboard')">
-                <i class="fas fa-chart-pie"></i> Dashboard
-            </li>
-            <li onclick="go('/admin-dashboard#usersSection')">
-                <i class="fas fa-users-cog"></i> User Management
-            </li>
-            <li onclick="go('/admin-dashboard#subjectsSection')">
-                <i class="fas fa-book"></i> Subject Management
-            </li>
-        </ul>
+    <!-- Enhanced Sidebar -->
+    <div class="sidebar sidebar-premium">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <i class="fas fa-crown"></i>
+            </div>
+            <h2>Smart Campus</h2>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="go('/admin-dashboard')">
+                    <i class="fas fa-home nav-icon"></i>
+                    <span>Dashboard</span>
+                    <span class="nav-badge"></span>
+                </li>
+                <li class="nav-item" onclick="go('/admin-dashboard#usersSection')">
+                    <i class="fas fa-users-cog nav-icon"></i>
+                    <span>Users</span>
+                </li>
+                <li class="nav-item" onclick="go('/admin-dashboard#subjectsSection')">
+                    <i class="fas fa-book nav-icon"></i>
+                    <span>Subjects</span>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="sidebar-btn toggle-theme-btn" onclick="toggleTheme()" title="Toggle theme">
+                <i class="fas fa-moon"></i>
+                <span>Theme</span>
+            </button>
+            <button class="sidebar-btn logout-btn" onclick="logout()" title="Logout">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+            </button>
+        </div>
     </div>
 
-    <div class="main">
-        <div class="topbar">
-            <span>Welcome, <span id="userEmail"></span></span>
-            <div>
-                <button class="toggle-button" onclick="toggleTheme()">Theme</button>
-                <button class="logout-button" onclick="logout()">Logout</button>
+    <!-- Main Content -->
+    <div class="main main-premium">
+        <!-- Enhanced Topbar -->
+        <div class="topbar topbar-premium">
+            <div class="topbar-left">
+                <div class="breadcrumb">
+                    <span class="breadcrumb-item active">Admin Dashboard</span>
+                </div>
+            </div>
+            
+            <div class="topbar-center">
+                <h1 class="topbar-title">System Control, <span id="userFirstName">Administrator</span></h1>
+            </div>
+
+            <div class="topbar-right">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="user-details">
+                        <span class="user-name" id="userEmail">Loading...</span>
+                        <span class="user-role">Administrator</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="dashboard-container">
-            <div class="section-heading">
+        <!-- Dashboard Content -->
+        <div class="dashboard-premium">
+            <!-- Section Header -->
+            <div class="section-header">
                 <div>
-                    <h1>Admin Dashboard</h1>
-                    <p class="subtle-text">Monitor the system and manage user accounts with live database data.</p>
+                    <h2 class="section-title">Admin Dashboard</h2>
+                    <p class="section-subtitle">Monitor the system and manage user accounts with live database data</p>
                 </div>
-                <button class="primary-button" onclick="loadAdminDashboard()">Refresh Data</button>
+                <button class="btn btn-primary btn-sm" onclick="loadAdminDashboard()">
+                    <i class="fas fa-sync"></i>
+                    <span>Refresh Data</span>
+                </button>
             </div>
 
-            <div class="grid faculty-summary-grid">
-                <div class="card metric-card">
-                    <h3>Total Students</h3>
-                    <p id="adminTotalStudents">Loading...</p>
-                </div>
-
-                <div class="card metric-card">
-                    <h3>Total Faculty</h3>
-                    <p id="adminTotalFaculty">Loading...</p>
-                </div>
-
-                <div class="card metric-card">
-                    <h3>Total Users</h3>
-                    <p id="adminTotalUsers">Loading...</p>
-                </div>
-
-                <div class="card metric-card">
-                    <h3>Last Sync</h3>
-                    <p id="adminLastSync">Waiting</p>
-                </div>
-            </div>
-
-            <div class="card faculty-message-card" id="adminMessageCard" hidden>
-                <p id="adminMessageText"></p>
-            </div>
-
-            <div class="card">
-                <div class="section-heading">
-                    <div>
-                        <h2>Analytics Filters</h2>
-                        <span class="subtle-text">Search students and focus on a specific department.</span>
+            <!-- Key Metrics -->
+            <div class="stats-grid" style="margin-bottom: 32px;">
+                <div class="stat-card stat-card-primary">
+                    <div class="stat-icon">
+                        <i class="fas fa-user-graduate"></i>
                     </div>
-                </div>
-                <div class="table-toolbar">
-                    <input
-                        class="text-input table-search"
-                        id="adminAnalyticsSearch"
-                        type="search"
-                        placeholder="Search student by name"
-                    >
-                    <select class="text-input table-search" id="adminAnalyticsDepartmentFilter">
-                        <option value="All">All Departments</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="card faculty-table-card">
-                <div class="section-heading">
-                    <div>
-                        <h2>Department-wise Average Score</h2>
-                        <span class="subtle-text">Average readiness score by department.</span>
+                    <div class="stat-content">
+                        <p class="stat-label">Total Students</p>
+                        <p class="stat-value" id="adminTotalStudents">0</p>
                     </div>
                 </div>
 
-                <div class="faculty-table-wrapper">
-                    <table class="faculty-table">
-                        <thead>
-                            <tr>
-                                <th>Department</th>
-                                <th>Average Score</th>
-                                <th>Students</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminDepartmentAverageTable">
-                            <tr>
-                                <td colspan="3">Loading department averages...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="stat-card stat-card-success">
+                    <div class="stat-icon">
+                        <i class="fas fa-chalkboard-user"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Total Faculty</p>
+                        <p class="stat-value" id="adminTotalFaculty">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-card-info">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Total Users</p>
+                        <p class="stat-value" id="adminTotalUsers">0</p>
+                    </div>
+                </div>
+
+                <div class="stat-card stat-card-warning">
+                    <div class="stat-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Last Sync</p>
+                        <p class="stat-value" id="adminLastSync">--</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid profile-grid">
-                <div class="card profile-card">
-                    <div class="section-heading">
-                        <div>
-                            <h2>Top Students by Department</h2>
-                            <span class="subtle-text">Live academic leaders grouped by department.</span>
+            <!-- Analytics Filters -->
+            <div class="grid-2col" style="margin-bottom: 32px;">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-search"></i> Search Users</h3>
+                        <p class="card-subtitle">Find students by name</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <input
+                                class="form-control"
+                                id="adminAnalyticsSearch"
+                                type="search"
+                                placeholder="Type student name..."
+                            >
                         </div>
                     </div>
-                    <div id="adminTopStudentsByDepartment" class="profile-details">
-                        <p class="empty-state">Loading department toppers...</p>
-                    </div>
                 </div>
 
-                <div class="card placement-details-card">
-                    <div class="section-heading">
-                        <div>
-                            <h2>Low Performers</h2>
-                            <span class="subtle-text">Students currently below the readiness threshold.</span>
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-filter"></i> Filter Department</h3>
+                        <p class="card-subtitle">Choose a specific department</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <select class="form-control" id="adminAnalyticsDepartmentFilter">
+                                <option value="All">All Departments</option>
+                            </select>
                         </div>
                     </div>
-                    <ul id="adminLowPerformers" class="reason-list">
-                        <li>Loading low performers...</li>
-                    </ul>
                 </div>
             </div>
 
-            <div class="card faculty-table-card" id="subjectsSection">
-                <div class="section-heading">
-                    <div>
-                        <h2>Subject Management</h2>
-                        <span class="subtle-text">Add, view, and delete academic subjects.</span>
-                    </div>
+            <!-- Department-wise Average Score -->
+            <div class="card card-premium" style="margin-bottom: 32px;">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-chart-bar"></i> Department Average Score</h3>
+                    <p class="card-subtitle">Readiness score breakdown by department</p>
                 </div>
-
-                <form class="faculty-form" onsubmit="submitAdminSubject(event)">
-                    <div class="faculty-field">
-                        <label for="adminSubjectName">Subject Name</label>
-                        <input class="text-input" id="adminSubjectName" type="text" placeholder="Enter subject name">
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Average Score</th>
+                                    <th>Student Count</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminDepartmentAverageTable">
+                                <tr>
+                                    <td colspan="3" style="text-align: center; padding: 20px;">Loading department averages...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
-
-                    <div class="faculty-field">
-                        <label for="adminSubjectCode">Subject Code</label>
-                        <input class="text-input" id="adminSubjectCode" type="text" placeholder="Enter subject code">
-                    </div>
-
-                    <div class="faculty-field">
-                        <label for="adminSubjectDepartment">Department</label>
-                        <input class="text-input" id="adminSubjectDepartment" type="text" placeholder="Enter department">
-                    </div>
-
-                    <button class="primary-button" type="submit">Add Subject</button>
-                </form>
-
-                <div class="table-toolbar">
-                    <input
-                        class="text-input table-search"
-                        id="adminSubjectsSearch"
-                        type="search"
-                        placeholder="Search by subject, code, or department"
-                    >
-                    <span class="subtle-text" id="adminSubjectsCountInfo">0 total</span>
-                </div>
-
-                <div class="faculty-table-wrapper">
-                    <table class="faculty-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Code</th>
-                                <th>Department</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminSubjectsTable">
-                            <tr>
-                                <td colspan="4">Loading subjects...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="pagination-bar">
-                    <button class="toggle-button" id="adminSubjectsPrev" type="button">Previous</button>
-                    <span class="subtle-text" id="adminSubjectsPageInfo">Page 1 of 1</span>
-                    <button class="toggle-button" id="adminSubjectsNext" type="button">Next</button>
                 </div>
             </div>
 
-            <div class="card faculty-table-card" id="usersSection">
-                <div class="section-heading">
-                    <div>
-                        <h2>User Management</h2>
-                        <span class="subtle-text">View all users and delete accounts when needed.</span>
+            <!-- Top Performers & Low Performers -->
+            <div class="grid-2col" style="margin-bottom: 32px;">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-star"></i> Top Performers</h3>
+                        <p class="card-subtitle">Academic leaders by department</p>
+                    </div>
+                    <div class="card-body">
+                        <div id="adminTopStudentsByDepartment" class="insight-list">
+                            <p class="empty-state">Loading top performers...</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="table-toolbar">
-                    <input
-                        class="text-input table-search"
-                        id="adminUsersSearch"
-                        type="search"
-                        placeholder="Search by name, email, or role"
-                    >
-                    <span class="subtle-text" id="adminUsersCountInfo">0 total</span>
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-arrow-down"></i> Low Performers</h3>
+                        <p class="card-subtitle">Students below readiness threshold</p>
+                    </div>
+                    <div class="card-body">
+                        <ul id="adminLowPerformers" class="insight-list">
+                            <li>Loading low performers...</li>
+                        </ul>
+                    </div>
                 </div>
+            </div>
 
-                <div class="faculty-table-wrapper">
-                    <table class="faculty-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Email</th>
-                                <th>Role</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="adminUsersTable">
-                            <tr>
-                                <td colspan="4">Loading users...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- Subject Management -->
+            <div class="card card-premium" id="subjectsSection" style="margin-bottom: 32px;">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-book"></i> Subject Management</h3>
+                    <p class="card-subtitle">Add, view, and delete academic subjects</p>
                 </div>
+                <div class="card-body">
+                    <!-- Add Subject Form -->
+                    <form class="form-grid" onsubmit="submitAdminSubject(event)" style="margin-bottom: 24px;">
+                        <div class="form-group">
+                            <label for="adminSubjectName" class="form-label">Subject Name</label>
+                            <input class="form-control" id="adminSubjectName" type="text" placeholder="Enter subject name" required>
+                        </div>
 
-                <div class="pagination-bar">
-                    <button class="toggle-button" id="adminUsersPrev" type="button">Previous</button>
-                    <span class="subtle-text" id="adminUsersPageInfo">Page 1 of 1</span>
-                    <button class="toggle-button" id="adminUsersNext" type="button">Next</button>
+                        <div class="form-group">
+                            <label for="adminSubjectCode" class="form-label">Subject Code</label>
+                            <input class="form-control" id="adminSubjectCode" type="text" placeholder="Enter subject code" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="adminSubjectDepartment" class="form-label">Department</label>
+                            <input class="form-control" id="adminSubjectDepartment" type="text" placeholder="Enter department" required>
+                        </div>
+
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-plus"></i>
+                            <span>Add Subject</span>
+                        </button>
+                    </form>
+
+                    <!-- Search & Filter -->
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center;">
+                        <input
+                            class="form-control flex:1"
+                            id="adminSubjectsSearch"
+                            type="search"
+                            placeholder="Search by subject, code, or department"
+                            style="flex:1"
+                        >
+                        <span class="card-subtitle" id="adminSubjectsCountInfo">0 total</span>
+                    </div>
+
+                    <!-- Subjects Table -->
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Code</th>
+                                    <th>Department</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminSubjectsTable">
+                                <tr>
+                                    <td colspan="4" style="text-align: center;">Loading subjects...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 16px; align-items: center;">
+                        <button class="btn btn-secondary btn-sm" id="adminSubjectsPrev" type="button">Previous</button>
+                        <span class="card-subtitle" id="adminSubjectsPageInfo">Page 1 of 1</span>
+                        <button class="btn btn-secondary btn-sm" id="adminSubjectsNext" type="button">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Management -->
+            <!-- User Management -->
+            <div class="card card-premium" id="usersSection">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-users-cog"></i> User Management</h3>
+                    <p class="card-subtitle">View all users and delete accounts when needed</p>
+                </div>
+                <div class="card-body">
+                    <!-- Search & Filter -->
+                    <div style="display: flex; gap: 16px; margin-bottom: 20px; align-items: center;">
+                        <input
+                            class="form-control flex:1"
+                            id="adminUsersSearch"
+                            type="search"
+                            placeholder="Search by name, email, or role"
+                            style="flex:1"
+                        >
+                        <span class="card-subtitle" id="adminUsersCountInfo">0 total</span>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Role</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUsersTable">
+                                <tr>
+                                    <td colspan="4" style="text-align: center;">Loading users...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div style="display: flex; gap: 12px; justify-content: center; margin-top: 16px; align-items: center;">
+                        <button class="btn btn-secondary btn-sm" id="adminUsersPrev" type="button">Previous</button>
+                        <span class="card-subtitle" id="adminUsersPageInfo">Page 1 of 1</span>
+                        <button class="btn btn-secondary btn-sm" id="adminUsersNext" type="button">Next</button>
+                    </div>
                 </div>
             </div>
         </div>
