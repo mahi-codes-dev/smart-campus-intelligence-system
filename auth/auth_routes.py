@@ -78,7 +78,7 @@ def register():
         department = (data.get("department") or "").strip()
 
         try:
-            role_id = int(data.get("role_id"))
+            role_id = int(data.get("role_id") or 0)
         except (TypeError, ValueError):
             return jsonify({"error": "Invalid role selected"}), 400
 
@@ -110,7 +110,13 @@ def register():
             RETURNING id;
         """, (name, email, hashed_password, role_id))
 
-        user_id = cur.fetchone()[0]
+        result = cur.fetchone()
+        if result is None:
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Failed to create user"}), 500
+        
+        user_id = result[0]
 
         if role_id == 3:
             sync_student_record(user_id, name, email, department, connection=conn)
