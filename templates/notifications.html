@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications | Smart Campus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
+    <style>
+        .notifications-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+
+        [data-theme="dark"] .notifications-container {
+            background: #0f172a;
+        }
+
+        .notifications-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .notifications-header h1 {
+            font-size: 2em;
+            color: #2c3e50;
+        }
+
+        [data-theme="dark"] .notifications-header h1 {
+            color: #f1f5f9;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .filters {
+            background: #1e293b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        [data-theme="dark"] .filter-group label {
+            color: #f1f5f9;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            color: #2c3e50;
+        }
+
+        [data-theme="dark"] .filter-group select,
+        [data-theme="dark"] .filter-group input {
+            background: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+
+        .notifications-list {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        [data-theme="dark"] .notifications-list {
+            background: #1e293b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .notification-item {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        [data-theme="dark"] .notification-item {
+            border-bottom-color: #334155;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item:hover {
+            background: #f9fafb;
+        }
+
+        [data-theme="dark"] .notification-item:hover {
+            background: #334155;
+        }
+
+        .notification-item.unread {
+            background: #f0f8ff;
+        }
+
+        [data-theme="dark"] .notification-item.unread {
+            background: #1e3a5f;
+        }
+
+        .notification-icon {
+            font-size: 1.5em;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .notification-icon.academic {
+            background: #d5e8f7;
+            color: #2980b9;
+        }
+
+        [data-theme="dark"] .notification-icon.academic {
+            background: #1e3a5f;
+            color: #64b5f6;
+        }
+
+        .notification-icon.alert {
+            background: #fadbd8;
+            color: #c0392b;
+        }
+
+        [data-theme="dark"] .notification-icon.alert {
+            background: #4e342e;
+            color: #ef5350;
+        }
+
+        .notification-icon.assignment {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+
+        [data-theme="dark"] .notification-icon.assignment {
+            background: #1b5e20;
+            color: #4caf50;
+        }
+
+        .notification-icon.result {
+            background: #fef5e7;
+            color: #f39c12;
+        }
+
+        [data-theme="dark"] .notification-icon.result {
+            background: #5d4037;
+            color: #ffb74d;
+        }
+
+        .notification-icon.system {
+            background: #e8f4f8;
+            color: #3498db;
+        }
+
+        [data-theme="dark"] .notification-icon.system {
+            background: #1e3a5f;
+            color: #64b5f6;
+        }
+
+        .notification-icon.attendance {
+            background: #f3e5f5;
+            color: #9b59b6;
+        }
+
+        [data-theme="dark"] .notification-icon.attendance {
+            background: #4a235a;
+            color: #ce93d8;
+        }
+
+        .notification-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .notification-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin: 0 0 8px 0;
+        }
+
+        [data-theme="dark"] .notification-title {
+            color: #f1f5f9;
+        }
+
+        .notification-message {
+            color: #7f8c8d;
+            margin: 0 0 8px 0;
+            line-height: 1.5;
+        }
+
+        [data-theme="dark"] .notification-message {
+            color: #cbd5e1;
+        }
+
+        .notification-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .notification-time {
+            font-size: 0.85em;
+            color: #95a5a6;
+        }
+
+        [data-theme="dark"] .notification-time {
+            color: #64748b;
+        }
+
+        .notification-type {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #ecf0f1;
+            color: #7f8c8d;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        [data-theme="dark"] .notification-type {
+            background: #334155;
+            color: #cbd5e1;
+        }
+
+        .notification-type.urgent {
+            background: #fadbd8;
+            color: #c0392b;
+        }
+
+        [data-theme="dark"] .notification-type.urgent {
+            background: #4e342e;
+            color: #ef5350;
+        }
+
+        .notification-type.high {
+            background: #fef5e7;
+            color: #f39c12;
+        }
+
+        [data-theme="dark"] .notification-type.high {
+            background: #5d4037;
+            color: #ffb74d;
+        }
+
+        .notification-actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            font-size: 1em;
+            padding: 5px 10px;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            color: #2980b9;
+            transform: scale(1.2);
+        }
+
+        [data-theme="dark"] .action-btn {
+            color: #64b5f6;
+        }
+
+        [data-theme="dark"] .action-btn:hover {
+            color: #3a8fd8;
+        }
+
+        .action-btn.delete:hover {
+            color: #e74c3c;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+        }
+
+        [data-theme="dark"] .pagination {
+            background: #1e293b;
+            border-top-color: #334155;
+        }
+
+        .pagination button {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            color: #2c3e50;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        [data-theme="dark"] .pagination button {
+            background: #334155;
+            border-color: #475569;
+            color: #f1f5f9;
+        }
+
+        .pagination button:hover {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .pagination button.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: #7f8c8d;
+        }
+
+        [data-theme="dark"] .empty-state {
+            color: #cbd5e1;
+        }
+
+        .empty-state i {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .loading {
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .notifications-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .header-actions {
+                width: 100%;
+            }
+
+            .notification-item {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .notification-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+
+            .filters {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="notifications-container">
+        <div class="notifications-header">
+            <h1><i class="fas fa-bell"></i> Notifications</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="markAllAsRead()">
+                    <i class="fas fa-check-double"></i> Mark All Read
+                </button>
+                <button class="btn btn-secondary" onclick="goBack()">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters">
+            <div class="filter-group">
+                <label for="typeFilter">Type</label>
+                <select id="typeFilter" onchange="applyFilters()">
+                    <option value="">All Types</option>
+                    <option value="academic">Academic</option>
+                    <option value="system">System</option>
+                    <option value="alert">Alert</option>
+                    <option value="assignment">Assignment</option>
+                    <option value="result">Result</option>
+                    <option value="attendance">Attendance</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter" onchange="applyFilters()">
+                    <option value="">All</option>
+                    <option value="unread">Unread</option>
+                    <option value="read">Read</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="priorityFilter">Priority</label>
+                <select id="priorityFilter" onchange="applyFilters()">
+                    <option value="">All Priorities</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="searchInput">Search</label>
+                <input type="text" id="searchInput" placeholder="Search notifications..." onkeyup="applyFilters()">
+            </div>
+        </div>
+
+        <!-- Notifications List -->
+        <div id="notificationsList" class="notifications-list">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="pagination" style="display: none;"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script>
+        const token = localStorage.getItem('token');
+        let allNotifications = [];
+        let currentPage = 1;
+        const pageSize = 20;
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch(`/api/notifications?limit=1000`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load notifications');
+                }
+
+                const data = await response.json();
+                allNotifications = data.notifications || [];
+                currentPage = 1;
+                renderNotifications();
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('notificationsList').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Failed to load notifications</p>
+                    </div>
+                `;
+            }
+        }
+
+        function applyFilters() {
+            const typeFilter = document.getElementById('typeFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const searchInput = document.getElementById('searchInput').value.toLowerCase();
+
+            const filtered = allNotifications.filter(notif => {
+                const typeMatch = !typeFilter || notif.type === typeFilter;
+                const statusMatch = !statusFilter || (statusFilter === 'unread' ? !notif.is_read : notif.is_read);
+                const priorityMatch = !priorityFilter || notif.priority === priorityFilter;
+                const searchMatch = !searchInput || 
+                    notif.title.toLowerCase().includes(searchInput) || 
+                    notif.message.toLowerCase().includes(searchInput);
+
+                return typeMatch && statusMatch && priorityMatch && searchMatch;
+            });
+
+            allNotifications = filtered;
+            currentPage = 1;
+            renderNotifications();
+        }
+
+        function renderNotifications() {
+            const container = document.getElementById('notificationsList');
+
+            if (allNotifications.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-inbox"></i>
+                        <p>No notifications</p>
+                    </div>
+                `;
+                document.getElementById('pagination').style.display = 'none';
+                return;
+            }
+
+            // Pagination
+            const totalPages = Math.ceil(allNotifications.length / pageSize);
+            const start = (currentPage - 1) * pageSize;
+            const end = start + pageSize;
+            const paginatedNotifications = allNotifications.slice(start, end);
+
+            // Render notifications
+            container.innerHTML = paginatedNotifications.map(notif => `
+                <div class="notification-item ${notif.is_read ? '' : 'unread'}">
+                    <div class="notification-icon ${notif.type}">
+                        ${getIcon(notif.type)}
+                    </div>
+                    <div class="notification-body">
+                        <h3 class="notification-title">${escapeHtml(notif.title)}</h3>
+                        <p class="notification-message">${escapeHtml(notif.message)}</p>
+                        <div class="notification-meta">
+                            <span class="notification-time">${moment(notif.created_at).format('MMM DD, YYYY h:mm A')}</span>
+                            <span class="notification-type ${notif.priority}">${notif.priority}</span>
+                            <span class="notification-type">${notif.type}</span>
+                        </div>
+                    </div>
+                    <div class="notification-actions">
+                        ${!notif.is_read ? `<button class="action-btn" onclick="markAsRead(${notif.id})" title="Mark as read"><i class="fas fa-envelope-open"></i></button>` : ''}
+                        <button class="action-btn delete" onclick="deleteNotification(${notif.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            // Render pagination
+            if (totalPages > 1) {
+                const paginationDiv = document.getElementById('pagination');
+                paginationDiv.style.display = 'flex';
+                paginationDiv.innerHTML = '';
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const btn = document.createElement('button');
+                    btn.textContent = i;
+                    btn.className = i === currentPage ? 'active' : '';
+                    btn.onclick = () => {
+                        currentPage = i;
+                        renderNotifications();
+                        window.scrollTo(0, 0);
+                    };
+                    paginationDiv.appendChild(btn);
+                }
+            } else {
+                document.getElementById('pagination').style.display = 'none';
+            }
+        }
+
+        function getIcon(type) {
+            const icons = {
+                'academic': '<i class="fas fa-graduation-cap"></i>',
+                'system': '<i class="fas fa-bell"></i>',
+                'alert': '<i class="fas fa-exclamation-circle"></i>',
+                'assignment': '<i class="fas fa-tasks"></i>',
+                'result': '<i class="fas fa-check-circle"></i>',
+                'attendance': '<i class="fas fa-calendar-check"></i>'
+            };
+            return icons[type] || icons['system'];
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function markAsRead(notifId) {
+            try {
+                await fetch(`/api/notifications/${notifId}/read`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadNotifications();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function markAllAsRead() {
+            try {
+                await fetch('/api/notifications/mark-all-read', {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadNotifications();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        async function deleteNotification(notifId) {
+            try {
+                await fetch(`/api/notifications/${notifId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                loadNotifications();
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // Initialize dark mode
+        if (window.darkModeManager) {
+            window.darkModeManager.init();
+        }
+
+        // Load notifications
+        loadNotifications();
+    </script>
+</body>
+</html>

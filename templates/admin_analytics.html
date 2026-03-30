@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Analytics | Smart Campus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        .admin-analytics-container {
+            padding: 20px;
+            background: #f5f7fa;
+        }
+
+        [data-theme="dark"] .admin-analytics-container {
+            background: #0f172a;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .admin-header h1 {
+            font-size: 2em;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        [data-theme="dark"] .admin-header h1 {
+            color: #f1f5f9;
+        }
+
+        .admin-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-group label {
+            font-weight: 500;
+            color: #2c3e50;
+        }
+
+        [data-theme="dark"] .control-group label {
+            color: #f1f5f9;
+        }
+
+        .control-group input,
+        .control-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            color: #2c3e50;
+            font-size: 0.95em;
+        }
+
+        [data-theme="dark"] .control-group input,
+        [data-theme="dark"] .control-group select {
+            background: #1e293b;
+            border-color: #334155;
+            color: #f1f5f9;
+        }
+
+        .btn-primary {
+            padding: 8px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .btn-export {
+            padding: 10px 20px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-export:hover {
+            background: #229954;
+            transform: translateY(-2px);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        [data-theme="dark"] .tabs {
+            border-bottom-color: #334155;
+        }
+
+        .tab-btn {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #3498db;
+        }
+
+        .tab-btn.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+
+        [data-theme="dark"] .tab-btn {
+            color: #cbd5e1;
+        }
+
+        [data-theme="dark"] .tab-btn:hover {
+            color: #64b5f6;
+        }
+
+        [data-theme="dark"] .tab-btn.active {
+            color: #64b5f6;
+            border-bottom-color: #64b5f6;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        [data-theme="dark"] .card {
+            background: #1e293b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        [data-theme="dark"] .card-title {
+            color: #f1f5f9;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            height: 350px;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+
+        thead {
+            background: #f0f4f8;
+        }
+
+        [data-theme="dark"] thead {
+            background: #334155;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #ddd;
+        }
+
+        [data-theme="dark"] th {
+            color: #f1f5f9;
+            border-bottom-color: #475569;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            color: #2c3e50;
+        }
+
+        [data-theme="dark"] td {
+            color: #cbd5e1;
+            border-bottom-color: #334155;
+        }
+
+        tbody tr:hover {
+            background: #f9fafb;
+        }
+
+        [data-theme="dark"] tbody tr:hover {
+            background: #334155;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .stat-box.green {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stat-box.blue {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .stat-box.orange {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .stat-box-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .stat-box-value {
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .filter-section {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        [data-theme="dark"] .filter-section {
+            background: #334155;
+        }
+
+        .filter-title {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 12px;
+        }
+
+        [data-theme="dark"] .filter-title {
+            color: #f1f5f9;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(52, 152, 219, 0.2);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .dept-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .subject-performance {
+            background: #f9fafb;
+            padding: 15px;
+            border-left: 4px solid #3498db;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        [data-theme="dark"] .subject-performance {
+            background: #334155;
+            border-left-color: #64b5f6;
+        }
+
+        .subject-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        [data-theme="dark"] .subject-name {
+            color: #f1f5f9;
+        }
+
+        .subject-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+
+        [data-theme="dark"] .subject-stats {
+            color: #cbd5e1;
+        }
+
+        .student-detail {
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin-bottom: 15px;
+        }
+
+        [data-theme="dark"] .student-detail {
+            border-left-color: #64b5f6;
+        }
+
+        .student-info {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        [data-theme="dark"] .student-info {
+            color: #f1f5f9;
+        }
+
+        .export-section {
+            background: #ecf5ff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        [data-theme="dark"] .export-section {
+            background: #1e3a5f;
+        }
+
+        .last-updated {
+            font-size: 0.85em;
+            color: #7f8c8d;
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        [data-theme="dark"] .last-updated {
+            color: #cbd5e1;
+        }
+
+        @media (max-width: 768px) {
+            .admin-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .admin-controls {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                width: 100%;
+            }
+
+            .control-group input,
+            .control-group select {
+                flex: 1;
+            }
+
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 0.85em;
+            }
+
+            th, td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-analytics-container">
+        <!-- Header -->
+        <div class="admin-header">
+            <h1><i class="fas fa-chart-pie"></i> Advanced Analytics</h1>
+            <div class="admin-controls">
+                <button class="btn-primary" onclick="refreshAnalytics()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn-export" onclick="exportAllPDF()">
+                    <i class="fas fa-file-pdf"></i> PDF Report
+                </button>
+                <button class="btn-export" onclick="exportAllExcel()">
+                    <i class="fas fa-file-excel"></i> Excel Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('overview')">
+                <i class="fas fa-chart-line"></i> Overview
+            </button>
+            <button class="tab-btn" onclick="switchTab('departments')">
+                <i class="fas fa-building"></i> Departments
+            </button>
+            <button class="tab-btn" onclick="switchTab('students')">
+                <i class="fas fa-users"></i> Students
+            </button>
+            <button class="tab-btn" onclick="switchTab('subjects')">
+                <i class="fas fa-book"></i> Subjects
+            </button>
+            <button class="tab-btn" onclick="switchTab('trends')">
+                <i class="fas fa-chart-area"></i> Trends
+            </button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        <div id="overview" class="tab-content active">
+            <!-- Quick Stats -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 30px;">
+                <div class="stat-box">
+                    <div class="stat-box-label">Total Students</div>
+                    <div class="stat-box-value" id="totalStudents">0</div>
+                </div>
+                <div class="stat-box green">
+                    <div class="stat-box-label">Avg. CGPA</div>
+                    <div class="stat-box-value" id="avgCGPA">0</div>
+                </div>
+                <div class="stat-box blue">
+                    <div class="stat-box-label">At-Risk Students</div>
+                    <div class="stat-box-value" id="atRiskCount">0</div>
+                </div>
+                <div class="stat-box orange">
+                    <div class="stat-box-label">Avg Attendance</div>
+                    <div class="stat-box-value" id="avgAttendance">0%</div>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-graduation-cap"></i> CGPA Distribution</div>
+                    <div class="chart-container">
+                        <canvas id="overviewCGPAChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-calendar"></i> Attendance Status</div>
+                    <div class="chart-container">
+                        <canvas id="overviewAttendanceChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-pen-fancy"></i> Marks Distribution</div>
+                    <div class="chart-container">
+                        <canvas id="overviewMarksChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-building"></i> Students per Department</div>
+                    <div class="chart-container">
+                        <canvas id="overviewDeptChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- DEPARTMENTS TAB -->
+        <div id="departments" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title"><i class="fas fa-filter"></i> Filter by Department</div>
+                <select id="deptFilter" style="width: 100%; max-width: 300px; padding: 8px; margin-top: 10px;">
+                    <option value="">All Departments</option>
+                </select>
+            </div>
+
+            <div id="deptContent"></div>
+        </div>
+
+        <!-- STUDENTS TAB -->
+        <div id="students" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title"><i class="fas fa-filter"></i> Filter Students</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px;">Search by Name or Email</label>
+                        <input type="text" id="studentSearch" placeholder="Name or email..." style="width: 100%;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px;">Performance Level</label>
+                        <select id="performanceFilter" style="width: 100%;">
+                            <option value="">All</option>
+                            <option value="top">Top Performers</option>
+                            <option value="risk">At-Risk</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="studentContent"></div>
+        </div>
+
+        <!-- SUBJECTS TAB -->
+        <div id="subjects" class="tab-content">
+            <div class="card">
+                <div class="card-title"><i class="fas fa-book"></i> Subject Performance Summary</div>
+                <div id="subjectContent"></div>
+            </div>
+        </div>
+
+        <!-- TRENDS TAB -->
+        <div id="trends" class="tab-content">
+            <div class="filter-section">
+                <div class="filter-title"><i class="fas fa-calendar"></i> Trend Analysis Period</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px;">Days</label>
+                        <select id="trendsFilter" style="width: 100%;">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                            <option value="365">Last Year</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-chart-line"></i> Marks Trends</div>
+                    <div class="chart-container">
+                        <canvas id="marksDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-percentage"></i> Passing Rate</div>
+                    <div style="padding: 40px; text-align: center;">
+                        <div style="font-size: 0.9em; color: #7f8c8d; margin-bottom: 10px;">Students Passing (≥40)</div>
+                        <div id="passingRate" style="font-size: 3em; font-weight: 700; color: #2ecc71;">0%</div>
+                        <div id="passingRateDetail" style="font-size: 0.9em; color: #7f8c8d; margin-top: 10px;">0 / 0 students</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last Updated -->
+        <div class="last-updated" id="lastUpdated"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="{{ url_for('static', filename='notifications.js') }}"></script>
+    <script>
+        const token = localStorage.getItem('token');
+        let adminCharts = {};
+        let analyticsData = null;
+
+        async function loadAnalytics() {
+            try {
+                showLoading(true);
+
+                const response = await fetch('/api/analytics/dashboard-summary', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load analytics');
+
+                analyticsData = await response.json();
+                renderAllTabs();
+                showLoading(false);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showLoading(false);
+            }
+        }
+
+        function renderAllTabs() {
+            renderOverviewTab();
+            renderDepartmentsTab();
+            renderStudentsTab();
+            renderSubjectsTab();
+            renderTrendsTab();
+            updateLastUpdated(analyticsData.generated_at);
+        }
+
+        function renderOverviewTab() {
+            const data = analyticsData.overall;
+            const perf = analyticsData.performance;
+            const attend = analyticsData.attendance;
+
+            // Update quick stats
+            document.getElementById('totalStudents').textContent = data.total_students;
+            document.getElementById('avgCGPA').textContent = data.avg_cgpa;
+            document.getElementById('atRiskCount').textContent = perf.at_risk_students.length;
+            document.getElementById('avgAttendance').textContent = data.avg_attendance_percentage + '%';
+
+            // CGPA Chart
+            if (adminCharts.cgpa) adminCharts.cgpa.destroy();
+            const cgpaCtx = document.getElementById('overviewCGPAChart').getContext('2d');
+            adminCharts.cgpa = new Chart(cgpaCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(perf.cgpa_distribution),
+                    datasets: [{
+                        data: Object.values(perf.cgpa_distribution),
+                        backgroundColor: ['#2ecc71', '#3498db', '#f39c12', '#e67e22', '#e74c3c']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Attendance Chart
+            if (adminCharts.attendance) adminCharts.attendance.destroy();
+            const attendCtx = document.getElementById('overviewAttendanceChart').getContext('2d');
+            adminCharts.attendance = new Chart(attendCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(attend.status_distribution),
+                    datasets: [{
+                        data: Object.values(attend.status_distribution),
+                        backgroundColor: ['#2ecc71', '#e74c3c', '#f39c12', '#3498db']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Marks Chart
+            if (adminCharts.marks) adminCharts.marks.destroy();
+            const marksCtx = document.getElementById('overviewMarksChart').getContext('2d');
+            adminCharts.marks = new Chart(marksCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(analyticsData.marks_trends.marks_distribution),
+                    datasets: [{
+                        label: 'Students',
+                        data: Object.values(analyticsData.marks_trends.marks_distribution),
+                        backgroundColor: '#9b59b6'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Department Chart
+            if (adminCharts.dept) adminCharts.dept.destroy();
+            const deptCtx = document.getElementById('overviewDeptChart').getContext('2d');
+            adminCharts.dept = new Chart(deptCtx, {
+                type: 'bar',
+                data: {
+                    labels: analyticsData.departments.departments.map(d => d.name),
+                    datasets: [{
+                        label: 'Students',
+                        data: analyticsData.departments.departments.map(d => d.student_count),
+                        backgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    scales: { x: { beginAtZero: true } }
+                }
+            });
+
+            // Populate department filter
+            const deptSelect = document.getElementById('deptFilter');
+            analyticsData.departments.departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.name;
+                option.textContent = dept.name;
+                deptSelect.appendChild(option);
+            });
+        }
+
+        function renderDepartmentsTab() {
+            const container = document.getElementById('deptContent');
+            container.innerHTML = '';
+
+            analyticsData.departments.departments.forEach(dept => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-title">${dept.name}</div>
+                    <div class="dept-detail-grid">
+                        <div class="stat-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                            <div class="stat-box-label">Students</div>
+                            <div class="stat-box-value">${dept.student_count}</div>
+                        </div>
+                        <div class="stat-box green" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <div class="stat-box-label">Avg CGPA</div>
+                            <div class="stat-box-value">${dept.avg_cgpa.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div id="subjects_${dept.name.replace(/\s+/g, '_')}"></div>
+                `;
+                container.appendChild(card);
+
+                // Add subject performance
+                const subjectDiv = card.querySelector(`#subjects_${dept.name.replace(/\s+/g, '_')}`);
+                subjectDiv.innerHTML = '<strong style="color: #2c3e50;">Subject Performance:</strong>';
+                
+                // Get subjects for this department (simplified)
+                subjectDiv.innerHTML += '<p style="color: #7f8c8d; margin-top: 10px;">Subject data will be aggregated from overall analytics.</p>';
+            });
+        }
+
+        function renderStudentsTab() {
+            const container = document.getElementById('studentContent');
+            
+            const topPerformers = analyticsData.performance.top_performers;
+            const atRisk = analyticsData.performance.at_risk_students;
+
+            let html = '<div class="card">';
+            html += '<div class="card-title"><i class="fas fa-star"></i> Top Performers</div>';
+            topPerformers.forEach((student, idx) => {
+                html += `
+                    <div class="student-detail">
+                        <div class="student-info">${idx + 1}. ${student.name}</div>
+                        <div class="subject-stats">
+                            <span>${student.email}</span>
+                            <span>CGPA: <strong>${student.cgpa}</strong></span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            html += '<div class="card">';
+            html += '<div class="card-title"><i class="fas fa-exclamation-triangle"></i> At-Risk Students</div>';
+            atRisk.forEach(student => {
+                html += `
+                    <div class="student-detail">
+                        <div class="student-info">${student.name}</div>
+                        <div class="subject-stats">
+                            <span>${student.email}</span>
+                            <span>CGPA: <strong>${student.cgpa}</strong></span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        function renderSubjectsTab() {
+            const container = document.getElementById('subjectContent');
+            let html = '';
+
+            analyticsData.marks_trends.avg_marks_by_subject.slice(0, 15).forEach(subject => {
+                html += `
+                    <div class="subject-performance">
+                        <div class="subject-name">${subject.subject_name}</div>
+                        <div class="subject-stats">
+                            <span>Avg Marks: <strong>${subject.avg_marks.toFixed(2)}</strong></span>
+                            <span>Records: <strong>${subject.record_count}</strong></span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderTrendsTab() {
+            const marks = analyticsData.marks_trends;
+
+            if (adminCharts.distribution) adminCharts.distribution.destroy();
+            const distCtx = document.getElementById('marksDistributionChart').getContext('2d');
+            adminCharts.distribution = new Chart(distCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(marks.marks_distribution),
+                    datasets: [{
+                        label: 'Students',
+                        data: Object.values(marks.marks_distribution),
+                        backgroundColor: '#3498db'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Passing rate
+            const passRate = marks.passing_rate;
+            document.getElementById('passingRate').textContent = passRate.pass_percentage + '%';
+            document.getElementById('passingRateDetail').textContent = 
+                `${passRate.pass_count} / ${passRate.total_count} students`;
+        }
+
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.closest('.tab-btn').classList.add('active');
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function updateLastUpdated(timestamp) {
+            const date = new Date(timestamp);
+            document.getElementById('lastUpdated').textContent = 
+                `Last updated: ${moment(date).format('MMM DD, YYYY h:mm A')}`;
+        }
+
+        function refreshAnalytics() {
+            loadAnalytics();
+        }
+
+        function exportAllPDF() {
+            window.location.href = '/api/analytics/export-pdf';
+        }
+
+        function exportAllExcel() {
+            window.location.href = '/api/analytics/export-excel';
+        }
+
+        // Initialize dark mode
+        if (window.darkModeManager) {
+            window.darkModeManager.init();
+        }
+
+        // Load data
+        loadAnalytics();
+
+        // Auto-refresh every 5 minutes
+        setInterval(loadAnalytics, 5 * 60 * 1000);
+    </script>
+</body>
+</html>
