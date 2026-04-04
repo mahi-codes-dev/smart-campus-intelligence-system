@@ -85,6 +85,37 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
+        .preferences-panel {
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="dark"] .preferences-panel {
+            background: #1e293b;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .preferences-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 16px;
+        }
+
+        .preference-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #2c3e50;
+        }
+
+        [data-theme="dark"] .preference-toggle {
+            color: #f1f5f9;
+        }
+
         [data-theme="dark"] .filters {
             background: #1e293b;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
@@ -508,6 +539,61 @@
             </div>
         </div>
 
+        <div class="preferences-panel">
+            <div class="notifications-header" style="margin-bottom: 0;">
+                <div>
+                    <h2 style="margin: 0; font-size: 1.3em;">Notification Preferences</h2>
+                    <p style="margin: 6px 0 0 0; color: #7f8c8d;">Control how often you receive digest-style reminders and which categories matter most.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="savePreferences()">
+                        <i class="fas fa-save"></i> Save Preferences
+                    </button>
+                </div>
+            </div>
+
+            <div class="preferences-grid">
+                <div class="filter-group">
+                    <label for="digestFrequency">Digest Frequency</label>
+                    <select id="digestFrequency">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="off">Off</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="reminderHour">Reminder Hour</label>
+                    <input type="number" id="reminderHour" min="0" max="23" placeholder="18">
+                </div>
+
+                <label class="preference-toggle">
+                    <input type="checkbox" id="digestEnabled">
+                    <span>Enable digest reminders</span>
+                </label>
+
+                <label class="preference-toggle">
+                    <input type="checkbox" id="academicEnabled">
+                    <span>Academic updates</span>
+                </label>
+
+                <label class="preference-toggle">
+                    <input type="checkbox" id="attendanceEnabled">
+                    <span>Attendance reminders</span>
+                </label>
+
+                <label class="preference-toggle">
+                    <input type="checkbox" id="resultEnabled">
+                    <span>Result alerts</span>
+                </label>
+
+                <label class="preference-toggle">
+                    <input type="checkbox" id="systemEnabled">
+                    <span>System notifications</span>
+                </label>
+            </div>
+        </div>
+
         <!-- Notifications List -->
         <div id="notificationsList" class="notifications-list">
             <div class="loading">
@@ -520,25 +606,20 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="{{ url_for('static', filename='shared.js') }}"></script>
     <script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
     <script>
         const token = localStorage.getItem('token');
-        let allNotifications = [];
+        let sourceNotifications = [];
+        let filteredNotifications = [];
         let currentPage = 1;
         const pageSize = 20;
 
         async function loadNotifications() {
             try {
-                const response = await fetch(`/api/notifications?limit=1000`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to load notifications');
-                }
-
-                const data = await response.json();
-                allNotifications = data.notifications || [];
+                const data = await fetchJson(`/api/notifications?limit=1000`);
+                sourceNotifications = data.notifications || [];
+                filteredNotifications = [...sourceNotifications];
                 currentPage = 1;
                 renderNotifications();
 
@@ -559,7 +640,7 @@
             const priorityFilter = document.getElementById('priorityFilter').value;
             const searchInput = document.getElementById('searchInput').value.toLowerCase();
 
-            const filtered = allNotifications.filter(notif => {
+            filteredNotifications = sourceNotifications.filter(notif => {
                 const typeMatch = !typeFilter || notif.type === typeFilter;
                 const statusMatch = !statusFilter || (statusFilter === 'unread' ? !notif.is_read : notif.is_read);
                 const priorityMatch = !priorityFilter || notif.priority === priorityFilter;
@@ -569,8 +650,6 @@
 
                 return typeMatch && statusMatch && priorityMatch && searchMatch;
             });
-
-            allNotifications = filtered;
             currentPage = 1;
             renderNotifications();
         }
@@ -578,7 +657,7 @@
         function renderNotifications() {
             const container = document.getElementById('notificationsList');
 
-            if (allNotifications.length === 0) {
+            if (filteredNotifications.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-inbox"></i>
@@ -590,10 +669,10 @@
             }
 
             // Pagination
-            const totalPages = Math.ceil(allNotifications.length / pageSize);
+            const totalPages = Math.ceil(filteredNotifications.length / pageSize);
             const start = (currentPage - 1) * pageSize;
             const end = start + pageSize;
-            const paginatedNotifications = allNotifications.slice(start, end);
+            const paginatedNotifications = filteredNotifications.slice(start, end);
 
             // Render notifications
             container.innerHTML = paginatedNotifications.map(notif => `
@@ -659,10 +738,7 @@
 
         async function markAsRead(notifId) {
             try {
-                await fetch(`/api/notifications/${notifId}/read`, {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await fetchJson(`/api/notifications/${notifId}/read`, { method: 'PUT' });
                 loadNotifications();
             } catch (error) {
                 console.error('Error:', error);
@@ -671,10 +747,7 @@
 
         async function markAllAsRead() {
             try {
-                await fetch('/api/notifications/mark-all-read', {
-                    method: 'PUT',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await fetchJson('/api/notifications/mark-all-read', { method: 'PUT' });
                 loadNotifications();
             } catch (error) {
                 console.error('Error:', error);
@@ -683,13 +756,49 @@
 
         async function deleteNotification(notifId) {
             try {
-                await fetch(`/api/notifications/${notifId}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                await fetchJson(`/api/notifications/${notifId}`, { method: 'DELETE' });
                 loadNotifications();
             } catch (error) {
                 console.error('Error:', error);
+            }
+        }
+
+        async function loadPreferences() {
+            try {
+                const data = await fetchJson('/api/notifications/preferences');
+                const prefs = data.preferences || {};
+
+                document.getElementById('digestEnabled').checked = !!prefs.digest_enabled;
+                document.getElementById('digestFrequency').value = prefs.digest_frequency || 'weekly';
+                document.getElementById('academicEnabled').checked = !!prefs.academic_enabled;
+                document.getElementById('attendanceEnabled').checked = !!prefs.attendance_enabled;
+                document.getElementById('resultEnabled').checked = !!prefs.result_enabled;
+                document.getElementById('systemEnabled').checked = !!prefs.system_enabled;
+                document.getElementById('reminderHour').value = prefs.reminder_hour ?? 18;
+            } catch (error) {
+                console.error('Error loading preferences:', error);
+            }
+        }
+
+        async function savePreferences() {
+            try {
+                await fetchJson('/api/notifications/preferences', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        digest_enabled: document.getElementById('digestEnabled').checked,
+                        digest_frequency: document.getElementById('digestFrequency').value,
+                        academic_enabled: document.getElementById('academicEnabled').checked,
+                        attendance_enabled: document.getElementById('attendanceEnabled').checked,
+                        result_enabled: document.getElementById('resultEnabled').checked,
+                        system_enabled: document.getElementById('systemEnabled').checked,
+                        reminder_hour: Number(document.getElementById('reminderHour').value || 18),
+                    })
+                });
+                showToast('Notification preferences updated.');
+            } catch (error) {
+                console.error('Error saving preferences:', error);
+                showToast(error.message || 'Unable to save notification preferences.', 'error');
             }
         }
 
@@ -703,6 +812,7 @@
         }
 
         // Load notifications
+        loadPreferences();
         loadNotifications();
     </script>
 </body>

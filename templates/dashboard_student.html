@@ -192,6 +192,129 @@
                 </div>
             </div>
 
+            <div class="grid-2col">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-calendar-week"></i>
+                            This Week
+                        </h3>
+                        <span class="card-subtitle">Your short weekly snapshot</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid" style="margin-bottom: 16px;">
+                            <div class="stat-card stat-card-info">
+                                <div class="stat-content">
+                                    <p class="stat-label">Primary Focus</p>
+                                    <p class="stat-value" id="weeklyPrimaryFocus">--</p>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-warning">
+                                <div class="stat-content">
+                                    <p class="stat-label">Unread Alerts</p>
+                                    <p class="stat-value" id="weeklyUnreadNotifications">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-primary">
+                                <div class="stat-content">
+                                    <p class="stat-label">Active Goals</p>
+                                    <p class="stat-value" id="weeklyActiveGoals">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-content">
+                                    <p class="stat-label">Goal Completion</p>
+                                    <p class="stat-value" id="weeklyGoalCompletion">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="card-subtitle" id="weeklyHeadline">Loading your weekly snapshot...</p>
+                    </div>
+                </div>
+
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-route"></i>
+                            Next Actions
+                        </h3>
+                        <span class="card-subtitle">What to do next to improve faster</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="insight-list" id="studentActionPlan">
+                            <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Building your action plan...</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2col">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-bullseye"></i>
+                            Goal Snapshot
+                        </h3>
+                        <span class="card-subtitle">Keep your current goals visible</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid" style="margin-bottom: 16px;">
+                            <div class="stat-card stat-card-primary">
+                                <div class="stat-content">
+                                    <p class="stat-label">Active</p>
+                                    <p class="stat-value" id="goalSummaryActive">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-success">
+                                <div class="stat-content">
+                                    <p class="stat-label">Completed</p>
+                                    <p class="stat-value" id="goalSummaryCompleted">0</p>
+                                </div>
+                            </div>
+                            <div class="stat-card stat-card-warning">
+                                <div class="stat-content">
+                                    <p class="stat-label">Due Soon</p>
+                                    <p class="stat-value" id="goalSummaryDueSoon">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <ul class="insight-list" id="dueGoalsList">
+                            <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Loading goal snapshot...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-bell"></i>
+                            Notification Digest
+                        </h3>
+                        <span class="card-subtitle">Stay informed without overload</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile-section">
+                            <div class="profile-row">
+                                <span class="profile-label">Digest Status</span>
+                                <span class="profile-value" id="notificationDigestStatus">--</span>
+                            </div>
+                            <div class="profile-row">
+                                <span class="profile-label">Digest Frequency</span>
+                                <span class="profile-value" id="notificationDigestFrequency">--</span>
+                            </div>
+                            <div class="profile-row">
+                                <span class="profile-label">Unread Notifications</span>
+                                <span class="profile-value" id="notificationUnreadCount">0</span>
+                            </div>
+                        </div>
+                        <a class="btn btn-secondary" href="/notifications">
+                            <i class="fas fa-sliders"></i>
+                            <span>Open Notification Settings</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Performance Section -->
             <div class="performance-section">
                 <h2 class="section-title">Academic Performance</h2>

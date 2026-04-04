@@ -528,6 +528,7 @@ def get_student_record_by_user_id(user_id):
         """
         SELECT
             s.id,
+            s.user_id,
             COALESCE(NULLIF(s.name, ''), u.name) AS name,
             COALESCE(NULLIF(s.email, ''), u.email) AS email,
             COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
@@ -549,10 +550,11 @@ def get_student_record_by_user_id(user_id):
 
     return {
         "id": row[0],
-        "name": row[1],
-        "email": row[2],
-        "roll_number": row[3],
-        "department": row[4],
+        "user_id": row[1],
+        "name": row[2],
+        "email": row[3],
+        "roll_number": row[4],
+        "department": row[5],
     }
 
 
@@ -564,6 +566,7 @@ def get_student_profile(student_id):
         """
         SELECT
             s.id,
+            s.user_id,
             COALESCE(NULLIF(s.name, ''), u.name) AS name,
             COALESCE(NULLIF(s.email, ''), u.email) AS email,
             COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
@@ -585,8 +588,9 @@ def get_student_profile(student_id):
 
     return {
         "id": row[0],
-        "name": row[1],
-        "email": row[2],
-        "roll_number": row[3],
-        "department": row[4],
+        "user_id": row[1],
+        "name": row[2],
+        "email": row[3],
+        "roll_number": row[4],
+        "department": row[5],
     }

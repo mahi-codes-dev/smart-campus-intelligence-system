@@ -33,6 +33,81 @@ async function getStudentDashboardSnapshot() {
     return fetchJson("/student/dashboard");
 }
 
+function renderWeeklySummary(summary) {
+    if (!summary) {
+        return;
+    }
+
+    setText("weeklyPrimaryFocus", summary.primary_focus || "--");
+    setText("weeklyUnreadNotifications", formatValue(summary.unread_notifications || 0));
+    setText("weeklyActiveGoals", formatValue(summary.active_goals || 0));
+    setText("weeklyGoalCompletion", formatValue(summary.goal_completion_rate || 0) + "%");
+    setText("weeklyHeadline", summary.headline || "Your weekly summary is ready.");
+}
+
+function renderActionPlan(actions) {
+    const list = document.getElementById("studentActionPlan");
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = "";
+
+    if (!Array.isArray(actions) || !actions.length) {
+        list.innerHTML = '<li class="insight-item">No action items right now. Keep your current routine steady.</li>';
+        return;
+    }
+
+    actions.forEach((action) => {
+        const li = document.createElement("li");
+        li.className = "insight-item";
+        li.innerHTML = `
+            <div class="action-plan-copy">
+                <strong>${action.title || "Next Step"}</strong>
+                <p>${action.message || ""}</p>
+            </div>
+            <span class="card-badge">${action.priority || "medium"}</span>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function renderGoalSnapshot(goalSummary, dueGoals) {
+    setText("goalSummaryActive", formatValue(goalSummary?.active || 0));
+    setText("goalSummaryCompleted", formatValue(goalSummary?.completed || 0));
+    setText("goalSummaryDueSoon", formatValue((dueGoals || []).length));
+
+    const list = document.getElementById("dueGoalsList");
+    if (!list) {
+        return;
+    }
+
+    list.innerHTML = "";
+
+    if (!Array.isArray(dueGoals) || !dueGoals.length) {
+        list.innerHTML = '<li class="insight-item">No upcoming goal deadlines right now. Use this time to push current goals forward.</li>';
+        return;
+    }
+
+    dueGoals.forEach((goal) => {
+        const li = document.createElement("li");
+        li.className = "insight-item";
+        li.innerHTML = `
+            <div class="action-plan-copy">
+                <strong>${goal.title || "Goal"}</strong>
+                <p>Due by ${goal.target_date || "No date"} • Progress ${formatValue(goal.progress_pct || 0)}%</p>
+            </div>
+        `;
+        list.appendChild(li);
+    });
+}
+
+function renderNotificationSummary(summary) {
+    setText("notificationDigestStatus", summary?.digest_enabled ? "Enabled" : "Disabled");
+    setText("notificationDigestFrequency", summary?.digest_frequency || "--");
+    setText("notificationUnreadCount", formatValue(summary?.unread_count || 0));
+}
+
 async function loadDashboard() {
     if (!requireAuth(["Student"])) {
         return;
@@ -81,6 +156,10 @@ async function loadDashboard() {
         renderAlerts(data.alerts || []);
         renderPlacementReasons(data.placement_reasons || []);
         renderStrengthWeakness(data);
+        renderWeeklySummary(data.weekly_summary);
+        renderActionPlan(data.action_plan || []);
+        renderGoalSnapshot(data.goal_summary || {}, data.due_goals || []);
+        renderNotificationSummary(data.notification_summary || {});
         renderSubjectPerformance(data.subject_performance || []);
         renderSubjectPerformanceChart(data.subject_performance || []);
         renderInsights(data.insights || []);

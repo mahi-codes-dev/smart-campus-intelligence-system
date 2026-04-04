@@ -2,6 +2,8 @@ from services.mock_service import get_mock_trend
 from services.marks_service import get_subject_wise_marks, get_marks_timeline, get_subject_wise_trend
 from services.prediction_service import predict_placement_from_score
 from services.readiness_service import calculate_readiness, get_top_students
+from services.goals_service import get_goal_summary, get_student_goals
+from services.realtime_notification_service import RealtimeNotificationService
 from services.student_service import get_student_profile
 
 
@@ -110,11 +112,98 @@ def _build_profile_summary(profile, readiness_score, status, subject_performance
     return {
         "name": profile.get("name") if profile else "--",
         "email": profile.get("email") if profile else "--",
+        "roll_number": profile.get("roll_number") if profile else "--",
         "department": profile.get("department") if profile else "--",
         "readiness_score": readiness_score,
         "status": status,
         "best_subject": strongest_subject.get("subject_name") if strongest_subject else None,
         "weakest_subject": weakest_subject.get("subject_name") if weakest_subject else None,
+    }
+
+
+def _build_due_goal_summary(goals):
+    due_goals = []
+    for goal in goals:
+        target_date = goal.get("target_date")
+        if not target_date or goal.get("status") != "active":
+            continue
+        due_goals.append(goal)
+
+    due_goals.sort(key=lambda item: item.get("target_date") or "9999-12-31")
+    return due_goals[:3]
+
+
+def _build_action_plan(attendance, marks, mock_score, skills_score, subject_performance, goal_summary, unread_count):
+    actions = []
+
+    if attendance < 75:
+        actions.append({
+            "priority": "high",
+            "title": "Recover attendance this week",
+            "message": "Plan to improve attendance in your next classes and prevent the score from slipping further.",
+        })
+
+    if marks < 60:
+        weakest_subject = min(subject_performance, key=lambda item: float(item.get("average_marks") or 0)) if subject_performance else None
+        actions.append({
+            "priority": "high",
+            "title": "Focus on your weakest academic area",
+            "message": (
+                f"Spend extra study time on {weakest_subject.get('subject_name')} this week."
+                if weakest_subject else
+                "Spend extra study time on the subject where your marks are currently lowest."
+            ),
+        })
+
+    if mock_score < 60:
+        actions.append({
+            "priority": "medium",
+            "title": "Schedule one mock practice session",
+            "message": "Regular practice tests will improve speed, confidence, and readiness for placement rounds.",
+        })
+
+    if skills_score < 50:
+        actions.append({
+            "priority": "medium",
+            "title": "Add one skill-building task",
+            "message": "Choose one practical skill milestone this week to improve the balance of your profile.",
+        })
+
+    if goal_summary.get("active", 0) == 0:
+        actions.append({
+            "priority": "medium",
+            "title": "Create a short-term goal",
+            "message": "A small measurable goal can make your weekly progress easier to sustain.",
+        })
+
+    if unread_count:
+        actions.append({
+            "priority": "low",
+            "title": "Review unread notifications",
+            "message": f"You have {unread_count} unread notifications that may include reminders or action items.",
+        })
+
+    if not actions:
+        actions.append({
+            "priority": "low",
+            "title": "Maintain your current momentum",
+            "message": "Your indicators look stable right now. Keep your current study, attendance, and practice routine consistent.",
+        })
+
+    return actions[:4]
+
+
+def _build_weekly_summary(profile, readiness_score, status, alerts, goal_summary, due_goals, unread_count, action_plan):
+    completion_rate = goal_summary.get("completion_rate", 0)
+    return {
+        "headline": f"{status} week ahead for {profile.get('name') if profile else 'you'}",
+        "readiness_score": readiness_score,
+        "active_alerts": len(alerts),
+        "active_goals": goal_summary.get("active", 0),
+        "goal_completion_rate": completion_rate,
+        "due_goal_count": len(due_goals),
+        "unread_notifications": unread_count,
+        "primary_focus": action_plan[0]["title"] if action_plan else "Keep progressing steadily",
     }
 
 
@@ -187,6 +276,8 @@ def get_student_dashboard_data(student_id):
     readiness = calculate_readiness(student_id)
     profile = get_student_profile(student_id)
     subject_performance = get_subject_wise_marks(student_id)
+    goal_summary = get_goal_summary(student_id)
+    goals = get_student_goals(student_id)
 
     attendance = float(readiness["attendance"])
     marks = float(readiness["marks"])
@@ -201,6 +292,19 @@ def get_student_dashboard_data(student_id):
     insights = _build_smart_insights(attendance, marks, mock_score, skills_score, subject_performance)
     breakdown = _build_performance_breakdown(attendance, marks, mock_score, skills_score)
     placement_breakdown = _build_placement_score_breakdown(attendance, marks, mock_score, skills_score)
+    user_id = profile.get("user_id") if profile else None
+    notification_preferences = RealtimeNotificationService.get_user_preferences(user_id) if user_id else {"digest_enabled": True}
+    unread_count = RealtimeNotificationService.get_unread_count(user_id) if user_id else 0
+    due_goals = _build_due_goal_summary(goals)
+    action_plan = _build_action_plan(
+        attendance,
+        marks,
+        mock_score,
+        skills_score,
+        subject_performance,
+        goal_summary,
+        unread_count,
+    )
     prediction = predict_placement_from_score(
         student_id,
         final_score,
@@ -215,6 +319,16 @@ def get_student_dashboard_data(student_id):
     # Get growth tracking data
     marks_timeline = get_marks_timeline(student_id, limit=8)
     subject_trends = get_subject_wise_trend(student_id)
+    weekly_summary = _build_weekly_summary(
+        profile,
+        round(final_score, 2),
+        status,
+        alerts,
+        goal_summary,
+        due_goals,
+        unread_count,
+        action_plan,
+    )
 
     return {
         "attendance": round(attendance, 2),
@@ -236,6 +350,15 @@ def get_student_dashboard_data(student_id):
         "placement_reasons": prediction["reasons"],
         "profile": profile,
         "profile_summary": _build_profile_summary(profile, round(final_score, 2), status, subject_performance),
+        "goal_summary": goal_summary,
+        "due_goals": due_goals,
+        "action_plan": action_plan,
+        "weekly_summary": weekly_summary,
+        "notification_summary": {
+            "unread_count": unread_count,
+            "digest_enabled": notification_preferences.get("digest_enabled", True),
+            "digest_frequency": notification_preferences.get("digest_frequency", "weekly"),
+        },
         "subject_performance": subject_performance,
         "marks_timeline": marks_timeline,
         "subject_trends": subject_trends,
