@@ -3,6 +3,7 @@
 <head>
     <title>Faculty Dashboard - Smart Campus</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -145,7 +146,7 @@
                         </h3>
                     </div>
                     <div class="card-body">
-                        <input class="form-control" id="facultySearch" type="search" placeholder="Search by name or email...">
+                        <input class="form-control" id="facultySearch" type="search" placeholder="Search by name, email, or roll no...">
                     </div>
                 </div>
 
@@ -179,6 +180,7 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
+                                    <th>Roll No.</th>
                                     <th>Email</th>
                                     <th>Department</th>
                                     <th>Status</th>
@@ -187,7 +189,7 @@
                             </thead>
                             <tbody id="facultyStudentsTable">
                                 <tr>
-                                    <td colspan="5" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</td>
+                                    <td colspan="6" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -210,6 +212,7 @@
                             <thead>
                                 <tr>
                                     <th>Name</th>
+                                    <th>Roll No.</th>
                                     <th>Department</th>
                                     <th>Average Marks</th>
                                     <th>Status</th>
@@ -217,7 +220,7 @@
                             </thead>
                             <tbody id="facultyRiskTable">
                                 <tr>
-                                    <td colspan="4" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading at-risk students...</td>
+                                    <td colspan="5" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading at-risk students...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -246,6 +249,10 @@
                                 <div class="profile-row">
                                     <span class="profile-label">Email</span>
                                     <span class="profile-value" id="facultyDetailEmail">--</span>
+                                </div>
+                                <div class="profile-row">
+                                    <span class="profile-label">Roll No.</span>
+                                    <span class="profile-value" id="facultyDetailRollNumber">--</span>
                                 </div>
                                 <div class="profile-row">
                                     <span class="profile-label">Department</span>
@@ -406,6 +413,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='shared.js') }}"></script>
+<script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
 <script src="{{ url_for('static', filename='faculty.js') }}"></script>
 <script>
     loadFacultyDashboard();

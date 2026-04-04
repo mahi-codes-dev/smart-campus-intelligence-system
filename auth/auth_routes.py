@@ -68,6 +68,9 @@ def get_roles():
 @auth_bp.route("/register", methods=["POST"])
 @auth_bp.route("/auth/register", methods=["POST"])
 def register():
+    conn = None
+    cur = None
+
     try:
         data = request.get_json() or {}
         print("REGISTER_REQUEST:", data)
@@ -76,6 +79,7 @@ def register():
         email = (data.get("email") or "").strip()
         password = data.get("password") or ""
         department = (data.get("department") or "").strip()
+        roll_number = (data.get("roll_number") or "").strip()
 
         try:
             role_id = int(data.get("role_id") or 0)
@@ -87,6 +91,9 @@ def register():
 
         if role_id == 3 and not department:
             return jsonify({"error": "Department is required for student registration"}), 400
+
+        if role_id == 3 and not roll_number:
+            return jsonify({"error": "Roll number is required for student registration"}), 400
 
         ensure_student_table_consistency()
 
@@ -118,8 +125,17 @@ def register():
         
         user_id = result[0]
 
+        student_record = None
+
         if role_id == 3:
-            sync_student_record(user_id, name, email, department, connection=conn)
+            student_record = sync_student_record(
+                user_id,
+                name,
+                email,
+                department,
+                roll_number=roll_number,
+                connection=conn,
+            )
 
         conn.commit()
         cur.close()
@@ -132,11 +148,26 @@ def register():
                 "name": name,
                 "email": email,
                 "role_id": role_id,
+                "roll_number": student_record["roll_number"] if student_record else None,
                 "department": department or None,
             }
         }), 201
 
+    except ValueError as e:
+        if conn:
+            conn.rollback()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
+        if conn:
+            conn.rollback()
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
         return jsonify({"error": str(e)}), 500
 
 

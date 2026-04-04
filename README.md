@@ -53,7 +53,6 @@ smart-campus-intelligence-system/
 |   |-- prediction_routes.py
 |   |-- readiness_routes.py
 |   |-- skills_routes.py
-|   |-- student_dashboard_routes.py
 |   |-- student_routes.py
 |   |-- student_skill_routes.py
 |   `-- subject_routes.py

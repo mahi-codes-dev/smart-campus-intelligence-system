@@ -86,7 +86,9 @@ function filterAdminLowPerformers() {
     const term = state.analyticsSearch.toLowerCase();
 
     return state.lowPerformers.filter((student) => {
-        const matchesSearch = !term || (student.name || "").toLowerCase().includes(term);
+        const matchesSearch = !term
+            || (student.name || "").toLowerCase().includes(term)
+            || (student.roll_number || "").toLowerCase().includes(term);
         const matchesDepartment = state.analyticsDepartment === "All" || student.department === state.analyticsDepartment;
         return matchesSearch && matchesDepartment;
     });
@@ -100,7 +102,11 @@ function filterAdminTopStudentsByDepartment() {
         .filter((group) => state.analyticsDepartment === "All" || group.department === state.analyticsDepartment)
         .map((group) => ({
             ...group,
-            students: (group.students || []).filter((student) => !term || (student.name || "").toLowerCase().includes(term)),
+            students: (group.students || []).filter((student) =>
+                !term
+                || (student.name || "").toLowerCase().includes(term)
+                || (student.roll_number || "").toLowerCase().includes(term)
+            ),
         }))
         .filter((group) => group.students.length);
 }
@@ -180,7 +186,12 @@ function renderAdminTopStudentsByDepartment(groups) {
         const wrapper = document.createElement("div");
         wrapper.className = "profile-row";
         const topStudent = group.students && group.students.length
-            ? group.students[0].name + " (" + formatValue(group.students[0].score) + ")"
+            ? group.students[0].name
+                + " ("
+                + (group.students[0].roll_number || "No Roll No.")
+                + " | "
+                + formatValue(group.students[0].score)
+                + ")"
             : "No students";
 
         wrapper.innerHTML = `
@@ -208,7 +219,7 @@ function renderAdminLowPerformers(users) {
 
     users.forEach((user) => {
         const li = document.createElement("li");
-        li.innerText = `${user.name} - ${user.department} - Score ${formatValue(user.score)}`;
+        li.innerText = `${user.name} (${user.roll_number || "No Roll No."}) - ${user.department} - Score ${formatValue(user.score)}`;
         list.appendChild(li);
     });
 }

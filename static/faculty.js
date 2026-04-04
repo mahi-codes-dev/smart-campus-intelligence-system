@@ -84,7 +84,10 @@ function setFacultyStudentSelection(student) {
     const state = getFacultyState();
     state.selectedStudentId = student ? student.student_id : null;
 
-    const label = student ? student.name + " (" + student.department + ")" : "None";
+    const detailLabel = student
+        ? [student.roll_number || "No Roll No.", student.department || "No Department"].join(" | ")
+        : "None";
+    const label = student ? student.name + " (" + detailLabel + ")" : "None";
     setText("facultySelectedStudent", label);
 
     const mappings = [
@@ -98,7 +101,7 @@ function setFacultyStudentSelection(student) {
         const hidden = document.getElementById(hiddenId);
 
         if (input) {
-            input.value = student ? student.name + " - " + student.email : "";
+            input.value = student ? student.name + " - " + (student.roll_number || student.email) : "";
         }
 
         if (hidden) {
@@ -118,7 +121,7 @@ function renderFacultyStudents(students) {
     if (!students.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
-        cell.colSpan = 5;
+        cell.colSpan = 6;
         cell.innerText = "No students found.";
         row.appendChild(cell);
         body.appendChild(row);
@@ -128,6 +131,7 @@ function renderFacultyStudents(students) {
     students.forEach((student) => {
         const row = document.createElement("tr");
         const nameCell = document.createElement("td");
+        const rollNumberCell = document.createElement("td");
         const emailCell = document.createElement("td");
         const departmentCell = document.createElement("td");
         const statusCell = document.createElement("td");
@@ -135,6 +139,7 @@ function renderFacultyStudents(students) {
         const actionGroup = document.createElement("div");
 
         nameCell.innerText = student.name || "--";
+        rollNumberCell.innerText = student.roll_number || "--";
         emailCell.innerText = student.email || "--";
         departmentCell.innerText = student.department || "--";
         statusCell.innerText = student.status || "--";
@@ -156,6 +161,7 @@ function renderFacultyStudents(students) {
 
         actionCell.appendChild(actionGroup);
         row.appendChild(nameCell);
+        row.appendChild(rollNumberCell);
         row.appendChild(emailCell);
         row.appendChild(departmentCell);
         row.appendChild(statusCell);
@@ -175,7 +181,7 @@ function renderFacultyRiskStudents(students) {
     if (!Array.isArray(students) || !students.length) {
         const row = document.createElement("tr");
         const cell = document.createElement("td");
-        cell.colSpan = 4;
+        cell.colSpan = 5;
         cell.innerText = "No at-risk students for the current filter.";
         row.appendChild(cell);
         body.appendChild(row);
@@ -186,6 +192,7 @@ function renderFacultyRiskStudents(students) {
         const row = document.createElement("tr");
         row.innerHTML = `
             <td>${student.name || "--"}</td>
+            <td>${student.roll_number || "--"}</td>
             <td>${student.department || "--"}</td>
             <td>${formatValue(student.marks)}</td>
             <td>${student.status || "--"}</td>
@@ -244,6 +251,7 @@ async function loadFacultyStudentDetail(studentId) {
 
         setText("facultyDetailName", profile.name || "--");
         setText("facultyDetailEmail", profile.email || "--");
+        setText("facultyDetailRollNumber", profile.roll_number || "--");
         setText("facultyDetailDepartment", profile.department || "--");
         setText("facultyDetailReadiness", formatPercent(detail.overview?.readiness_score || 0));
         setText("facultyDetailStatus", detail.overview?.status || "Loaded");

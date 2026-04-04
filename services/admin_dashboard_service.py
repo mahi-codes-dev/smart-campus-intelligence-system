@@ -87,12 +87,13 @@ def get_admin_dashboard():
                 "student_id": student.get("student_id"),
                 "name": student.get("name"),
                 "email": student.get("email"),
+                "roll_number": student.get("roll_number"),
                 "department": student.get("department"),
-                "final_score": student.get("final_score"),
+                "final_score": student.get("final_score", student.get("score")),
                 "attendance": student.get("attendance"),
                 "marks": student.get("marks"),
                 "mock_score": student.get("mock_score"),
-                "risk": "Critical" if student.get("final_score", 0) < 40 else "High" if student.get("final_score", 0) < 60 else "Medium",
+                "risk": "Critical" if student.get("final_score", student.get("score", 0)) < 40 else "High" if student.get("final_score", student.get("score", 0)) < 60 else "Medium",
             })
 
     return {

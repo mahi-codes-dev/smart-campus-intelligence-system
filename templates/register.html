@@ -180,6 +180,25 @@
                             <span class="error-message" id="departmentError"></span>
                         </div>
 
+                        <!-- Roll Number Field (Conditional) -->
+                        <div id="rollNumberField" class="form-group form-group-enhanced" style="display: none;">
+                            <label for="rollNumber" class="form-label">
+                                <span>Student Roll No.</span>
+                            </label>
+                            <div class="input-group">
+                                <i class="fas fa-id-badge input-icon"></i>
+                                <input
+                                    type="text"
+                                    id="rollNumber"
+                                    name="rollNumber"
+                                    class="form-control"
+                                    placeholder="e.g., CSE2026001"
+                                >
+                                <span class="input-focus-border"></span>
+                            </div>
+                            <span class="error-message" id="rollNumberError"></span>
+                        </div>
+
                         <!-- Terms & Conditions -->
                         <div class="form-group form-group-enhanced">
                             <label class="checkbox-wrapper advanced-checkbox">
@@ -226,16 +245,6 @@
 <script src="{{ url_for('static', filename='auth.js') }}"></script>
 <script>
     loadRegistrationForm();
-    
-    // Show/hide department field based on role
-    document.getElementById('role').addEventListener('change', function() {
-        const departmentField = document.getElementById('departmentField');
-        if (this.value === 'faculty' || this.value === 'admin') {
-            departmentField.style.display = 'block';
-        } else {
-            departmentField.style.display = 'none';
-        }
-    });
 
     // Enhanced password strength indicator
     document.getElementById('password').addEventListener('input', function() {
