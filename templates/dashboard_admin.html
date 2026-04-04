@@ -37,6 +37,14 @@
                     <i class="fas fa-book nav-icon"></i>
                     <span>Subjects</span>
                 </li>
+                <li class="nav-item" onclick="go('/admin-dashboard#operationsSection')">
+                    <i class="fas fa-clipboard-check nav-icon"></i>
+                    <span>Operations</span>
+                </li>
+                <li class="nav-item" onclick="go('/admin-dashboard#exportsSection')">
+                    <i class="fas fa-file-export nav-icon"></i>
+                    <span>Exports</span>
+                </li>
             </ul>
         </nav>
 
@@ -175,6 +183,71 @@
                             <select class="form-control" id="adminAnalyticsDepartmentFilter">
                                 <option value="All">All Departments</option>
                             </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-2col" id="operationsSection" style="margin-bottom: 32px;">
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-clipboard-check"></i> Operations Watchlist</h3>
+                            <p class="card-subtitle">Institution-level signals to guide follow-up and academic operations</p>
+                        </div>
+                        <span class="card-badge" id="adminOperationsStatus">--</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="operations-grid" id="adminOperationsGrid">
+                            <div class="operations-tile operations-tile--loading">
+                                <strong>Loading operations snapshot...</strong>
+                                <span>Preparing admin watchlist.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card card-premium" id="exportsSection">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-file-export"></i> Export Center</h3>
+                            <p class="card-subtitle">Download governed CSV packs for audits, review meetings, and offline analysis</p>
+                        </div>
+                        <span class="card-badge">CSV</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="export-list">
+                            <button class="export-item" type="button" onclick="downloadAdminExport('students')">
+                                <span>
+                                    <strong>Students Master Data</strong>
+                                    <small>Student, roll no., department, and linkage fields</small>
+                                </span>
+                                <i class="fas fa-download"></i>
+                            </button>
+
+                            <button class="export-item" type="button" onclick="downloadAdminExport('users')">
+                                <span>
+                                    <strong>Users and Roles</strong>
+                                    <small>System account list for admin review and access checks</small>
+                                </span>
+                                <i class="fas fa-download"></i>
+                            </button>
+
+                            <button class="export-item" type="button" onclick="downloadAdminExport('subjects')">
+                                <span>
+                                    <strong>Subject Catalog</strong>
+                                    <small>Governed subject registry grouped by department</small>
+                                </span>
+                                <i class="fas fa-download"></i>
+                            </button>
+
+                            <button class="export-item" type="button" onclick="downloadAdminExport('interventions')">
+                                <span>
+                                    <strong>Intervention Watchlist</strong>
+                                    <small>Low-readiness students for faculty review and follow-up planning</small>
+                                </span>
+                                <i class="fas fa-download"></i>
+                            </button>
                         </div>
                     </div>
                 </div>

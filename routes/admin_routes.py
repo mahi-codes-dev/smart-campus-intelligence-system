@@ -1,7 +1,14 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 from auth.auth_middleware import token_required, role_required
-from services.admin_service import get_admin_stats, get_all_users, delete_user, get_data_quality_snapshot
+from services.admin_service import (
+    build_admin_export,
+    delete_user,
+    get_admin_stats,
+    get_all_users,
+    get_data_quality_snapshot,
+    get_operations_snapshot,
+)
 from services.subject_service import create_subject, delete_subject, get_all_subjects
 from services.student_service import create_department, delete_department, get_department_catalog
 
@@ -39,6 +46,38 @@ def fetch_admin_data_quality():
     try:
         return jsonify(get_data_quality_snapshot()), 200
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/operations", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_operations():
+    try:
+        return jsonify(get_operations_snapshot()), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/exports/<string:export_name>", methods=["GET"])
+@token_required
+@role_required("Admin")
+def download_admin_export(export_name):
+    try:
+        export_payload = build_admin_export(export_name)
+        return Response(
+            export_payload["content"],
+            mimetype="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{export_payload["filename"]}"',
+                "Cache-Control": "no-store",
+            },
+        )
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

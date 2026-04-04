@@ -9,6 +9,7 @@ function getAdminState() {
             departments: [],
             departmentCatalog: [],
             dataQuality: null,
+            operations: null,
             userSearch: "",
             subjectSearch: "",
             analyticsSearch: "",
@@ -410,6 +411,75 @@ function renderAdminDataQuality() {
     setText("adminStudentsWithoutActivity", formatValue(data.students_without_activity));
 }
 
+function renderAdminOperations() {
+    const container = document.getElementById("adminOperationsGrid");
+    if (!container) {
+        return;
+    }
+
+    const operations = getAdminState().operations || {};
+    setText("adminOperationsStatus", operations.status || "--");
+
+    const cards = [
+        {
+            label: "Critical Interventions",
+            value: formatValue(operations.critical_interventions),
+            note: "Students below 45 readiness score.",
+            tone: "danger",
+        },
+        {
+            label: "Support Watchlist",
+            value: formatValue(operations.support_watchlist),
+            note: "Students between 45 and 60 readiness.",
+            tone: "warning",
+        },
+        {
+            label: "Departments Without Subjects",
+            value: formatValue(operations.departments_without_subjects),
+            note: "Department records that still need subject coverage.",
+            tone: "info",
+        },
+        {
+            label: "Subjects Without Marks",
+            value: formatValue(operations.subjects_without_marks),
+            note: "Subjects not yet receiving marks entries.",
+            tone: "warning",
+        },
+        {
+            label: "Subjects Without Attendance",
+            value: formatValue(operations.subjects_without_attendance),
+            note: "Subjects not yet receiving attendance updates.",
+            tone: "warning",
+        },
+        {
+            label: "New Students in 30 Days",
+            value: formatValue(operations.new_students_last_30_days),
+            note: "Recent onboarding volume across the institution.",
+            tone: "success",
+        },
+        {
+            label: "Marks Updates in 7 Days",
+            value: formatValue(operations.marks_updates_last_7_days),
+            note: "Latest assessment activity recorded by faculty.",
+            tone: "success",
+        },
+        {
+            label: "Attendance Updates in 7 Days",
+            value: formatValue(operations.attendance_updates_last_7_days),
+            note: "Recent classroom attendance activity in the system.",
+            tone: "info",
+        },
+    ];
+
+    container.innerHTML = cards.map((card) => `
+        <div class="operations-tile operations-tile--${card.tone}">
+            <strong>${card.label}</strong>
+            <span class="operations-value">${card.value}</span>
+            <small>${card.note}</small>
+        </div>
+    `).join("");
+}
+
 function initializeAdminControls() {
     const state = getAdminState();
     if (state.initialized) {
@@ -554,9 +624,10 @@ async function loadAdminDashboard() {
     initializeAdminControls();
 
     try {
-        const [stats, dataQuality] = await Promise.all([
+        const [stats, dataQuality, operations] = await Promise.all([
             fetchJson("/admin/stats"),
             fetchJson("/admin/data-quality"),
+            fetchJson("/admin/operations"),
             loadUsers(),
             loadAdminDepartments(),
             loadAdminSubjects(),
@@ -568,6 +639,7 @@ async function loadAdminDashboard() {
         state.departmentAverageScores = stats.department_average_scores || [];
         state.departments = stats.departments || [];
         state.dataQuality = dataQuality || {};
+        state.operations = operations || {};
 
         setText("adminTotalStudents", formatValue(stats.total_students));
         setText("adminTotalFaculty", formatValue(stats.total_faculty));
@@ -577,6 +649,7 @@ async function loadAdminDashboard() {
         renderAdminAnalytics();
         renderAdminDepartments();
         renderAdminDataQuality();
+        renderAdminOperations();
         setAdminLastSync();
     } catch (error) {
         console.error(error);
@@ -724,5 +797,40 @@ async function deleteUser(id) {
     } catch (error) {
         console.error(error);
         showAdminMessage(error.message || "Unable to delete user.", "error");
+    }
+}
+
+async function downloadAdminExport(exportName) {
+    try {
+        const token = localStorage.getItem("token");
+        const headers = token ? { Authorization: "Bearer " + token } : {};
+        const response = await fetch("/admin/exports/" + encodeURIComponent(exportName), {
+            method: "GET",
+            headers,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.message || "Unable to download export.");
+        }
+
+        const blob = await response.blob();
+        const contentDisposition = response.headers.get("Content-Disposition") || "";
+        const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+        const filename = fileNameMatch ? fileNameMatch[1] : `${exportName}.csv`;
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(downloadUrl);
+
+        showAdminMessage(`Downloaded ${filename}.`);
+    } catch (error) {
+        console.error(error);
+        showAdminMessage(error.message || "Unable to download export.", "error");
     }
 }
