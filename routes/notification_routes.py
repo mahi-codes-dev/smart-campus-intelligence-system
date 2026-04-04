@@ -89,6 +89,44 @@ def get_notification_statistics():
         return jsonify({"error": str(e)}), 500
 
 
+@notification_bp.route("/api/notifications/preferences", methods=["GET"])
+@token_required
+def get_notification_preferences():
+    try:
+        user_id = g.user_id
+        preferences = RealtimeNotificationService.get_user_preferences(user_id)
+
+        return jsonify({
+            "status": "success",
+            "preferences": preferences,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error getting notification preferences: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@notification_bp.route("/api/notifications/preferences", methods=["PUT"])
+@token_required
+def update_notification_preferences():
+    try:
+        user_id = g.user_id
+        preferences = request.get_json() or {}
+        saved = RealtimeNotificationService.save_user_preferences(user_id, preferences)
+
+        return jsonify({
+            "status": "success",
+            "message": "Notification preferences updated",
+            "preferences": saved,
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error updating notification preferences: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @notification_bp.route("/api/notifications/<int:notification_id>/read", methods=["PUT"])
 @token_required
 def mark_as_read(notification_id):

@@ -57,6 +57,20 @@ class RealtimeNotificationService:
                 CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
                 CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
                 CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
+
+                CREATE TABLE IF NOT EXISTS notification_preferences (
+                    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                    digest_enabled BOOLEAN DEFAULT TRUE,
+                    digest_frequency VARCHAR(20) DEFAULT 'weekly',
+                    academic_enabled BOOLEAN DEFAULT TRUE,
+                    attendance_enabled BOOLEAN DEFAULT TRUE,
+                    result_enabled BOOLEAN DEFAULT TRUE,
+                    system_enabled BOOLEAN DEFAULT TRUE,
+                    reminder_hour INTEGER DEFAULT 18,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT valid_digest_frequency CHECK (digest_frequency IN ('daily', 'weekly', 'off')),
+                    CONSTRAINT valid_reminder_hour CHECK (reminder_hour >= 0 AND reminder_hour <= 23)
+                );
             """)
 
             conn.commit()
@@ -65,6 +79,142 @@ class RealtimeNotificationService:
             logger.info("Notifications table ensured")
         except Exception as e:
             logger.error(f"Error ensuring notifications table: {str(e)}")
+            raise
+
+    @staticmethod
+    def get_user_preferences(user_id: int) -> Dict[str, Any]:
+        """Get notification preferences for a user, creating defaults if needed."""
+        defaults = {
+            "digest_enabled": True,
+            "digest_frequency": "weekly",
+            "academic_enabled": True,
+            "attendance_enabled": True,
+            "result_enabled": True,
+            "system_enabled": True,
+            "reminder_hour": 18,
+        }
+
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+
+            cur.execute(
+                """
+                INSERT INTO notification_preferences (user_id)
+                VALUES (%s)
+                ON CONFLICT (user_id) DO NOTHING
+                """,
+                (user_id,),
+            )
+
+            cur.execute(
+                """
+                SELECT
+                    digest_enabled,
+                    digest_frequency,
+                    academic_enabled,
+                    attendance_enabled,
+                    result_enabled,
+                    system_enabled,
+                    reminder_hour,
+                    updated_at
+                FROM notification_preferences
+                WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            row = cur.fetchone()
+            conn.commit()
+            cur.close()
+            conn.close()
+
+            if not row:
+                return defaults
+
+            return {
+                "digest_enabled": row[0],
+                "digest_frequency": row[1],
+                "academic_enabled": row[2],
+                "attendance_enabled": row[3],
+                "result_enabled": row[4],
+                "system_enabled": row[5],
+                "reminder_hour": row[6],
+                "updated_at": row[7].isoformat() if row[7] else None,
+            }
+        except Exception as e:
+            logger.error(f"Error getting notification preferences: {str(e)}")
+            return defaults
+
+    @staticmethod
+    def save_user_preferences(user_id: int, preferences: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or update notification preferences for a user."""
+        digest_frequency = str(preferences.get("digest_frequency", "weekly")).strip().lower()
+        if digest_frequency not in {"daily", "weekly", "off"}:
+            raise ValueError("digest_frequency must be daily, weekly, or off")
+
+        reminder_hour = int(preferences.get("reminder_hour", 18))
+        if reminder_hour < 0 or reminder_hour > 23:
+            raise ValueError("reminder_hour must be between 0 and 23")
+
+        payload = {
+            "digest_enabled": bool(preferences.get("digest_enabled", True)),
+            "digest_frequency": digest_frequency,
+            "academic_enabled": bool(preferences.get("academic_enabled", True)),
+            "attendance_enabled": bool(preferences.get("attendance_enabled", True)),
+            "result_enabled": bool(preferences.get("result_enabled", True)),
+            "system_enabled": bool(preferences.get("system_enabled", True)),
+            "reminder_hour": reminder_hour,
+        }
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        try:
+            cur.execute(
+                """
+                INSERT INTO notification_preferences (
+                    user_id,
+                    digest_enabled,
+                    digest_frequency,
+                    academic_enabled,
+                    attendance_enabled,
+                    result_enabled,
+                    system_enabled,
+                    reminder_hour,
+                    updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (user_id) DO UPDATE
+                SET
+                    digest_enabled = EXCLUDED.digest_enabled,
+                    digest_frequency = EXCLUDED.digest_frequency,
+                    academic_enabled = EXCLUDED.academic_enabled,
+                    attendance_enabled = EXCLUDED.attendance_enabled,
+                    result_enabled = EXCLUDED.result_enabled,
+                    system_enabled = EXCLUDED.system_enabled,
+                    reminder_hour = EXCLUDED.reminder_hour,
+                    updated_at = CURRENT_TIMESTAMP
+                """,
+                (
+                    user_id,
+                    payload["digest_enabled"],
+                    payload["digest_frequency"],
+                    payload["academic_enabled"],
+                    payload["attendance_enabled"],
+                    payload["result_enabled"],
+                    payload["system_enabled"],
+                    payload["reminder_hour"],
+                ),
+            )
+
+            conn.commit()
+            cur.close()
+            conn.close()
+            return RealtimeNotificationService.get_user_preferences(user_id)
+        except Exception:
+            conn.rollback()
+            cur.close()
+            conn.close()
             raise
 
     @staticmethod
