@@ -4,6 +4,22 @@ _DEPARTMENT_SCHEMA_READY = False
 _STUDENT_SCHEMA_READY = False
 
 
+def _table_exists(cur, table_name):
+    cur.execute(
+        """
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_name = %s
+        """,
+        (table_name,),
+    )
+    return cur.fetchone() is not None
+
+
+def normalize_department_name(department):
+    return " ".join((department or "").strip().split())
+
+
 def normalize_roll_number(roll_number):
     cleaned_roll_number = (roll_number or "").strip().upper()
     return cleaned_roll_number
@@ -79,7 +95,7 @@ def ensure_department_table_consistency(connection=None):
 
 
 def ensure_department_exists(department, connection=None):
-    cleaned_department = (department or "").strip()
+    cleaned_department = normalize_department_name(department)
 
     if not cleaned_department:
         return None
@@ -124,6 +140,178 @@ def ensure_department_exists(department, connection=None):
     }
 
 
+def require_department_exists(department, connection=None):
+    cleaned_department = normalize_department_name(department)
+
+    if not cleaned_department:
+        raise ValueError("Department is required")
+
+    conn = connection or get_db_connection()
+    cur = conn.cursor()
+
+    ensure_department_table_consistency(conn)
+    cur.execute(
+        """
+        SELECT id, name
+        FROM departments
+        WHERE LOWER(name) = LOWER(%s)
+        """,
+        (cleaned_department,),
+    )
+    existing = cur.fetchone()
+
+    if connection is None:
+        cur.close()
+        conn.close()
+    else:
+        cur.close()
+
+    if not existing:
+        raise ValueError("Select a valid department from the department list")
+
+    return {
+        "id": existing[0],
+        "name": existing[1],
+    }
+
+
+def create_department(department, connection=None):
+    cleaned_department = normalize_department_name(department)
+
+    if not cleaned_department:
+        raise ValueError("Department name is required")
+
+    conn = connection or get_db_connection()
+    cur = conn.cursor()
+
+    ensure_department_table_consistency(conn)
+    cur.execute(
+        """
+        SELECT id, name
+        FROM departments
+        WHERE LOWER(name) = LOWER(%s)
+        """,
+        (cleaned_department,),
+    )
+    existing = cur.fetchone()
+
+    if existing:
+        if connection is None:
+            cur.close()
+            conn.close()
+        else:
+            cur.close()
+        raise ValueError(f"Department {existing[1]} already exists")
+
+    cur.execute(
+        """
+        INSERT INTO departments (name)
+        VALUES (%s)
+        RETURNING id, name
+        """,
+        (cleaned_department,),
+    )
+    created = cur.fetchone()
+
+    if connection is None:
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        cur.close()
+
+    return {
+        "id": created[0],
+        "name": created[1],
+    }
+
+
+def get_department_catalog():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    ensure_department_table_consistency(conn)
+    subjects_table_exists = _table_exists(cur, "subjects")
+
+    subject_join = "LEFT JOIN subjects sub ON sub.department = d.name" if subjects_table_exists else ""
+    subject_count = "COUNT(DISTINCT sub.id) AS subject_count" if subjects_table_exists else "0 AS subject_count"
+    cur.execute(
+        f"""
+        SELECT
+            d.id,
+            d.name,
+            COUNT(DISTINCT s.id) AS student_count,
+            {subject_count}
+        FROM departments d
+        LEFT JOIN students s ON s.department = d.name
+        {subject_join}
+        GROUP BY d.id, d.name
+        ORDER BY d.name ASC
+        """
+    )
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return [
+        {
+            "id": row[0],
+            "name": row[1],
+            "student_count": row[2],
+            "subject_count": row[3],
+        }
+        for row in rows
+    ]
+
+
+def delete_department(department_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    ensure_department_table_consistency(conn)
+    cur.execute(
+        """
+        SELECT id, name
+        FROM departments
+        WHERE id = %s
+        """,
+        (department_id,),
+    )
+    department = cur.fetchone()
+
+    if not department:
+        cur.close()
+        conn.close()
+        raise ValueError("Department not found")
+
+    cur.execute("SELECT COUNT(*) FROM students WHERE department = %s", (department[1],))
+    student_count = cur.fetchone()[0]
+    if _table_exists(cur, "subjects"):
+        cur.execute("SELECT COUNT(*) FROM subjects WHERE department = %s", (department[1],))
+        subject_count = cur.fetchone()[0]
+    else:
+        subject_count = 0
+
+    if student_count or subject_count:
+        cur.close()
+        conn.close()
+        raise ValueError(
+            f"Cannot delete department {department[1]} because it is linked to "
+            f"{student_count} students and {subject_count} subjects"
+        )
+
+    cur.execute("DELETE FROM departments WHERE id = %s", (department_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "id": department[0],
+        "name": department[1],
+    }
+
+
 def ensure_student_table_consistency(connection=None):
     global _STUDENT_SCHEMA_READY
 
@@ -143,7 +331,9 @@ def ensure_student_table_consistency(connection=None):
             email VARCHAR(100) UNIQUE,
             roll_number VARCHAR(50),
             department VARCHAR(100),
-            user_id INTEGER
+            user_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """
     )
@@ -153,6 +343,8 @@ def ensure_student_table_consistency(connection=None):
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS roll_number VARCHAR(50)")
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS department VARCHAR(100)")
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id INTEGER")
+    cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
     cur.execute(
         """
@@ -168,14 +360,15 @@ def ensure_student_table_consistency(connection=None):
     cur.execute("ALTER TABLE students DROP CONSTRAINT IF EXISTS fk_user")
     cur.execute("ALTER TABLE students DROP CONSTRAINT IF EXISTS students_department_fkey")
 
-    cur.execute(
-        """
-        ALTER TABLE students
-        ADD CONSTRAINT students_user_id_fkey
-        FOREIGN KEY (user_id) REFERENCES users(id)
-        ON DELETE CASCADE
-        """
-    )
+    if _table_exists(cur, "users"):
+        cur.execute(
+            """
+            ALTER TABLE students
+            ADD CONSTRAINT students_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES users(id)
+            ON DELETE CASCADE
+            """
+        )
 
     cur.execute(
         """
@@ -201,9 +394,9 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
     conn = connection or get_db_connection()
     cur = conn.cursor()
     normalized_roll_number = normalize_roll_number(roll_number)
+    department_record = require_department_exists(department, connection=conn)
 
     ensure_student_table_consistency(conn)
-    ensure_department_exists(department, conn)
 
     cur.execute(
         """
@@ -236,7 +429,7 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
             WHERE id = %s
             RETURNING id, roll_number
             """,
-            (name, email, normalized_roll_number, department, user_id, existing[0]),
+            (name, email, normalized_roll_number, department_record["name"], user_id, existing[0]),
         )
     else:
         cur.execute(
@@ -245,7 +438,7 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
             VALUES (%s, %s, NULLIF(%s, ''), %s, %s)
             RETURNING id, roll_number
             """,
-            (name, email, normalized_roll_number, department, user_id),
+            (name, email, normalized_roll_number, department_record["name"], user_id),
         )
 
     result = cur.fetchone()
@@ -265,7 +458,7 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
         "name": name,
         "email": email,
         "roll_number": saved_roll_number,
-        "department": department,
+        "department": department_record["name"],
     }
 
 

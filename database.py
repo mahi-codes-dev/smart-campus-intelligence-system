@@ -1,17 +1,18 @@
-import psycopg2
-import os
 from contextlib import contextmanager
-from dotenv import load_dotenv
+import psycopg2
 
-load_dotenv()
+from config import settings
 
 def get_db_connection():
+    if settings.database_url:
+        return psycopg2.connect(settings.database_url)
+
     return psycopg2.connect(
-        host=os.getenv("DB_HOST"),
-        database=os.getenv("DB_NAME"),
-        user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD"),
-        port=int(os.getenv("DB_PORT", "5432"))
+        host=settings.db_host,
+        database=settings.db_name,
+        user=settings.db_user,
+        password=settings.db_password,
+        port=settings.db_port,
     )
 
 

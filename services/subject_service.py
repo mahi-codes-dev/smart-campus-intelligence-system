@@ -1,7 +1,21 @@
 from database import get_db_connection
-from services.student_service import ensure_department_exists, ensure_department_table_consistency
+from services.student_service import ensure_department_table_consistency, require_department_exists
 
 _SUBJECT_SCHEMA_READY = False
+
+
+def normalize_subject_name(name):
+    cleaned_name = " ".join((name or "").strip().split())
+    if not cleaned_name:
+        raise ValueError("Subject name is required")
+    return cleaned_name
+
+
+def normalize_subject_code(code):
+    cleaned_code = "".join((code or "").strip().upper().split())
+    if not cleaned_code:
+        raise ValueError("Subject code is required")
+    return cleaned_code
 
 
 def ensure_subject_table_consistency(connection=None):
@@ -64,33 +78,35 @@ def ensure_subject_table_consistency(connection=None):
 
 
 def create_subject(name, code, department):
+    cleaned_name = normalize_subject_name(name)
+    cleaned_code = normalize_subject_code(code)
     conn = get_db_connection()
     cur = conn.cursor()
 
     ensure_subject_table_consistency(conn)
-    ensure_department_exists(department, conn)
+    department_record = require_department_exists(department, conn)
 
     cur.execute(
         """
         SELECT id
         FROM subjects
-        WHERE code = %s
+        WHERE UPPER(code) = %s
         """,
-        (code,),
+        (cleaned_code,),
     )
     existing = cur.fetchone()
 
     if existing:
         cur.close()
         conn.close()
-        raise Exception("Subject code already exists")
+        raise ValueError(f"Subject code {cleaned_code} already exists")
 
     cur.execute(
         """
         INSERT INTO subjects (name, code, department)
         VALUES (%s, %s, %s)
         """,
-        (name, code, department),
+        (cleaned_name, cleaned_code, department_record["name"]),
     )
 
     conn.commit()

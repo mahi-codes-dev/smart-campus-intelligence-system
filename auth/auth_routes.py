@@ -1,23 +1,15 @@
-import os
 from flask import Blueprint, request, jsonify
 from database import get_db_connection
 import bcrypt
 import jwt
 import datetime
-from dotenv import load_dotenv
 from auth.auth_middleware import SECRET_KEY, JWT_ALGORITHM
-from services.student_service import ensure_student_table_consistency, sync_student_record
+from config import settings
+from services.student_service import ensure_student_table_consistency, get_all_departments, sync_student_record
 
 auth_bp = Blueprint("auth_bp", __name__)
 
-load_dotenv()
-
-JWT_EXP_HOURS_RAW = os.getenv("JWT_EXP_HOURS")
-
-if not JWT_EXP_HOURS_RAW:
-    raise RuntimeError("JWT_EXP_HOURS is not configured in environment variables")
-
-JWT_EXP_HOURS = int(JWT_EXP_HOURS_RAW)
+JWT_EXP_HOURS = settings.jwt_exp_hours
 
 
 def _get_dashboard_path(role_name):
@@ -60,6 +52,15 @@ def _get_roles():
 def get_roles():
     try:
         return jsonify(_get_roles()), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@auth_bp.route("/auth/departments", methods=["GET"])
+def get_departments():
+    try:
+        return jsonify(get_all_departments()), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

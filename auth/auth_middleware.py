@@ -1,21 +1,12 @@
 import inspect
-import os
 from functools import wraps
 
 from flask import g, jsonify, request
 import jwt
-from dotenv import load_dotenv
+from config import settings
 
-load_dotenv()
-
-SECRET_KEY = os.getenv("JWT_SECRET")
-JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
-
-if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET is not configured in environment variables")
-
-if not JWT_ALGORITHM:
-    raise RuntimeError("JWT_ALGORITHM is not configured in environment variables")
+SECRET_KEY = settings.jwt_secret
+JWT_ALGORITHM = settings.jwt_algorithm
 
 
 ROLE_MAP = {

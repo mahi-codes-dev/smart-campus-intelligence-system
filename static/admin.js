@@ -7,6 +7,8 @@ function getAdminState() {
             lowPerformers: [],
             departmentAverageScores: [],
             departments: [],
+            departmentCatalog: [],
+            dataQuality: null,
             userSearch: "",
             subjectSearch: "",
             analyticsSearch: "",
@@ -138,6 +140,23 @@ function updatePaginationControls(prefix, page, totalPages, totalItems) {
     }
 }
 
+function populateAdminSubjectDepartments(departments) {
+    const select = document.getElementById("adminSubjectDepartment");
+    if (!select) {
+        return;
+    }
+
+    const options = (departments || []).map((item) => item.name || item).filter(Boolean);
+    select.innerHTML = '<option value="">Select department</option>';
+
+    options.forEach((department) => {
+        const option = document.createElement("option");
+        option.value = department;
+        option.innerText = department;
+        select.appendChild(option);
+    });
+}
+
 function renderAdminDepartmentAverages(items) {
     const state = getAdminState();
     const body = document.getElementById("adminDepartmentAverageTable");
@@ -221,6 +240,46 @@ function renderAdminLowPerformers(users) {
         const li = document.createElement("li");
         li.innerText = `${user.name} (${user.roll_number || "No Roll No."}) - ${user.department} - Score ${formatValue(user.score)}`;
         list.appendChild(li);
+    });
+}
+
+function renderAdminDepartments() {
+    const state = getAdminState();
+    const body = document.getElementById("adminDepartmentsTable");
+    if (!body) {
+        return;
+    }
+
+    body.innerHTML = "";
+    const departments = state.departmentCatalog || [];
+    setText("adminDepartmentsCountInfo", `${departments.length} total`);
+
+    if (!departments.length) {
+        const row = document.createElement("tr");
+        row.innerHTML = '<td colspan="4">No departments available yet. Add your first department to start structuring the system.</td>';
+        body.appendChild(row);
+        return;
+    }
+
+    departments.forEach((department) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${department.name}</td>
+            <td>${formatValue(department.student_count)}</td>
+            <td>${formatValue(department.subject_count)}</td>
+            <td>
+                <div class="faculty-action-group">
+                    <button
+                        type="button"
+                        class="logout-button faculty-table-button"
+                        onclick="deleteDepartment(${department.id})"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </td>
+        `;
+        body.appendChild(row);
     });
 }
 
@@ -341,6 +400,16 @@ function renderAdminAnalytics() {
     renderAdminLowPerformers(filterAdminLowPerformers());
 }
 
+function renderAdminDataQuality() {
+    const data = getAdminState().dataQuality || {};
+    setText("adminDataQualityStatus", data.status || "--");
+    setText("adminMissingRollNumbers", formatValue(data.missing_roll_numbers));
+    setText("adminMissingDepartments", formatValue(data.missing_departments));
+    setText("adminDuplicateRollNumbers", formatValue(data.duplicate_roll_number_groups));
+    setText("adminOrphanStudents", formatValue(data.orphan_student_links));
+    setText("adminStudentsWithoutActivity", formatValue(data.students_without_activity));
+}
+
 function initializeAdminControls() {
     const state = getAdminState();
     if (state.initialized) {
@@ -453,6 +522,25 @@ async function loadAdminSubjects() {
     return state.subjects;
 }
 
+async function loadAdminDepartments() {
+    const body = document.getElementById("adminDepartmentsTable");
+    if (!body) {
+        return [];
+    }
+
+    body.innerHTML = `
+        <tr>
+            <td colspan="4">Loading departments...</td>
+        </tr>
+    `;
+
+    const state = getAdminState();
+    state.departmentCatalog = await fetchJson("/admin/departments");
+    populateAdminSubjectDepartments(state.departmentCatalog);
+    renderAdminDepartments();
+    return state.departmentCatalog;
+}
+
 async function loadAdminDashboard() {
     if (!requireAuth(["Admin"])) {
         return;
@@ -466,9 +554,11 @@ async function loadAdminDashboard() {
     initializeAdminControls();
 
     try {
-        const [stats] = await Promise.all([
+        const [stats, dataQuality] = await Promise.all([
             fetchJson("/admin/stats"),
+            fetchJson("/admin/data-quality"),
             loadUsers(),
+            loadAdminDepartments(),
             loadAdminSubjects(),
         ]);
         const state = getAdminState();
@@ -477,16 +567,49 @@ async function loadAdminDashboard() {
         state.lowPerformers = stats.low_performers || [];
         state.departmentAverageScores = stats.department_average_scores || [];
         state.departments = stats.departments || [];
+        state.dataQuality = dataQuality || {};
 
         setText("adminTotalStudents", formatValue(stats.total_students));
         setText("adminTotalFaculty", formatValue(stats.total_faculty));
         setText("adminTotalUsers", formatValue(stats.total_users));
+        setText("adminTotalDepartments", formatValue(stats.total_departments));
         populateAdminAnalyticsDepartments(state.departments, state.analyticsDepartment);
         renderAdminAnalytics();
+        renderAdminDepartments();
+        renderAdminDataQuality();
         setAdminLastSync();
     } catch (error) {
         console.error(error);
         showAdminMessage(error.message || "Unable to load admin dashboard.", "error");
+    }
+}
+
+async function submitAdminDepartment(event) {
+    event.preventDefault();
+
+    try {
+        const nameInput = document.getElementById("adminDepartmentName");
+        const name = nameInput ? nameInput.value.trim() : "";
+
+        if (!name) {
+            throw new Error("Department name is required.");
+        }
+
+        const data = await fetchJson("/admin/department", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name }),
+        });
+
+        if (nameInput) {
+            nameInput.value = "";
+        }
+
+        showAdminMessage(data.message || "Department added successfully.");
+        await loadAdminDashboard();
+    } catch (error) {
+        console.error(error);
+        showAdminMessage(error.message || "Unable to add department.", "error");
     }
 }
 
@@ -526,6 +649,31 @@ async function submitAdminSubject(event) {
     } catch (error) {
         console.error(error);
         showAdminMessage(error.message || "Unable to add subject.", "error");
+    }
+}
+
+async function deleteDepartment(id) {
+    const confirmed = await confirmAction({
+        title: "Delete Department",
+        message: "Delete this department? It can only be removed if no students or subjects are linked to it.",
+        confirmText: "Delete Department",
+        danger: true,
+    });
+
+    if (!confirmed) {
+        return;
+    }
+
+    try {
+        const data = await fetchJson("/admin/department/" + id, {
+            method: "DELETE",
+        });
+
+        showAdminMessage(data.message || "Department deleted successfully.");
+        await loadAdminDashboard();
+    } catch (error) {
+        console.error(error);
+        showAdminMessage(error.message || "Unable to delete department.", "error");
     }
 }
 
