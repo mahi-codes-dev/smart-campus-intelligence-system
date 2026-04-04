@@ -2304,6 +2304,11 @@ body.dark .modal-card p {
     gap: 6px;
 }
 
+.faculty-batch-input {
+    min-width: 100px;
+    padding-left: 16px;
+}
+
 .faculty-field label {
     font-size: 14px;
     font-weight: 600;
