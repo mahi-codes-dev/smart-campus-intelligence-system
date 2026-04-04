@@ -1,8 +1,9 @@
 from flask import Blueprint, jsonify, request
 
 from auth.auth_middleware import token_required, role_required
-from services.admin_service import get_admin_stats, get_all_users, delete_user
+from services.admin_service import get_admin_stats, get_all_users, delete_user, get_data_quality_snapshot
 from services.subject_service import create_subject, delete_subject, get_all_subjects
+from services.student_service import create_department, delete_department, get_department_catalog
 
 admin_bp = Blueprint("admin_bp", __name__)
 
@@ -31,6 +32,17 @@ def fetch_admin_users():
         return jsonify({"error": str(e)}), 500
 
 
+@admin_bp.route("/admin/data-quality", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_data_quality():
+    try:
+        return jsonify(get_data_quality_snapshot()), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @admin_bp.route("/admin/subject", methods=["POST"])
 @token_required
 @role_required("Admin")
@@ -49,6 +61,8 @@ def create_admin_subject():
         create_subject(name, code, department)
         return jsonify({"message": "Subject added successfully"}), 201
 
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -60,6 +74,52 @@ def fetch_admin_subjects():
     try:
         return jsonify(get_all_subjects()), 200
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/departments", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_departments():
+    try:
+        return jsonify(get_department_catalog()), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/department", methods=["POST"])
+@token_required
+@role_required("Admin")
+def create_admin_department():
+    try:
+        data = request.get_json() or {}
+        department = create_department(data.get("name"))
+        return jsonify({
+            "message": "Department added successfully",
+            "department": department,
+        }), 201
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/admin/department/<int:department_id>", methods=["DELETE"])
+@token_required
+@role_required("Admin")
+def remove_admin_department(department_id):
+    try:
+        deleted_department = delete_department(department_id)
+        return jsonify({
+            "message": "Department deleted successfully",
+            "department": deleted_department,
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

@@ -4,7 +4,7 @@ from services.readiness_service import (
     get_low_performing_students,
     get_top_students_by_department,
 )
-from services.student_service import get_all_departments
+from services.student_service import get_all_departments, get_department_catalog
 
 
 def get_admin_stats():
@@ -36,6 +36,7 @@ def get_admin_stats():
         "total_students": total_students,
         "total_faculty": total_faculty,
         "total_users": total_users,
+        "total_departments": len(get_department_catalog()),
         "top_students_by_department": get_top_students_by_department(),
         "low_performers": get_low_performing_students(),
         "department_average_scores": department_average_scores,
@@ -73,6 +74,113 @@ def get_all_users():
         }
         for row in rows
     ]
+
+
+def get_data_quality_snapshot():
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("SELECT COUNT(*) FROM students")
+    total_students = cur.fetchone()[0]
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM students
+        WHERE roll_number IS NULL OR TRIM(roll_number) = ''
+        """
+    )
+    missing_roll_numbers = cur.fetchone()[0]
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM students
+        WHERE department IS NULL OR TRIM(department) = ''
+        """
+    )
+    missing_departments = cur.fetchone()[0]
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT UPPER(TRIM(roll_number))
+            FROM students
+            WHERE roll_number IS NOT NULL AND TRIM(roll_number) <> ''
+            GROUP BY UPPER(TRIM(roll_number))
+            HAVING COUNT(*) > 1
+        ) duplicate_roll_numbers
+        """
+    )
+    duplicate_roll_number_groups = cur.fetchone()[0]
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT LOWER(email)
+            FROM users
+            WHERE email IS NOT NULL AND TRIM(email) <> ''
+            GROUP BY LOWER(email)
+            HAVING COUNT(*) > 1
+        ) duplicate_user_emails
+        """
+    )
+    duplicate_user_email_groups = cur.fetchone()[0]
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM students s
+        LEFT JOIN users u ON s.user_id = u.id
+        WHERE s.user_id IS NOT NULL AND u.id IS NULL
+        """
+    )
+    orphan_student_links = cur.fetchone()[0]
+
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM students s
+        WHERE NOT EXISTS (SELECT 1 FROM attendance a WHERE a.student_id = s.id)
+          AND NOT EXISTS (SELECT 1 FROM marks m WHERE m.student_id = s.id)
+          AND NOT EXISTS (SELECT 1 FROM mock_tests mt WHERE mt.student_id = s.id)
+          AND NOT EXISTS (SELECT 1 FROM student_skills sk WHERE sk.student_id = s.id)
+        """
+    )
+    students_without_activity = cur.fetchone()[0]
+
+    cur.close()
+    conn.close()
+
+    issue_total = (
+        missing_roll_numbers
+        + missing_departments
+        + duplicate_roll_number_groups
+        + duplicate_user_email_groups
+        + orphan_student_links
+        + students_without_activity
+    )
+
+    if issue_total == 0:
+        status = "Healthy"
+    elif issue_total <= max(3, total_students // 10):
+        status = "Needs Review"
+    else:
+        status = "Attention Needed"
+
+    return {
+        "status": status,
+        "total_students": total_students,
+        "missing_roll_numbers": missing_roll_numbers,
+        "missing_departments": missing_departments,
+        "duplicate_roll_number_groups": duplicate_roll_number_groups,
+        "duplicate_user_email_groups": duplicate_user_email_groups,
+        "orphan_student_links": orphan_student_links,
+        "students_without_activity": students_without_activity,
+        "issue_total": issue_total,
+    }
 
 
 def delete_user(user_id, current_user_id=None):

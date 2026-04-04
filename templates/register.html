@@ -168,13 +168,9 @@
                             </label>
                             <div class="input-group">
                                 <i class="fas fa-building input-icon"></i>
-                                <input 
-                                    type="text" 
-                                    id="department" 
-                                    name="department"
-                                    class="form-control"
-                                    placeholder="e.g., Computer Science"
-                                >
+                                <select id="department" name="department" class="form-control">
+                                    <option value="">Select your department</option>
+                                </select>
                                 <span class="input-focus-border"></span>
                             </div>
                             <span class="error-message" id="departmentError"></span>
@@ -244,8 +240,6 @@
 <script src="{{ url_for('static', filename='shared.js') }}"></script>
 <script src="{{ url_for('static', filename='auth.js') }}"></script>
 <script>
-    loadRegistrationForm();
-
     // Enhanced password strength indicator
     document.getElementById('password').addEventListener('input', function() {
         const strength = document.querySelector('.password-strength');
@@ -273,10 +267,6 @@
         strength.className = 'password-strength ' + classes[score];
         fill.style.width = widths[score];
     });
-</script>
-
-</body>
-</html>
 </script>
 
 </body>

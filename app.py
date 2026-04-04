@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request
 import psycopg2
 from pathlib import Path
-from dotenv import load_dotenv
 from database import get_db_connection
 from auth.auth_middleware import token_required, role_required
+from config import settings
 from routes.student_routes import student_bp
 from auth.auth_routes import auth_bp
 from routes.subject_routes import subject_bp
@@ -30,18 +30,20 @@ from services.student_service import ensure_student_table_consistency, ensure_ro
 from services.subject_service import ensure_subject_table_consistency
 from services.goals_service import ensure_goals_tables
 from services.realtime_notification_service import RealtimeNotificationService
+from services.migration_service import run_migrations
 # from routes.readiness_routes import get_top_students
 from flask import render_template
 
 
-# Load environment variables
-load_dotenv()
-
 app = Flask(__name__)
 BASE_DIR = Path(__file__).resolve().parent
+app.config["SECRET_KEY"] = settings.flask_secret_key
+app.config["ENV"] = settings.flask_env
+app.config["DEBUG"] = settings.flask_debug
 apply_security_headers(app)
 
 try:
+    run_migrations()
     ensure_student_table_consistency()
     ensure_subject_table_consistency()
     ensure_marks_table_consistency()
@@ -296,4 +298,4 @@ def admin_dashboard_page():
 
 if __name__ == "__main__":
     #print(app.url_map)
-    app.run(debug=True)
+    app.run(debug=settings.flask_debug)

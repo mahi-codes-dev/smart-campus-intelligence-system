@@ -3048,6 +3048,11 @@ body.dark .styled-message--danger {
     color: var(--warning);
 }
 
+.stat-card-danger .stat-icon {
+    background: rgba(220, 38, 38, 0.12);
+    color: var(--danger);
+}
+
 .stat-card-info .stat-icon {
     background: rgba(6, 182, 212, 0.12);
     color: var(--secondary);

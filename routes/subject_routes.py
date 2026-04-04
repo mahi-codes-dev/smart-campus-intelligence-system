@@ -24,6 +24,8 @@ def add_subject():
 
         return jsonify({"message": "Subject added successfully"}), 201
 
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

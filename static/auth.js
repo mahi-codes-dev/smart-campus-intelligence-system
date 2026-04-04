@@ -79,6 +79,29 @@ function getSelectedRoleOption() {
     return roleSelect ? roleSelect.options[roleSelect.selectedIndex] : null;
 }
 
+function populateRegistrationDepartments(departments) {
+    const departmentSelect = document.getElementById("department");
+    if (!departmentSelect) {
+        return;
+    }
+
+    departmentSelect.innerHTML = '<option value="">Select your department</option>';
+
+    (departments || []).forEach((department) => {
+        const option = document.createElement("option");
+        option.value = department;
+        option.innerText = department;
+        departmentSelect.appendChild(option);
+    });
+
+    if (!(departments || []).length) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.innerText = "No departments available yet";
+        departmentSelect.appendChild(option);
+    }
+}
+
 /**
  * Toggle department field visibility
  */
@@ -100,9 +123,10 @@ function toggleDepartmentField() {
 
     if (departmentInput) {
         if (isStudent) {
-            departmentInput.placeholder = "Enter your department";
+            departmentInput.disabled = false;
         } else {
             departmentInput.value = "";
+            departmentInput.disabled = true;
         }
     }
 
@@ -125,7 +149,10 @@ async function loadRegistrationForm() {
     if (!roleSelect) return;
 
     try {
-        const roles = await fetchJson("/auth/roles");
+        const [roles, departments] = await Promise.all([
+            fetchJson("/auth/roles"),
+            fetchJson("/auth/departments"),
+        ]);
         roleSelect.innerHTML = '<option value="">Choose your role...</option>';
 
         roles.forEach((role) => {
@@ -136,6 +163,7 @@ async function loadRegistrationForm() {
             roleSelect.appendChild(option);
         });
 
+        populateRegistrationDepartments(departments);
         roleSelect.removeEventListener("change", toggleDepartmentField);
         roleSelect.addEventListener("change", toggleDepartmentField);
         toggleDepartmentField();
