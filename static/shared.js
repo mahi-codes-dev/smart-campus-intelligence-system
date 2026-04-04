@@ -231,6 +231,7 @@ function renderProfile(profile) {
     }
 
     setText("profileName", profile.name || "--");
+    setText("profileRollNumber", profile.roll_number || "--");
     setText("profileEmail", profile.email || "--");
     setText("profileDepartment", profile.department || "--");
 }

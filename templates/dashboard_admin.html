@@ -3,6 +3,7 @@
 <head>
     <title>Admin Dashboard - Smart Campus</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
 <body class="dashboard-body">
@@ -136,7 +137,7 @@
                 <div class="card card-premium">
                     <div class="card-header">
                         <h3 class="card-title"><i class="fas fa-search"></i> Search Users</h3>
-                        <p class="card-subtitle">Find students by name</p>
+                        <p class="card-subtitle">Find students by name or roll number</p>
                     </div>
                     <div class="card-body">
                         <div class="form-group">
@@ -144,7 +145,7 @@
                                 class="form-control"
                                 id="adminAnalyticsSearch"
                                 type="search"
-                                placeholder="Type student name..."
+                                placeholder="Type student name or roll no..."
                             >
                         </div>
                     </div>
@@ -340,6 +341,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='shared.js') }}"></script>
+<script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
 <script src="{{ url_for('static', filename='admin.js') }}"></script>
 <script>
     loadAdminDashboard();

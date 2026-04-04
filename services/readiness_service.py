@@ -36,6 +36,7 @@ student_scores AS (
         s.id AS student_id,
         COALESCE(NULLIF(s.name, ''), u.name) AS name,
         COALESCE(NULLIF(s.email, ''), u.email) AS email,
+        COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
         COALESCE(NULLIF(s.department, ''), 'Not Assigned') AS department,
         COALESCE(a.attendance_score, 0) AS attendance,
         COALESCE(m.marks_score, 0) AS marks,
@@ -76,18 +77,19 @@ def _risk_from_metrics(attendance, marks):
 
 
 def _row_to_score_payload(row):
-    attendance = round(float(row[4] or 0), 2)
-    marks = round(float(row[5] or 0), 2)
-    skills_count = int(row[6] or 0)
-    skills_score = round(float(row[7] or 0), 2)
-    mock_score = round(float(row[8] or 0), 2)
-    final_score = round(float(row[9] or 0), 2)
+    attendance = round(float(row[5] or 0), 2)
+    marks = round(float(row[6] or 0), 2)
+    skills_count = int(row[7] or 0)
+    skills_score = round(float(row[8] or 0), 2)
+    mock_score = round(float(row[9] or 0), 2)
+    final_score = round(float(row[10] or 0), 2)
 
     return {
         "student_id": row[0],
         "name": row[1],
         "email": row[2],
-        "department": row[3],
+        "roll_number": row[3],
+        "department": row[4],
         "attendance": attendance,
         "marks": marks,
         "skills_count": skills_count,
@@ -107,8 +109,8 @@ def _fetch_student_score_rows(search=None, department=None, sort_order="desc", c
     params = []
 
     if search:
-        conditions.append("(name ILIKE %s OR email ILIKE %s)")
-        params.extend([f"%{search.strip()}%", f"%{search.strip()}%"])
+        conditions.append("(name ILIKE %s OR email ILIKE %s OR roll_number ILIKE %s)")
+        params.extend([f"%{search.strip()}%", f"%{search.strip()}%", f"%{search.strip()}%"])
 
     if department and department.strip().lower() != "all":
         conditions.append("department = %s")
@@ -124,6 +126,7 @@ def _fetch_student_score_rows(search=None, department=None, sort_order="desc", c
             student_id,
             name,
             email,
+            roll_number,
             department,
             attendance,
             marks,
@@ -157,6 +160,7 @@ def calculate_readiness(student_id):
             student_id,
             name,
             email,
+            roll_number,
             department,
             attendance,
             marks,
@@ -231,6 +235,7 @@ def get_top_students_by_department(limit_per_department=3):
             student_id,
             name,
             email,
+            roll_number,
             attendance,
             marks,
             skills_count,
@@ -261,7 +266,9 @@ def get_top_students_by_department(limit_per_department=3):
 
     for row in rows:
         department_name = row[0]
-        payload = _row_to_score_payload((row[1], row[2], row[3], row[0], row[4], row[5], row[6], row[7], row[8], row[9]))
+        payload = _row_to_score_payload(
+            (row[1], row[2], row[3], row[4], row[0], row[5], row[6], row[7], row[8], row[9], row[10])
+        )
 
         if department_name != current_department:
             grouped.append({
@@ -274,6 +281,7 @@ def get_top_students_by_department(limit_per_department=3):
             "student_id": payload["student_id"],
             "name": payload["name"],
             "email": payload["email"],
+            "roll_number": payload["roll_number"],
             "department": payload["department"],
             "score": payload["final_score"],
             "status": payload["status"],
@@ -293,6 +301,7 @@ def get_low_performing_students(threshold=60):
             student_id,
             name,
             email,
+            roll_number,
             department,
             attendance,
             marks,
@@ -316,7 +325,14 @@ def get_low_performing_students(threshold=60):
             "student_id": payload["student_id"],
             "name": payload["name"],
             "email": payload["email"],
+            "roll_number": payload["roll_number"],
             "department": payload["department"],
+            "attendance": payload["attendance"],
+            "marks": payload["marks"],
+            "skills_count": payload["skills_count"],
+            "skills_score": payload["skills_score"],
+            "mock_score": payload["mock_score"],
+            "final_score": payload["final_score"],
             "score": payload["final_score"],
             "status": payload["status"],
         }

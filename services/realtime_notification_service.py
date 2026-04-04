@@ -511,6 +511,6 @@ class RealtimeNotificationService:
             message,
             notification_type=RealtimeNotificationService.TYPE_SYSTEM,
             priority=RealtimeNotificationService.PRIORITY_MEDIUM,
-            action_url="/admin/bulk-import"
+            action_url="/admin-dashboard"
         )
 

@@ -34,6 +34,7 @@ It includes role-based workflows for Admin, Faculty, and Student users, along wi
 ## Project Structure
 
 smart-campus-intelligence-system/
+HEAD
 │
 ├── auth/           # Authentication logic
 ├── routes/         # API endpoints
@@ -46,6 +47,61 @@ smart-campus-intelligence-system/
 ├── database.py
 ├── requirements.txt
 └── .env.example
+|-- app.py
+|-- database.py
+|-- requirements.txt
+|-- api-test.http
+|-- auth/
+|   |-- auth_middleware.py
+|   `-- auth_routes.py
+|-- routes/
+|   |-- admin_dashboard_routes.py
+|   |-- admin_routes.py
+|   |-- attendance_routes.py
+|   |-- faculty_dashboard_routes.py
+|   |-- faculty_routes.py
+|   |-- marks_routes.py
+|   |-- mock_routes.py
+|   |-- prediction_routes.py
+|   |-- readiness_routes.py
+|   |-- skills_routes.py
+|   |-- student_routes.py
+|   |-- student_skill_routes.py
+|   `-- subject_routes.py
+|-- services/
+|   |-- admin_dashboard_service.py
+|   |-- admin_service.py
+|   |-- attendance_service.py
+|   |-- faculty_dashboard_service.py
+|   |-- marks_service.py
+|   |-- mock_service.py
+|   |-- prediction_service.py
+|   |-- readiness_service.py
+|   |-- skills_service.py
+|   |-- student_dashboard_service.py
+|   |-- student_service.py
+|   |-- student_skill_service.py
+|   `-- subject_service.py
+|-- static/
+|   |-- admin.js
+|   |-- auth.js
+|   |-- faculty.js
+|   |-- shared.js
+|   |-- student.js
+|   `-- style.css
+|-- templates/
+|   |-- dashboard_admin.html
+|   |-- dashboard_faculty.html
+|   |-- dashboard_student.html
+|   |-- login.html
+|   |-- register.html
+|   |-- student_profile.html
+|   |-- student_progress.html
+|   `-- student_skills.html
+`-- utils/
+    |-- response.py
+    `-- validators.py
+```
 
 ## How It Works
 

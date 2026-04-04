@@ -10,23 +10,30 @@ from services.goals_service import (
     update_goal, delete_goal, get_milestones, add_milestone,
     toggle_milestone, get_student_badges, get_goal_summary,
 )
+from services.student_service import get_student_record_by_user_id
 from utils.response import success_response, error_response
 
 goals_bp = Blueprint("goals", __name__, url_prefix="/api/goals")
 
 
 def _student_id():
-    """Extract student_id from JWT payload attached by token_required."""
-    return request.user.get("id")  # type: ignore
+    user_id = request.user.get("user_id")  # type: ignore[attr-defined]
+    student = get_student_record_by_user_id(user_id)
+    if not student:
+        return None
+    return student["id"]
 
 
 # ── Goals CRUD ────────────────────────────────────────────────────────────────
 
 @goals_bp.route("/", methods=["GET"])
 @token_required
+@role_required("Student")
 def list_goals():
     """GET /api/goals/?status=active  – list goals, optionally filtered."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     status = request.args.get("status")
     goals = get_student_goals(sid, status)
     return success_response(goals)
@@ -34,9 +41,12 @@ def list_goals():
 
 @goals_bp.route("/", methods=["POST"])
 @token_required
+@role_required("Student")
 def create():
     """POST /api/goals/  – create a new goal."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     data = request.get_json() or {}
     result = create_goal(sid, data)
     if "error" in result:
@@ -46,9 +56,12 @@ def create():
 
 @goals_bp.route("/<int:goal_id>", methods=["PUT"])
 @token_required
+@role_required("Student")
 def update(goal_id):
     """PUT /api/goals/<id>  – update goal metadata."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     data = request.get_json() or {}
     result = update_goal(goal_id, sid, data)
     if "error" in result:
@@ -58,9 +71,12 @@ def update(goal_id):
 
 @goals_bp.route("/<int:goal_id>/progress", methods=["PATCH"])
 @token_required
+@role_required("Student")
 def update_progress(goal_id):
     """PATCH /api/goals/<id>/progress  – update current_value."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     data = request.get_json() or {}
     current_value = data.get("current_value")
     if current_value is None:
@@ -77,9 +93,12 @@ def update_progress(goal_id):
 
 @goals_bp.route("/<int:goal_id>", methods=["DELETE"])
 @token_required
+@role_required("Student")
 def delete(goal_id):
     """DELETE /api/goals/<id>  – delete a goal."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     result = delete_goal(goal_id, sid)
     if "error" in result:
         return error_response(result["error"], 404)
@@ -90,18 +109,24 @@ def delete(goal_id):
 
 @goals_bp.route("/summary", methods=["GET"])
 @token_required
+@role_required("Student")
 def summary():
     """GET /api/goals/summary  – stats + badges for the current user."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     data = get_goal_summary(sid)
     return success_response(data)
 
 
 @goals_bp.route("/badges", methods=["GET"])
 @token_required
+@role_required("Student")
 def badges():
     """GET /api/goals/badges  – list badges earned by the current user."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     return success_response(get_student_badges(sid))
 
 
@@ -109,17 +134,23 @@ def badges():
 
 @goals_bp.route("/<int:goal_id>/milestones", methods=["GET"])
 @token_required
+@role_required("Student")
 def list_milestones(goal_id):
     """GET /api/goals/<id>/milestones"""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     return success_response(get_milestones(goal_id, sid))
 
 
 @goals_bp.route("/<int:goal_id>/milestones", methods=["POST"])
 @token_required
+@role_required("Student")
 def add_ms(goal_id):
     """POST /api/goals/<id>/milestones  – add a milestone."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     data = request.get_json() or {}
     title = (data.get("title") or "").strip()
     if not title:
@@ -132,9 +163,12 @@ def add_ms(goal_id):
 
 @goals_bp.route("/milestones/<int:milestone_id>/toggle", methods=["PATCH"])
 @token_required
+@role_required("Student")
 def toggle_ms(milestone_id):
     """PATCH /api/goals/milestones/<id>/toggle  – check/uncheck a milestone."""
     sid = _student_id()
+    if sid is None:
+        return error_response("Student not found", 404)
     result = toggle_milestone(milestone_id, sid)
     if "error" in result:
         return error_response(result["error"], 404)

@@ -4,6 +4,48 @@ _DEPARTMENT_SCHEMA_READY = False
 _STUDENT_SCHEMA_READY = False
 
 
+def normalize_roll_number(roll_number):
+    cleaned_roll_number = (roll_number or "").strip().upper()
+    return cleaned_roll_number
+
+
+def ensure_roll_number_available(roll_number, connection=None, exclude_student_id=None):
+    normalized_roll_number = normalize_roll_number(roll_number)
+
+    if not normalized_roll_number:
+        return None
+
+    conn = connection or get_db_connection()
+    cur = conn.cursor()
+
+    ensure_student_table_consistency(conn)
+
+    query = """
+        SELECT id
+        FROM students
+        WHERE LOWER(COALESCE(roll_number, '')) = LOWER(%s)
+    """
+    params = [normalized_roll_number]
+
+    if exclude_student_id is not None:
+        query += " AND id <> %s"
+        params.append(exclude_student_id)
+
+    cur.execute(query, tuple(params))
+    existing = cur.fetchone()
+
+    if connection is None:
+        cur.close()
+        conn.close()
+    else:
+        cur.close()
+
+    if existing:
+        raise ValueError(f"Roll number {normalized_roll_number} is already assigned to another student")
+
+    return normalized_roll_number
+
+
 def ensure_department_table_consistency(connection=None):
     global _DEPARTMENT_SCHEMA_READY
 
@@ -99,6 +141,7 @@ def ensure_student_table_consistency(connection=None):
             id SERIAL PRIMARY KEY,
             name VARCHAR(100),
             email VARCHAR(100) UNIQUE,
+            roll_number VARCHAR(50),
             department VARCHAR(100),
             user_id INTEGER
         );
@@ -107,6 +150,7 @@ def ensure_student_table_consistency(connection=None):
 
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS name VARCHAR(100)")
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS email VARCHAR(100)")
+    cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS roll_number VARCHAR(50)")
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS department VARCHAR(100)")
     cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id INTEGER")
 
@@ -153,9 +197,10 @@ def ensure_student_table_consistency(connection=None):
     _STUDENT_SCHEMA_READY = True
 
 
-def sync_student_record(user_id, name, email, department, connection=None):
+def sync_student_record(user_id, name, email, department, roll_number=None, connection=None):
     conn = connection or get_db_connection()
     cur = conn.cursor()
+    normalized_roll_number = normalize_roll_number(roll_number)
 
     ensure_student_table_consistency(conn)
     ensure_department_exists(department, conn)
@@ -172,31 +217,40 @@ def sync_student_record(user_id, name, email, department, connection=None):
     )
     existing = cur.fetchone()
 
+    if normalized_roll_number:
+        ensure_roll_number_available(
+            normalized_roll_number,
+            connection=conn,
+            exclude_student_id=existing[0] if existing else None,
+        )
+
     if existing:
         cur.execute(
             """
             UPDATE students
             SET name = %s,
                 email = %s,
+                roll_number = COALESCE(NULLIF(%s, ''), roll_number),
                 department = %s,
                 user_id = %s
             WHERE id = %s
-            RETURNING id
+            RETURNING id, roll_number
             """,
-            (name, email, department, user_id, existing[0]),
+            (name, email, normalized_roll_number, department, user_id, existing[0]),
         )
     else:
         cur.execute(
             """
-            INSERT INTO students (name, email, department, user_id)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id
+            INSERT INTO students (name, email, roll_number, department, user_id)
+            VALUES (%s, %s, NULLIF(%s, ''), %s, %s)
+            RETURNING id, roll_number
             """,
-            (name, email, department, user_id),
+            (name, email, normalized_roll_number, department, user_id),
         )
 
     result = cur.fetchone()
     student_id = result[0] if result else None
+    saved_roll_number = result[1] if result else normalized_roll_number
 
     if connection is None:
         conn.commit()
@@ -210,6 +264,7 @@ def sync_student_record(user_id, name, email, department, connection=None):
         "user_id": user_id,
         "name": name,
         "email": email,
+        "roll_number": saved_roll_number,
         "department": department,
     }
 
@@ -247,6 +302,7 @@ def fetch_all_students():
             s.id,
             COALESCE(NULLIF(s.name, ''), u.name) AS name,
             COALESCE(NULLIF(s.email, ''), u.email) AS email,
+            COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
             COALESCE(NULLIF(s.department, ''), 'Not Assigned') AS department
         FROM students s
         LEFT JOIN users u ON s.user_id = u.id
@@ -261,7 +317,8 @@ def fetch_all_students():
             "id": row[0],
             "name": row[1],
             "email": row[2],
-            "department": row[3]
+            "roll_number": row[3],
+            "department": row[4]
         })
 
     cur.close()
@@ -280,6 +337,7 @@ def get_student_record_by_user_id(user_id):
             s.id,
             COALESCE(NULLIF(s.name, ''), u.name) AS name,
             COALESCE(NULLIF(s.email, ''), u.email) AS email,
+            COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
             COALESCE(s.department, 'Not Assigned') AS department
         FROM students s
         LEFT JOIN users u ON s.user_id = u.id
@@ -300,7 +358,8 @@ def get_student_record_by_user_id(user_id):
         "id": row[0],
         "name": row[1],
         "email": row[2],
-        "department": row[3],
+        "roll_number": row[3],
+        "department": row[4],
     }
 
 
@@ -314,6 +373,7 @@ def get_student_profile(student_id):
             s.id,
             COALESCE(NULLIF(s.name, ''), u.name) AS name,
             COALESCE(NULLIF(s.email, ''), u.email) AS email,
+            COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
             COALESCE(s.department, 'Not Assigned') AS department
         FROM students s
         LEFT JOIN users u ON s.user_id = u.id
@@ -334,5 +394,6 @@ def get_student_profile(student_id):
         "id": row[0],
         "name": row[1],
         "email": row[2],
-        "department": row[3],
+        "roll_number": row[3],
+        "department": row[4],
     }

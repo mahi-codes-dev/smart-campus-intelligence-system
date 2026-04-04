@@ -85,6 +85,8 @@ function getSelectedRoleOption() {
 function toggleDepartmentField() {
     const departmentField = document.getElementById("departmentField");
     const departmentInput = document.getElementById("department");
+    const rollNumberField = document.getElementById("rollNumberField");
+    const rollNumberInput = document.getElementById("rollNumber");
     const selectedRole = getSelectedRoleOption();
     const isStudent = (selectedRole?.dataset.roleName || "").toLowerCase() === "student";
 
@@ -92,11 +94,23 @@ function toggleDepartmentField() {
         departmentField.style.display = isStudent ? 'block' : 'none';
     }
 
+    if (rollNumberField) {
+        rollNumberField.style.display = isStudent ? 'block' : 'none';
+    }
+
     if (departmentInput) {
         if (isStudent) {
             departmentInput.placeholder = "Enter your department";
         } else {
             departmentInput.value = "";
+        }
+    }
+
+    if (rollNumberInput) {
+        if (isStudent) {
+            rollNumberInput.placeholder = "Enter your student roll number";
+        } else {
+            rollNumberInput.value = "";
         }
     }
 }
@@ -144,6 +158,8 @@ function validateRegistration() {
     const terms = document.getElementById("terms").checked;
     const departmentInput = document.getElementById("department");
     const department = departmentInput ? departmentInput.value.trim() : "";
+    const rollNumberInput = document.getElementById("rollNumber");
+    const rollNumber = rollNumberInput ? rollNumberInput.value.trim() : "";
     const roleOption = getSelectedRoleOption();
     const roleName = (roleOption?.dataset.roleName || "").toLowerCase();
 
@@ -188,6 +204,11 @@ function validateRegistration() {
         isValid = false;
     }
 
+    if (roleName === "student" && !rollNumber) {
+        showError("rollNumberError", "Roll number is required for students");
+        isValid = false;
+    }
+
     // Validate terms
     if (!terms) {
         showError("termsError", "You must accept the terms and conditions");
@@ -213,6 +234,8 @@ async function register() {
     const role = document.getElementById("role").value;
     const departmentInput = document.getElementById("department");
     const department = departmentInput ? departmentInput.value.trim() : "";
+    const rollNumberInput = document.getElementById("rollNumber");
+    const rollNumber = rollNumberInput ? rollNumberInput.value.trim() : "";
     const registerBtn = event.target;
 
     registerBtn.disabled = true;
@@ -228,6 +251,7 @@ async function register() {
                 password,
                 role_id: parseInt(role, 10),
                 department,
+                roll_number: rollNumber,
             })
         });
 
