@@ -29,6 +29,10 @@
                     <i class="fas fa-calendar-check nav-icon"></i>
                     <span>Attendance</span>
                 </li>
+                <li class="nav-item" onclick="focusFacultySection('classroomSection')">
+                    <i class="fas fa-people-group nav-icon"></i>
+                    <span>Classroom</span>
+                </li>
                 <li class="nav-item" onclick="focusFacultySection('marksSection')">
                     <i class="fas fa-pencil-alt nav-icon"></i>
                     <span>Marks</span>
@@ -161,6 +165,108 @@
                         <select class="form-control" id="facultyDepartmentFilter">
                             <option value="All">All Departments</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-premium" id="classroomSection" style="margin-bottom: 32px;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-people-group"></i>
+                        Classroom Workflow
+                    </h3>
+                    <span class="card-subtitle">Run attendance and marks entry for a subject roster in one place</span>
+                </div>
+                <div class="card-body">
+                    <div class="grid-2col" style="margin-bottom: 24px;">
+                        <div class="faculty-field">
+                            <label for="facultyClassSubjectFilter" class="form-label">Subject</label>
+                            <select class="form-control" id="facultyClassSubjectFilter"></select>
+                        </div>
+                        <div class="faculty-field">
+                            <label for="facultyClassDepartmentFilter" class="form-label">Department</label>
+                            <select class="form-control" id="facultyClassDepartmentFilter">
+                                <option value="All">All Departments</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-2col" style="margin-bottom: 24px;">
+                        <div class="faculty-field">
+                            <label for="facultyClassSearch" class="form-label">Search Roster</label>
+                            <input class="form-control" id="facultyClassSearch" type="search" placeholder="Search by name, email, or roll no...">
+                        </div>
+                        <div class="faculty-field">
+                            <label for="facultyClassExamType" class="form-label">Exam Type For Batch Marks</label>
+                            <input class="form-control" id="facultyClassExamType" type="text" placeholder="e.g. Midterm, Quiz 1, Internal Assessment">
+                        </div>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom: 24px;">
+                        <div class="stat-card stat-card-info">
+                            <div class="stat-content">
+                                <p class="stat-label">Selected Subject</p>
+                                <p class="stat-value" id="facultyClassSubjectName">--</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-primary">
+                            <div class="stat-content">
+                                <p class="stat-label">Roster Size</p>
+                                <p class="stat-value" id="facultyClassRosterCount">0</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-warning">
+                            <div class="stat-content">
+                                <p class="stat-label">Avg Attendance</p>
+                                <p class="stat-value" id="facultyClassAverageAttendance">0</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card stat-card-success">
+                            <div class="stat-content">
+                                <p class="stat-label">Avg Marks</p>
+                                <p class="stat-value" id="facultyClassAverageMarks">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Roll No.</th>
+                                    <th>Attendance %</th>
+                                    <th>Marks</th>
+                                    <th>Last Exam</th>
+                                    <th>Readiness</th>
+                                    <th>Risk</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="facultyClassRosterTable">
+                                <tr>
+                                    <td colspan="8" class="text-center">Select a subject to load the classroom roster.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
+                        <button class="btn btn-secondary" type="button" onclick="loadFacultyClassroom()">
+                            <i class="fas fa-rotate"></i>
+                            <span>Refresh Roster</span>
+                        </button>
+                        <button class="btn btn-primary" type="button" onclick="saveFacultyClassroomAttendance()">
+                            <i class="fas fa-calendar-check"></i>
+                            <span>Save Attendance Session</span>
+                        </button>
+                        <button class="btn btn-primary" type="button" onclick="saveFacultyClassroomMarks()">
+                            <i class="fas fa-pen"></i>
+                            <span>Save Marks Sheet</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -308,6 +414,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
             <!-- Faculty Management Forms -->
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; margin-top: 24px;">

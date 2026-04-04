@@ -6,6 +6,12 @@ function getFacultyState() {
             selectedStudentId: null,
             search: "",
             department: "All",
+            classroomSubjectId: "",
+            classroomDepartment: "All",
+            classroomSearch: "",
+            classroomRoster: [],
+            classroomSummary: null,
+            classroomSubject: null,
         };
     }
 
@@ -39,7 +45,7 @@ function showFacultyMessage(message, type = "success") {
 }
 
 function populateFacultySubjectOptions(subjects) {
-    ["attendanceSubject", "marksSubject"].forEach((selectId) => {
+    ["attendanceSubject", "marksSubject", "facultyClassSubjectFilter"].forEach((selectId) => {
         const select = document.getElementById(selectId);
         if (!select) {
             return;
@@ -63,6 +69,25 @@ function populateFacultySubjectOptions(subjects) {
 
 function populateFacultyDepartmentFilter(departments, selectedDepartment) {
     const filter = document.getElementById("facultyDepartmentFilter");
+    if (!filter) {
+        return;
+    }
+
+    const values = Array.from(new Set((departments || []).filter(Boolean))).sort();
+    filter.innerHTML = "";
+
+    ["All", ...values].forEach((department) => {
+        const option = document.createElement("option");
+        option.value = department;
+        option.innerText = department;
+        filter.appendChild(option);
+    });
+
+    filter.value = selectedDepartment && ["All", ...values].includes(selectedDepartment) ? selectedDepartment : "All";
+}
+
+function populateFacultyClassDepartmentFilter(departments, selectedDepartment) {
+    const filter = document.getElementById("facultyClassDepartmentFilter");
     if (!filter) {
         return;
     }
@@ -201,6 +226,77 @@ function renderFacultyRiskStudents(students) {
     });
 }
 
+function renderFacultyClassroom() {
+    const state = getFacultyState();
+    const body = document.getElementById("facultyClassRosterTable");
+    if (!body) {
+        return;
+    }
+
+    const subject = state.classroomSubject;
+    const summary = state.classroomSummary || {};
+
+    setText("facultyClassSubjectName", subject ? `${subject.name} (${subject.code})` : "--");
+    setText("facultyClassRosterCount", formatValue(state.classroomRoster.length));
+    setText("facultyClassAverageAttendance", formatValue(summary.average_attendance || 0));
+    setText("facultyClassAverageMarks", formatValue(summary.average_marks || 0));
+
+    body.innerHTML = "";
+
+    if (!state.classroomSubjectId) {
+        body.innerHTML = '<tr><td colspan="8" class="text-center">Select a subject to load the classroom roster.</td></tr>';
+        return;
+    }
+
+    if (!state.classroomRoster.length) {
+        body.innerHTML = '<tr><td colspan="8" class="text-center">No students found for the selected classroom filter.</td></tr>';
+        return;
+    }
+
+    state.classroomRoster.forEach((student) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${student.name || "--"}</td>
+            <td>${student.roll_number || "--"}</td>
+            <td>
+                <input
+                    class="form-control faculty-batch-input faculty-class-attendance"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="${student.attendance_percentage ?? ""}"
+                    data-student-id="${student.student_id}"
+                    aria-label="Attendance for ${student.name}"
+                >
+            </td>
+            <td>
+                <input
+                    class="form-control faculty-batch-input faculty-class-marks"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="${student.latest_marks ?? ""}"
+                    data-student-id="${student.student_id}"
+                    aria-label="Marks for ${student.name}"
+                >
+            </td>
+            <td>${student.latest_exam_type || "--"}</td>
+            <td>${formatValue(student.readiness_score || 0)}</td>
+            <td>${student.risk_status || "--"}</td>
+            <td>
+                <button
+                    type="button"
+                    class="primary-button faculty-table-button"
+                    onclick="selectFacultyStudent(${student.student_id}, 'marksSection')"
+                >
+                    Open
+                </button>
+            </td>
+        `;
+        body.appendChild(row);
+    });
+}
+
 function renderFacultyDetailSummary(detail) {
     const list = document.getElementById("facultyDetailSummary");
     if (!list) {
@@ -297,6 +393,9 @@ function initializeFacultyControls() {
     const state = getFacultyState();
     const searchInput = document.getElementById("facultySearch");
     const departmentFilter = document.getElementById("facultyDepartmentFilter");
+    const classSearchInput = document.getElementById("facultyClassSearch");
+    const classDepartmentFilter = document.getElementById("facultyClassDepartmentFilter");
+    const classSubjectFilter = document.getElementById("facultyClassSubjectFilter");
 
     if (searchInput && !searchInput.dataset.bound) {
         searchInput.addEventListener("input", (event) => {
@@ -312,6 +411,84 @@ function initializeFacultyControls() {
             loadFacultyDashboard();
         });
         departmentFilter.dataset.bound = "true";
+    }
+
+    if (classSearchInput && !classSearchInput.dataset.bound) {
+        classSearchInput.addEventListener("input", (event) => {
+            state.classroomSearch = event.target.value.trim();
+            loadFacultyClassroom();
+        });
+        classSearchInput.dataset.bound = "true";
+    }
+
+    if (classDepartmentFilter && !classDepartmentFilter.dataset.bound) {
+        classDepartmentFilter.addEventListener("change", (event) => {
+            state.classroomDepartment = event.target.value;
+            loadFacultyClassroom();
+        });
+        classDepartmentFilter.dataset.bound = "true";
+    }
+
+    if (classSubjectFilter && !classSubjectFilter.dataset.bound) {
+        classSubjectFilter.addEventListener("change", (event) => {
+            state.classroomSubjectId = event.target.value;
+            const selectedSubject = state.subjects.find(
+                (subject) => String(subject.id) === String(state.classroomSubjectId)
+            );
+
+            if (selectedSubject) {
+                state.classroomDepartment = selectedSubject.department || "All";
+            }
+
+            populateFacultyClassDepartmentFilter(
+                (state.students || []).map((student) => student.department),
+                state.classroomDepartment
+            );
+            loadFacultyClassroom();
+        });
+        classSubjectFilter.dataset.bound = "true";
+    }
+}
+
+async function loadFacultyClassroom() {
+    const state = getFacultyState();
+
+    if (!state.classroomSubjectId) {
+        state.classroomRoster = [];
+        state.classroomSummary = null;
+        state.classroomSubject = null;
+        renderFacultyClassroom();
+        return;
+    }
+
+    try {
+        const params = new URLSearchParams({ subject_id: state.classroomSubjectId });
+
+        if (state.classroomDepartment && state.classroomDepartment !== "All") {
+            params.set("department", state.classroomDepartment);
+        }
+
+        if (state.classroomSearch) {
+            params.set("search", state.classroomSearch);
+        }
+
+        const classroom = await fetchJson("/faculty/classroom?" + params.toString());
+        state.classroomRoster = classroom.roster || [];
+        state.classroomSummary = classroom.summary || {};
+        state.classroomSubject = classroom.subject || null;
+
+        if (classroom.department) {
+            state.classroomDepartment = classroom.department;
+            populateFacultyClassDepartmentFilter(
+                (state.students || []).map((student) => student.department),
+                state.classroomDepartment
+            );
+        }
+
+        renderFacultyClassroom();
+    } catch (error) {
+        console.error(error);
+        showFacultyMessage(error.message || "Unable to load classroom roster.", "error");
     }
 }
 
@@ -355,7 +532,12 @@ async function loadFacultyDashboard() {
         setText("facultySubjectCount", state.subjects.length);
 
         populateFacultyDepartmentFilter(summaryData.summary?.departments || [], state.department);
+        populateFacultyClassDepartmentFilter(summaryData.summary?.departments || [], state.classroomDepartment);
         populateFacultySubjectOptions(state.subjects);
+        const classSubjectFilter = document.getElementById("facultyClassSubjectFilter");
+        if (classSubjectFilter && state.classroomSubjectId) {
+            classSubjectFilter.value = state.classroomSubjectId;
+        }
         renderFacultyStudents(state.students);
         renderFacultyRiskStudents(summaryData.at_risk_students || []);
 
@@ -372,6 +554,17 @@ async function loadFacultyDashboard() {
         } else {
             setFacultyStudentSelection(null);
         }
+
+        if (!state.classroomSubjectId && state.subjects.length) {
+            state.classroomSubjectId = String(state.subjects[0].id);
+            state.classroomDepartment = state.subjects[0].department || "All";
+
+            if (classSubjectFilter) {
+                classSubjectFilter.value = state.classroomSubjectId;
+            }
+        }
+
+        await loadFacultyClassroom();
 
         setFacultyActionState("Ready");
     } catch (error) {
@@ -505,5 +698,68 @@ async function submitMockTest(event) {
     } catch (error) {
         console.error(error);
         showFacultyMessage(error.message || "Unable to save mock test.", "error");
+    }
+}
+
+function collectFacultyBatchEntries(selector, valueKey) {
+    return Array.from(document.querySelectorAll(selector))
+        .map((input) => ({
+            student_id: Number(input.dataset.studentId),
+            [valueKey]: input.value.trim(),
+        }))
+        .filter((entry) => entry[valueKey] !== "");
+}
+
+async function saveFacultyClassroomAttendance() {
+    const state = getFacultyState();
+
+    try {
+        if (!state.classroomSubjectId) {
+            throw new Error("Select a classroom subject first.");
+        }
+
+        const entries = collectFacultyBatchEntries(".faculty-class-attendance", "attendance_percentage");
+        const data = await fetchJson("/faculty/classroom/attendance", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                subject_id: Number(state.classroomSubjectId),
+                entries,
+            }),
+        });
+
+        await loadFacultyClassroom();
+        showFacultyMessage(data.message || "Class attendance saved successfully.");
+    } catch (error) {
+        console.error(error);
+        showFacultyMessage(error.message || "Unable to save class attendance.", "error");
+    }
+}
+
+async function saveFacultyClassroomMarks() {
+    const state = getFacultyState();
+
+    try {
+        if (!state.classroomSubjectId) {
+            throw new Error("Select a classroom subject first.");
+        }
+
+        const examType = document.getElementById("facultyClassExamType")?.value.trim() || "";
+        const entries = collectFacultyBatchEntries(".faculty-class-marks", "marks");
+        const data = await fetchJson("/faculty/classroom/marks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                subject_id: Number(state.classroomSubjectId),
+                exam_type: examType,
+                entries,
+            }),
+        });
+
+        await loadFacultyClassroom();
+        showFacultyMessage(data.message || "Class marks saved successfully.");
+    } catch (error) {
+        console.error(error);
+        showFacultyMessage(error.message || "Unable to save class marks.", "error");
     }
 }

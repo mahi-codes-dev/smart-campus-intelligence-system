@@ -143,6 +143,35 @@ def get_all_subjects():
     ]
 
 
+def get_subject_by_id(subject_id):
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    ensure_subject_table_consistency(conn)
+    cur.execute(
+        """
+        SELECT id, name, code, department
+        FROM subjects
+        WHERE id = %s
+        """,
+        (subject_id,),
+    )
+    row = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    if not row:
+        return None
+
+    return {
+        "id": row[0],
+        "name": row[1],
+        "code": row[2],
+        "department": row[3],
+    }
+
+
 def delete_subject(subject_id):
     conn = get_db_connection()
     cur = conn.cursor()
