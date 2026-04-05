@@ -33,6 +33,10 @@
                     <i class="fas fa-people-group nav-icon"></i>
                     <span>Classroom</span>
                 </li>
+                <li class="nav-item" onclick="focusFacultySection('interventionSection')">
+                    <i class="fas fa-hand-holding-heart nav-icon"></i>
+                    <span>Interventions</span>
+                </li>
                 <li class="nav-item" onclick="focusFacultySection('marksSection')">
                     <i class="fas fa-pencil-alt nav-icon"></i>
                     <span>Marks</span>
@@ -138,6 +142,16 @@
                         <p class="stat-value" id="facultySubjectCount">0</p>
                     </div>
                 </div>
+
+                <div class="stat-card stat-card-danger">
+                    <div class="stat-icon">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </div>
+                    <div class="stat-content">
+                        <p class="stat-label">Open Support Cases</p>
+                        <p class="stat-value" id="facultyOpenCaseCount">0</p>
+                    </div>
+                </div>
             </div>
 
             <!-- Search and Filter Section -->
@@ -165,6 +179,61 @@
                         <select class="form-control" id="facultyDepartmentFilter">
                             <option value="All">All Departments</option>
                         </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card card-premium" id="interventionSection" style="margin-bottom: 32px;">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-hand-holding-heart"></i>
+                        Intervention Hub
+                    </h3>
+                    <span class="card-subtitle">Track who needs outreach, follow-up, and academic recovery planning</span>
+                </div>
+                <div class="card-body">
+                    <div class="intervention-kpi-grid" style="margin-bottom: 24px;">
+                        <div class="intervention-kpi">
+                            <span>Focus Students</span>
+                            <strong id="facultyInterventionFocusStudents">0</strong>
+                        </div>
+                        <div class="intervention-kpi">
+                            <span>Open Cases</span>
+                            <strong id="facultyInterventionOpenCases">0</strong>
+                        </div>
+                        <div class="intervention-kpi">
+                            <span>Overdue Follow-ups</span>
+                            <strong id="facultyInterventionOverdueCases">0</strong>
+                        </div>
+                        <div class="intervention-kpi">
+                            <span>Due This Week</span>
+                            <strong id="facultyInterventionDueThisWeek">0</strong>
+                        </div>
+                        <div class="intervention-kpi">
+                            <span>Need First Case</span>
+                            <strong id="facultyInterventionStudentsWithoutCase">0</strong>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Department</th>
+                                    <th>Focus</th>
+                                    <th>Open Cases</th>
+                                    <th>Latest Status</th>
+                                    <th>Due Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="facultyInterventionWatchlistTable">
+                                <tr>
+                                    <td colspan="7" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading intervention watchlist...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -322,11 +391,13 @@
                                     <th>Department</th>
                                     <th>Average Marks</th>
                                     <th>Status</th>
+                                    <th>Support Cases</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="facultyRiskTable">
                                 <tr>
-                                    <td colspan="5" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading at-risk students...</td>
+                                    <td colspan="7" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading at-risk students...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -411,6 +482,62 @@
                             <ul class="insight-list custom-scrollbar" id="facultyDetailMockList">
                                 <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Select a student to view mock scores</li>
                             </ul>
+                        </div>
+                    </div>
+
+                    <div class="grid-2col" style="margin-top: 24px;">
+                        <div>
+                            <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Log Support Intervention</h4>
+                            <form class="faculty-form" onsubmit="submitFacultyIntervention(event)">
+                                <div class="faculty-field">
+                                    <label for="interventionType" class="form-label">Intervention Type</label>
+                                    <select class="form-control" id="interventionType">
+                                        <option value="academic">Academic</option>
+                                        <option value="attendance">Attendance</option>
+                                        <option value="mock">Mock Practice</option>
+                                        <option value="skills">Skills</option>
+                                        <option value="wellbeing">Wellbeing</option>
+                                        <option value="placement">Placement</option>
+                                    </select>
+                                </div>
+                                <div class="grid-2col" style="margin-bottom: 0;">
+                                    <div class="faculty-field">
+                                        <label for="interventionPriority" class="form-label">Priority</label>
+                                        <select class="form-control" id="interventionPriority">
+                                            <option value="medium">Medium</option>
+                                            <option value="high">High</option>
+                                            <option value="urgent">Urgent</option>
+                                            <option value="low">Low</option>
+                                        </select>
+                                    </div>
+                                    <div class="faculty-field">
+                                        <label for="interventionDueDate" class="form-label">Follow-up Due Date</label>
+                                        <input class="form-control" id="interventionDueDate" type="date">
+                                    </div>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="interventionSummary" class="form-label">Summary</label>
+                                    <textarea class="form-control faculty-textarea" id="interventionSummary" placeholder="What is the issue and why does this student need support?"></textarea>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="interventionActionPlan" class="form-label">Action Plan</label>
+                                    <textarea class="form-control faculty-textarea" id="interventionActionPlan" placeholder="What should happen next: extra classes, check-in, subject practice, attendance recovery plan, etc."></textarea>
+                                </div>
+                                <label class="advanced-checkbox" style="margin-bottom: 20px;">
+                                    <input id="interventionNotifyStudent" type="checkbox" checked>
+                                    <span class="checkbox-label">Notify student about this support plan</span>
+                                </label>
+                                <button class="btn btn-primary btn-block" type="submit">
+                                    <i class="fas fa-save"></i>
+                                    <span>Save Support Case</span>
+                                </button>
+                            </form>
+                        </div>
+                        <div>
+                            <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Support History</h4>
+                            <div class="intervention-history" id="facultyInterventionHistory">
+                                <div class="intervention-empty">Select a student to review support actions.</div>
+                            </div>
                         </div>
                     </div>
                 </div>
