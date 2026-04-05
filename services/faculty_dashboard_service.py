@@ -1,3 +1,5 @@
+from datetime import date, datetime, timedelta
+
 from database import get_db_connection
 from services.attendance_service import (
     ensure_attendance_table_consistency,
@@ -11,10 +13,480 @@ from services.marks_service import (
     save_marks,
 )
 from services.mock_service import get_mock_scores, get_mock_trend
+from services.realtime_notification_service import RealtimeNotificationService
 from services.readiness_service import get_all_scored_students
 from services.student_dashboard_service import get_student_dashboard_data
-from services.student_service import get_all_departments, get_student_profile
+from services.student_service import (
+    ensure_student_table_consistency,
+    get_all_departments,
+    get_student_profile,
+)
 from services.subject_service import get_subject_by_id
+
+_INTERVENTION_SCHEMA_READY = False
+
+
+def ensure_intervention_table_consistency(connection=None):
+    global _INTERVENTION_SCHEMA_READY
+
+    if _INTERVENTION_SCHEMA_READY:
+        return
+
+    conn = connection or get_db_connection()
+    cur = conn.cursor()
+
+    ensure_student_table_consistency(conn)
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS student_interventions (
+            id SERIAL PRIMARY KEY,
+            student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+            faculty_user_id INTEGER,
+            intervention_type VARCHAR(50) NOT NULL DEFAULT 'academic',
+            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+            status VARCHAR(20) NOT NULL DEFAULT 'open',
+            summary TEXT NOT NULL,
+            action_plan TEXT,
+            due_date DATE,
+            notified_student BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            resolved_at TIMESTAMP
+        )
+        """
+    )
+
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS faculty_user_id INTEGER")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS intervention_type VARCHAR(50) NOT NULL DEFAULT 'academic'")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'medium'")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'open'")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS summary TEXT")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS action_plan TEXT")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS due_date DATE")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS notified_student BOOLEAN NOT NULL DEFAULT FALSE")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP")
+
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_student_id ON student_interventions(student_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_status ON student_interventions(status)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_due_date ON student_interventions(due_date)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_created_at ON student_interventions(created_at DESC)")
+
+    if connection is None:
+        conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        cur.close()
+
+    _INTERVENTION_SCHEMA_READY = True
+
+
+def _normalize_intervention_type(value):
+    normalized = str(value or "academic").strip().lower()
+    if normalized not in {"academic", "attendance", "mock", "skills", "wellbeing", "placement"}:
+        raise ValueError("intervention_type must be academic, attendance, mock, skills, wellbeing, or placement")
+    return normalized
+
+
+def _normalize_intervention_priority(value):
+    normalized = str(value or "medium").strip().lower()
+    if normalized not in {"low", "medium", "high", "urgent"}:
+        raise ValueError("priority must be low, medium, high, or urgent")
+    return normalized
+
+
+def _normalize_intervention_status(value):
+    normalized = str(value or "open").strip().lower()
+    if normalized not in {"open", "in_progress", "closed"}:
+        raise ValueError("status must be open, in_progress, or closed")
+    return normalized
+
+
+def _serialize_intervention_row(row):
+    return {
+        "id": row[0],
+        "student_id": row[1],
+        "faculty_user_id": row[2],
+        "faculty_name": row[3] or "Faculty",
+        "intervention_type": row[4],
+        "priority": row[5],
+        "status": row[6],
+        "summary": row[7],
+        "action_plan": row[8],
+        "due_date": row[9].isoformat() if row[9] else None,
+        "notified_student": bool(row[10]),
+        "created_at": row[11].isoformat() if row[11] else None,
+        "updated_at": row[12].isoformat() if row[12] else None,
+        "resolved_at": row[13].isoformat() if row[13] else None,
+    }
+
+
+def _get_intervention_maps(student_ids):
+    if not student_ids:
+        return {}, {}
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    ensure_intervention_table_consistency(conn)
+
+    cur.execute(
+        """
+        SELECT DISTINCT ON (si.student_id)
+            si.id,
+            si.student_id,
+            si.faculty_user_id,
+            COALESCE(u.name, u.email, 'Faculty') AS faculty_name,
+            si.intervention_type,
+            si.priority,
+            si.status,
+            si.summary,
+            si.action_plan,
+            si.due_date,
+            si.notified_student,
+            si.created_at,
+            si.updated_at,
+            si.resolved_at
+        FROM student_interventions si
+        LEFT JOIN users u ON si.faculty_user_id = u.id
+        WHERE si.student_id = ANY(%s)
+        ORDER BY si.student_id, si.created_at DESC, si.id DESC
+        """,
+        (student_ids,),
+    )
+    latest_map = {
+        row[1]: _serialize_intervention_row(row)
+        for row in cur.fetchall()
+    }
+
+    cur.execute(
+        """
+        SELECT
+            student_id,
+            COUNT(*) AS total_cases,
+            COUNT(*) FILTER (WHERE status <> 'closed') AS open_case_count
+        FROM student_interventions
+        WHERE student_id = ANY(%s)
+        GROUP BY student_id
+        """,
+        (student_ids,),
+    )
+    count_map = {
+        row[0]: {
+            "total_cases": int(row[1] or 0),
+            "open_case_count": int(row[2] or 0),
+        }
+        for row in cur.fetchall()
+    }
+
+    cur.close()
+    conn.close()
+    return latest_map, count_map
+
+
+def _get_intervention_focus(student):
+    focuses = []
+
+    if float(student.get("attendance") or 0) < 75:
+        focuses.append("attendance recovery")
+    if float(student.get("marks") or 0) < 60:
+        focuses.append("marks recovery")
+    if float(student.get("mock_score") or 0) < 60:
+        focuses.append("mock practice")
+    if int(student.get("skills_count") or 0) < 3:
+        focuses.append("skill-building")
+
+    if not focuses:
+        return "general academic follow-up"
+
+    return ", ".join(focuses[:2])
+
+
+def _hydrate_student_intervention_fields(students):
+    latest_map, count_map = _get_intervention_maps([student["student_id"] for student in students])
+
+    for student in students:
+        latest = latest_map.get(student["student_id"])
+        counts = count_map.get(student["student_id"], {})
+        student["open_case_count"] = counts.get("open_case_count", 0)
+        student["total_case_count"] = counts.get("total_cases", 0)
+        student["latest_intervention"] = latest
+        student["intervention_status"] = latest["status"] if latest else "no_case"
+        student["intervention_priority"] = latest["priority"] if latest else None
+        student["intervention_due_date"] = latest["due_date"] if latest else None
+        student["recommended_focus"] = _get_intervention_focus(student)
+
+
+def get_student_interventions(student_id, limit=10):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    ensure_intervention_table_consistency(conn)
+
+    cur.execute(
+        """
+        SELECT
+            si.id,
+            si.student_id,
+            si.faculty_user_id,
+            COALESCE(u.name, u.email, 'Faculty') AS faculty_name,
+            si.intervention_type,
+            si.priority,
+            si.status,
+            si.summary,
+            si.action_plan,
+            si.due_date,
+            si.notified_student,
+            si.created_at,
+            si.updated_at,
+            si.resolved_at
+        FROM student_interventions si
+        LEFT JOIN users u ON si.faculty_user_id = u.id
+        WHERE si.student_id = %s
+        ORDER BY si.created_at DESC, si.id DESC
+        LIMIT %s
+        """,
+        (student_id, limit),
+    )
+    rows = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return [_serialize_intervention_row(row) for row in rows]
+
+
+def create_student_intervention(student_id, faculty_user_id, payload):
+    profile = get_student_profile(student_id)
+    if not profile:
+        raise ValueError("Student not found")
+
+    summary = " ".join(str(payload.get("summary") or "").strip().split())
+    if not summary:
+        raise ValueError("Intervention summary is required")
+
+    action_plan = " ".join(str(payload.get("action_plan") or "").strip().split())
+    intervention_type = _normalize_intervention_type(payload.get("intervention_type"))
+    priority = _normalize_intervention_priority(payload.get("priority"))
+    status = _normalize_intervention_status(payload.get("status") or "open")
+    notify_student = bool(payload.get("notify_student", True))
+
+    due_date_value = payload.get("due_date")
+    parsed_due_date = None
+    if due_date_value:
+        try:
+            parsed_due_date = date.fromisoformat(str(due_date_value))
+        except ValueError as exc:
+            raise ValueError("due_date must use YYYY-MM-DD format") from exc
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    ensure_intervention_table_consistency(conn)
+
+    cur.execute(
+        """
+        INSERT INTO student_interventions (
+            student_id,
+            faculty_user_id,
+            intervention_type,
+            priority,
+            status,
+            summary,
+            action_plan,
+            due_date,
+            notified_student,
+            resolved_at,
+            created_at,
+            updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        RETURNING id
+        """,
+        (
+            int(student_id),
+            int(faculty_user_id),
+            intervention_type,
+            priority,
+            status,
+            summary,
+            action_plan or None,
+            parsed_due_date,
+            notify_student and bool(profile.get("user_id")),
+            datetime.now() if status == "closed" else None,
+        ),
+    )
+    intervention_id = cur.fetchone()[0]
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if notify_student and profile.get("user_id"):
+        due_copy = f" Follow-up due on {parsed_due_date.isoformat()}." if parsed_due_date else ""
+        RealtimeNotificationService.ensure_notifications_table()
+        RealtimeNotificationService.create_notification(
+            int(profile["user_id"]),
+            "Faculty support plan added",
+            f"A faculty support action was added for you: {summary}.{due_copy}",
+            notification_type=RealtimeNotificationService.TYPE_ALERT,
+            priority=priority if priority in {"low", "medium", "high", "urgent"} else RealtimeNotificationService.PRIORITY_MEDIUM,
+            action_url="/notifications",
+            metadata={
+                "student_id": int(student_id),
+                "intervention_id": intervention_id,
+                "intervention_type": intervention_type,
+            },
+        )
+
+    created = get_student_interventions(student_id, limit=10)
+    return next((item for item in created if item["id"] == intervention_id), None)
+
+
+def update_student_intervention_status(intervention_id, status, faculty_user_id=None):
+    normalized_status = _normalize_intervention_status(status)
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    ensure_intervention_table_consistency(conn)
+
+    cur.execute(
+        """
+        SELECT student_id
+        FROM student_interventions
+        WHERE id = %s
+        """,
+        (intervention_id,),
+    )
+    row = cur.fetchone()
+
+    if not row:
+        cur.close()
+        conn.close()
+        raise ValueError("Intervention not found")
+
+    cur.execute(
+        """
+        UPDATE student_interventions
+        SET
+            status = %s,
+            faculty_user_id = COALESCE(%s, faculty_user_id),
+            updated_at = CURRENT_TIMESTAMP,
+            resolved_at = CASE
+                WHEN %s = 'closed' THEN CURRENT_TIMESTAMP
+                ELSE NULL
+            END
+        WHERE id = %s
+        """,
+        (normalized_status, faculty_user_id, normalized_status, intervention_id),
+    )
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    updated = get_student_interventions(row[0], limit=10)
+    return next((item for item in updated if item["id"] == intervention_id), None)
+
+
+def get_intervention_watchlist(search=None, department=None, limit=8, students=None):
+    students = students or get_all_students_dashboard(
+        filter_status=None,
+        sort_order="asc",
+        search=search,
+        department=department,
+    )
+
+    focus_students = [
+        student for student in students
+        if float(student.get("final_score") or 0) < 70
+        or float(student.get("attendance") or 0) < 75
+        or float(student.get("marks") or 0) < 60
+        or float(student.get("mock_score") or 0) < 60
+    ]
+
+    def _watchlist_sort_key(student):
+        latest = student.get("latest_intervention") or {}
+        due_date_value = latest.get("due_date") or "9999-12-31"
+        no_case = 0 if student.get("open_case_count", 0) == 0 else 1
+        return (
+            no_case,
+            float(student.get("final_score") or 0),
+            due_date_value,
+            student.get("name") or "",
+        )
+
+    focus_students.sort(key=_watchlist_sort_key)
+
+    results = []
+    for student in focus_students[:limit]:
+        latest = student.get("latest_intervention") or {}
+        results.append({
+            "student_id": student["student_id"],
+            "name": student["name"],
+            "roll_number": student.get("roll_number"),
+            "department": student["department"],
+            "readiness_score": student["final_score"],
+            "risk_status": student["risk_status"],
+            "recommended_focus": student["recommended_focus"],
+            "open_case_count": student.get("open_case_count", 0),
+            "latest_status": latest.get("status") or "no_case",
+            "latest_priority": latest.get("priority"),
+            "due_date": latest.get("due_date"),
+            "latest_summary": latest.get("summary"),
+        })
+
+    return results
+
+
+def get_intervention_summary(search=None, department=None, students=None):
+    students = students or get_all_students_dashboard(
+        filter_status=None,
+        sort_order="asc",
+        search=search,
+        department=department,
+    )
+    focus_students = [
+        student for student in students
+        if float(student.get("final_score") or 0) < 70
+        or float(student.get("attendance") or 0) < 75
+        or float(student.get("marks") or 0) < 60
+        or float(student.get("mock_score") or 0) < 60
+    ]
+
+    open_cases = 0
+    overdue_cases = 0
+    due_this_week = 0
+    students_without_case = 0
+    today = date.today()
+    week_end = today + timedelta(days=7)
+
+    for student in focus_students:
+        latest = student.get("latest_intervention") or {}
+        if int(student.get("open_case_count") or 0) == 0:
+            students_without_case += 1
+        else:
+            open_cases += int(student.get("open_case_count") or 0)
+
+        due_date_value = latest.get("due_date")
+        if latest.get("status") and latest.get("status") != "closed" and due_date_value:
+            try:
+                parsed_due = date.fromisoformat(due_date_value)
+            except ValueError:
+                parsed_due = None
+
+            if parsed_due and parsed_due < today:
+                overdue_cases += 1
+            elif parsed_due and today <= parsed_due <= week_end:
+                due_this_week += 1
+
+    return {
+        "focus_students": len(focus_students),
+        "open_cases": open_cases,
+        "overdue_cases": overdue_cases,
+        "due_this_week": due_this_week,
+        "students_without_case": students_without_case,
+    }
 
 
 def calculate_student_dashboard(student_id):
@@ -59,6 +531,7 @@ def get_all_students_dashboard(filter_status=None, sort_order=None, search=None,
             "trend": get_mock_trend(student["student_id"]),
         })
 
+    _hydrate_student_intervention_fields(results)
     return results
 
 
@@ -101,6 +574,16 @@ def get_faculty_dashboard_summary(search=None, department=None, filter_status=No
             "students_needing_attention_count": len(students_needing_attention),
             "departments": get_all_departments(),
         },
+        "intervention_summary": get_intervention_summary(
+            search=search,
+            department=department,
+            students=students,
+        ),
+        "intervention_watchlist": get_intervention_watchlist(
+            search=search,
+            department=department,
+            students=students,
+        ),
         "at_risk_students": at_risk_students[:10],
         "students_needing_attention": students_needing_attention[:10],
     }
@@ -129,6 +612,7 @@ def get_student_detail(student_id):
         "profile_summary": dashboard["profile_summary"],
         "subject_trends": dashboard.get("subject_trends", []),
         "marks_timeline": dashboard.get("marks_timeline", []),
+        "interventions": get_student_interventions(student_id),
     }
 
 

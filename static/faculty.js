@@ -12,6 +12,8 @@ function getFacultyState() {
             classroomRoster: [],
             classroomSummary: null,
             classroomSubject: null,
+            interventionSummary: null,
+            interventionWatchlist: [],
         };
     }
 
@@ -133,6 +135,10 @@ function setFacultyStudentSelection(student) {
             hidden.value = student ? student.student_id : "";
         }
     });
+
+    if (!student) {
+        renderFacultyInterventions([]);
+    }
 }
 
 function renderFacultyStudents(students) {
@@ -172,6 +178,7 @@ function renderFacultyStudents(students) {
         actionGroup.className = "faculty-action-group";
 
         [
+            ["Support Case", "interventionSection"],
             ["Manage Attendance", "attendanceSection"],
             ["Manage Marks", "marksSection"],
             ["Manage Mock Tests", "mockSection"],
@@ -221,6 +228,61 @@ function renderFacultyRiskStudents(students) {
             <td>${student.department || "--"}</td>
             <td>${formatValue(student.marks)}</td>
             <td>${student.status || "--"}</td>
+            <td>${formatValue(student.open_case_count || 0)}</td>
+            <td>
+                <button
+                    type="button"
+                    class="primary-button faculty-table-button"
+                    onclick="selectFacultyStudent(${student.student_id}, 'interventionSection')"
+                >
+                    Support
+                </button>
+            </td>
+        `;
+        body.appendChild(row);
+    });
+}
+
+function renderFacultyInterventionHub() {
+    const state = getFacultyState();
+    const summary = state.interventionSummary || {};
+    const body = document.getElementById("facultyInterventionWatchlistTable");
+
+    setText("facultyInterventionFocusStudents", formatValue(summary.focus_students || 0));
+    setText("facultyInterventionOpenCases", formatValue(summary.open_cases || 0));
+    setText("facultyInterventionOverdueCases", formatValue(summary.overdue_cases || 0));
+    setText("facultyInterventionDueThisWeek", formatValue(summary.due_this_week || 0));
+    setText("facultyInterventionStudentsWithoutCase", formatValue(summary.students_without_case || 0));
+
+    if (!body) {
+        return;
+    }
+
+    body.innerHTML = "";
+
+    if (!Array.isArray(state.interventionWatchlist) || !state.interventionWatchlist.length) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center">No support watchlist items for the current filter.</td></tr>';
+        return;
+    }
+
+    state.interventionWatchlist.forEach((student) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${student.name || "--"}<br><small>${student.roll_number || "--"}</small></td>
+            <td>${student.department || "--"}</td>
+            <td>${student.recommended_focus || "--"}</td>
+            <td>${formatValue(student.open_case_count || 0)}</td>
+            <td>${(student.latest_status || "no_case").replaceAll("_", " ")}</td>
+            <td>${student.due_date || "--"}</td>
+            <td>
+                <button
+                    type="button"
+                    class="primary-button faculty-table-button"
+                    onclick="selectFacultyStudent(${student.student_id}, 'interventionSection')"
+                >
+                    Open Support
+                </button>
+            </td>
         `;
         body.appendChild(row);
     });
@@ -318,6 +380,69 @@ function renderFacultyDetailSummary(detail) {
     });
 }
 
+function renderFacultyInterventions(items) {
+    const container = document.getElementById("facultyInterventionHistory");
+    if (!container) {
+        return;
+    }
+
+    container.innerHTML = "";
+
+    if (!Array.isArray(items) || !items.length) {
+        container.innerHTML = '<div class="intervention-empty">No support cases logged for this student yet.</div>';
+        return;
+    }
+
+    items.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "intervention-card";
+
+        const statusButtons = [];
+        if (item.status !== "in_progress") {
+            statusButtons.push(`
+                <button
+                    type="button"
+                    class="toggle-button faculty-table-button"
+                    onclick="updateFacultyInterventionStatus(${item.id}, 'in_progress')"
+                >
+                    Mark In Progress
+                </button>
+            `);
+        }
+        if (item.status !== "closed") {
+            statusButtons.push(`
+                <button
+                    type="button"
+                    class="primary-button faculty-table-button"
+                    onclick="updateFacultyInterventionStatus(${item.id}, 'closed')"
+                >
+                    Mark Closed
+                </button>
+            `);
+        }
+
+        card.innerHTML = `
+            <div class="intervention-card__header">
+                <div>
+                    <strong>${(item.intervention_type || "academic").replaceAll("_", " ")}</strong>
+                    <span class="intervention-chip intervention-chip--${item.priority || "medium"}">${item.priority || "medium"}</span>
+                    <span class="intervention-chip intervention-chip--status">${(item.status || "open").replaceAll("_", " ")}</span>
+                </div>
+                <small>${item.created_at ? new Date(item.created_at).toLocaleString() : "--"}</small>
+            </div>
+            <p>${item.summary || ""}</p>
+            <p><strong>Action plan:</strong> ${item.action_plan || "No action plan recorded."}</p>
+            <div class="intervention-card__meta">
+                <span>Faculty: ${item.faculty_name || "Faculty"}</span>
+                <span>Due: ${item.due_date || "--"}</span>
+                <span>${item.notified_student ? "Student notified" : "Student not notified"}</span>
+            </div>
+            <div class="faculty-action-group">${statusButtons.join("")}</div>
+        `;
+        container.appendChild(card);
+    });
+}
+
 function renderFacultyDetailList(items, listId, formatter, emptyText) {
     const list = document.getElementById(listId);
     if (!list) {
@@ -366,6 +491,7 @@ async function loadFacultyStudentDetail(studentId) {
             (item) => `${item.test_name}: ${formatValue(item.score)} (${item.date || "No date"})`,
             "No mock scores available."
         );
+        renderFacultyInterventions(detail.interventions || []);
     } catch (error) {
         console.error(error);
         showFacultyMessage(error.message || "Unable to load student detail.", "error");
@@ -530,16 +656,20 @@ async function loadFacultyDashboard() {
         setText("facultyAverageMarks", formatValue(summaryData.summary?.average_marks || 0));
         setText("facultyAtRiskCount", formatValue(summaryData.summary?.at_risk_count || 0));
         setText("facultySubjectCount", state.subjects.length);
+        setText("facultyOpenCaseCount", formatValue(summaryData.intervention_summary?.open_cases || 0));
 
         populateFacultyDepartmentFilter(summaryData.summary?.departments || [], state.department);
         populateFacultyClassDepartmentFilter(summaryData.summary?.departments || [], state.classroomDepartment);
         populateFacultySubjectOptions(state.subjects);
+        state.interventionSummary = summaryData.intervention_summary || {};
+        state.interventionWatchlist = summaryData.intervention_watchlist || [];
         const classSubjectFilter = document.getElementById("facultyClassSubjectFilter");
         if (classSubjectFilter && state.classroomSubjectId) {
             classSubjectFilter.value = state.classroomSubjectId;
         }
         renderFacultyStudents(state.students);
         renderFacultyRiskStudents(summaryData.at_risk_students || []);
+        renderFacultyInterventionHub();
 
         const selected = state.students.find(
             (student) => Number(student.student_id) === Number(state.selectedStudentId)
@@ -761,5 +891,80 @@ async function saveFacultyClassroomMarks() {
     } catch (error) {
         console.error(error);
         showFacultyMessage(error.message || "Unable to save class marks.", "error");
+    }
+}
+
+async function submitFacultyIntervention(event) {
+    event.preventDefault();
+
+    try {
+        const state = getFacultyState();
+        if (!state.selectedStudentId) {
+            throw new Error("Select a student before logging a support case.");
+        }
+
+        const interventionType = document.getElementById("interventionType")?.value || "academic";
+        const priority = document.getElementById("interventionPriority")?.value || "medium";
+        const dueDate = document.getElementById("interventionDueDate")?.value || "";
+        const summary = document.getElementById("interventionSummary")?.value.trim() || "";
+        const actionPlan = document.getElementById("interventionActionPlan")?.value.trim() || "";
+        const notifyStudent = Boolean(document.getElementById("interventionNotifyStudent")?.checked);
+
+        if (!summary) {
+            throw new Error("Add a short summary for the support case.");
+        }
+
+        const data = await fetchJson("/faculty/student/" + state.selectedStudentId + "/interventions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                intervention_type: interventionType,
+                priority,
+                due_date: dueDate || null,
+                summary,
+                action_plan: actionPlan,
+                notify_student: notifyStudent,
+            }),
+        });
+
+        ["interventionDueDate", "interventionSummary", "interventionActionPlan"].forEach((id) => {
+            const node = document.getElementById(id);
+            if (node) {
+                node.value = "";
+            }
+        });
+        const notifyBox = document.getElementById("interventionNotifyStudent");
+        if (notifyBox) {
+            notifyBox.checked = true;
+        }
+
+        await loadFacultyDashboard();
+        await loadFacultyStudentDetail(state.selectedStudentId);
+        showFacultyMessage(data.message || "Support intervention saved successfully.");
+    } catch (error) {
+        console.error(error);
+        showFacultyMessage(error.message || "Unable to save support intervention.", "error");
+    }
+}
+
+async function updateFacultyInterventionStatus(interventionId, status) {
+    try {
+        const state = getFacultyState();
+        if (!state.selectedStudentId) {
+            throw new Error("Select a student before updating support status.");
+        }
+
+        const data = await fetchJson("/faculty/intervention/" + interventionId, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status }),
+        });
+
+        await loadFacultyDashboard();
+        await loadFacultyStudentDetail(state.selectedStudentId);
+        showFacultyMessage(data.message || "Support intervention updated successfully.");
+    } catch (error) {
+        console.error(error);
+        showFacultyMessage(error.message || "Unable to update support intervention.", "error");
     }
 }

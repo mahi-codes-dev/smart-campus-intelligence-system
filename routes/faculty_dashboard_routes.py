@@ -1,11 +1,13 @@
 from flask import Blueprint, jsonify, request
 from services.faculty_dashboard_service import (
+    create_student_intervention,
     get_all_students_dashboard,
     get_classroom_roster,
     get_faculty_dashboard_summary,
+    get_student_detail,
     save_classroom_attendance,
     save_classroom_marks,
-    get_student_detail,
+    update_student_intervention_status,
 )
 from auth.auth_middleware import token_required, role_required
 
@@ -65,6 +67,50 @@ def faculty_student_detail(student_id):
     try:
         return jsonify(get_student_detail(student_id)), 200
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@faculty_dashboard_bp.route("/faculty/student/<int:student_id>/interventions", methods=["POST"])
+@token_required
+@role_required("Faculty")
+def faculty_student_intervention(student_id):
+    try:
+        data = request.get_json() or {}
+        intervention = create_student_intervention(
+            student_id,
+            request.user["user_id"],
+            data,
+        )
+        return jsonify({
+            "message": "Support intervention saved successfully",
+            "intervention": intervention,
+        }), 201
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@faculty_dashboard_bp.route("/faculty/intervention/<int:intervention_id>", methods=["PATCH"])
+@token_required
+@role_required("Faculty")
+def faculty_update_intervention(intervention_id):
+    try:
+        data = request.get_json() or {}
+        intervention = update_student_intervention_status(
+            intervention_id,
+            data.get("status"),
+            request.user["user_id"],
+        )
+        return jsonify({
+            "message": "Support intervention updated successfully",
+            "intervention": intervention,
+        }), 200
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
