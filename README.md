@@ -33,8 +33,8 @@ It includes role-based workflows for Admin, Faculty, and Student users, along wi
 
 ## Project Structure
 
-```text
 smart-campus-intelligence-system/
+HEAD
 |-- app.py
 |-- database.py
 |-- requirements.txt
@@ -90,7 +90,18 @@ smart-campus-intelligence-system/
     |-- response.py
     `-- validators.py
 ```
-
+│
+├── auth/           # Authentication logic
+├── routes/         # API endpoints
+├── services/       # Business logic
+├── templates/      # HTML pages
+├── static/         # JS & CSS
+├── utils/          # Helpers
+│
+├── app.py
+├── database.py
+├── requirements.txt
+└── .env.example
 ## How It Works
 
 The platform calculates a readiness score from four academic indicators:
