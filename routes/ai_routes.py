@@ -1,12 +1,12 @@
 from flask import Blueprint, jsonify, request, g
-from auth.auth_middleware import login_required
+from auth.auth_middleware import token_required
 from services.ai_service import AIService
 from services.student_service import get_student_record_by_user_id
 
 ai_bp = Blueprint('ai', __name__)
 
 @ai_bp.route('/ai/chat/student', methods=['POST'])
-@login_required
+@token_required
 def student_chat():
     data = request.get_json()
     message = data.get('message')
@@ -22,7 +22,7 @@ def student_chat():
     return jsonify({"response": response})
 
 @ai_bp.route('/ai/chat/faculty', methods=['POST'])
-@login_required
+@token_required
 def faculty_chat():
     data = request.get_json()
     query = data.get('query')

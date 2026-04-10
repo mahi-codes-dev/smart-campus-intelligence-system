@@ -46,6 +46,14 @@
                     <i class="fas fa-file-invoice nav-icon"></i>
                     <span>Mock Tests</span>
                 </li>
+                <li class="nav-item" onclick="focusFacultySection('noticesSection')">
+                    <i class="fas fa-bullhorn nav-icon"></i>
+                    <span>Notice Board</span>
+                </li>
+                <li class="nav-item" onclick="focusFacultySection('resourcesSection')">
+                    <i class="fas fa-folder-open nav-icon"></i>
+                    <span>Study Resources</span>
+                </li>
             </ul>
         </nav>
 
@@ -643,6 +651,107 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Notice Board section -->
+            <div class="card card-premium" id="noticesSection" style="margin-bottom: 32px; display: none;">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-bullhorn"></i> Campus Notice Board</h3>
+                    <p class="card-subtitle">Announcements from Admin and notices you send to students</p>
+                </div>
+                <div class="card-body">
+                    <div class="grid-2col" style="margin-bottom: 24px;">
+                        <div>
+                            <h4>Post a Notice</h4>
+                            <form class="faculty-form" onsubmit="submitFacultyNotice(event)" style="margin-top: 15px;">
+                                <div class="faculty-field">
+                                    <label for="facultyNoticeTitle" class="form-label">Title</label>
+                                    <input class="form-control" id="facultyNoticeTitle" type="text" placeholder="Notice Title" required>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="facultyNoticeContent" class="form-label">Content</label>
+                                    <textarea class="form-control faculty-textarea" id="facultyNoticeContent" rows="3" placeholder="Write notice here..." required></textarea>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="facultyNoticeTarget" class="form-label">Target</label>
+                                    <select class="form-control" id="facultyNoticeTarget" required>
+                                        <option value="Student">Students Only</option>
+                                        <option value="All">All Students & Faculty</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary btn-block" type="submit">
+                                    <i class="fas fa-paper-plane"></i>
+                                    <span>Send Notice</span>
+                                </button>
+                            </form>
+                        </div>
+                        <div>
+                            <h4>Recent Notices</h4>
+                            <ul class="insight-list custom-scrollbar" id="facultyNoticesList" style="max-height: 400px; margin-top: 15px;">
+                                <li class="insight-item">Loading notices...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources section -->
+            <div class="card card-premium" id="resourcesSection" style="margin-bottom: 32px; display: none;">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-folder-open"></i> Study Materials & Resources</h3>
+                    <p class="card-subtitle">Share links and study materials with students</p>
+                </div>
+                <div class="card-body">
+                    <div class="grid-2col" style="margin-bottom: 24px;">
+                        <div>
+                            <h4>Share a Resource</h4>
+                            <form class="faculty-form" onsubmit="submitFacultyResource(event)" style="margin-top: 15px;">
+                                <div class="faculty-field">
+                                    <label for="facultyResourceTitle" class="form-label">Title</label>
+                                    <input class="form-control" id="facultyResourceTitle" type="text" placeholder="e.g. Chapter 1 Notes" required>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="facultyResourceDesc" class="form-label">Description (optional)</label>
+                                    <textarea class="form-control faculty-textarea" id="facultyResourceDesc" rows="2" placeholder="Brief description"></textarea>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="facultyResourceLink" class="form-label">Resource Link (URL)</label>
+                                    <input class="form-control" id="facultyResourceLink" type="url" placeholder="https://drive.google.com/..." required>
+                                </div>
+                                <div class="faculty-field">
+                                    <label for="facultyResourceSubject" class="form-label">Subject</label>
+                                    <select class="form-control" id="facultyResourceSubject">
+                                        <option value="">General (No specific subject)</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary btn-block" type="submit">
+                                    <i class="fas fa-upload"></i>
+                                    <span>Share Resource</span>
+                                </button>
+                            </form>
+                        </div>
+                        <div>
+                            <h4>Shared Resources</h4>
+                            <div class="table-wrapper" style="margin-top: 15px;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Subject</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="facultyResourcesTable">
+                                        <tr>
+                                            <td colspan="3" class="text-center">Loading resources...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -653,6 +762,139 @@
 <script src="{{ url_for('static', filename='ai_assistant.js') }}"></script>
 <script>
     loadFacultyDashboard();
+    
+    // Setup for Notices and Resources
+    async function loadFacultyNotices() {
+        const list = document.getElementById('facultyNoticesList');
+        try {
+            const res = await fetchAuth('/api/notices');
+            if (res.data) {
+                if (res.data.length === 0) {
+                    list.innerHTML = '<li class="insight-item">No notices found.</li>';
+                    return;
+                }
+                list.innerHTML = res.data.map(n => `
+                    <li class="insight-item" style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
+                        <strong>${n.title}</strong>
+                        <span style="font-size:12px; color:#64748b;">${new Date(n.created_at).toLocaleString()} • ${n.author_name} (${n.author_role})</span>
+                        <p style="margin:5px 0;">${n.content}</p>
+                        ${n.author_role === 'Faculty' ? `<button class="btn btn-sm btn-danger" onclick="deleteFacultyNotice(${n.id})" style="align-self:flex-end;"><i class="fas fa-trash"></i> Delete</button>` : ''}
+                    </li>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function submitFacultyNotice(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        setLoading(btn, true);
+        try {
+            const data = {
+                title: document.getElementById('facultyNoticeTitle').value,
+                content: document.getElementById('facultyNoticeContent').value,
+                target_role: document.getElementById('facultyNoticeTarget').value
+            };
+            const res = await fetchAuth('/api/notices', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            if (res.error) throw new Error(res.error);
+            showToast('Success', res.message, 'success');
+            e.target.reset();
+            loadFacultyNotices();
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        } finally {
+            setLoading(btn, false);
+        }
+    }
+
+    async function deleteFacultyNotice(id) {
+        if (!confirm('Delete notice?')) return;
+        try {
+            const res = await fetchAuth('/api/notices/' + id, { method: 'DELETE' });
+            if (res.error) throw new Error(res.error);
+            showToast('Success', 'Notice deleted', 'success');
+            loadFacultyNotices();
+        } catch (e) {
+            showToast('Error', e.message, 'error');
+        }
+    }
+
+    async function loadFacultyResources() {
+        const tbody = document.getElementById('facultyResourcesTable');
+        try {
+            const res = await fetchAuth('/api/resources');
+            if (res.data) {
+                if (res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">No resources shared.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = res.data.map(r => `
+                    <tr>
+                        <td>
+                            <a href="${r.resource_link}" target="_blank" style="color:var(--primary); font-weight:600;">${r.title}</a>
+                            <div style="font-size:12px; color:#64748b;">${r.description || ''}</div>
+                        </td>
+                        <td>${r.subject_name}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger" onclick="deleteFacultyResource(${r.id})"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function submitFacultyResource(e) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        setLoading(btn, true);
+        try {
+            let subj = document.getElementById('facultyResourceSubject').value;
+            const data = {
+                title: document.getElementById('facultyResourceTitle').value,
+                description: document.getElementById('facultyResourceDesc').value,
+                resource_link: document.getElementById('facultyResourceLink').value,
+                subject_id: subj ? parseInt(subj) : null
+            };
+            const res = await fetchAuth('/api/resources', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+            if (res.error) throw new Error(res.error);
+            showToast('Success', res.message, 'success');
+            e.target.reset();
+            loadFacultyResources();
+        } catch (error) {
+            showToast('Error', error.message, 'error');
+        } finally {
+            setLoading(btn, false);
+        }
+    }
+
+    async function deleteFacultyResource(id) {
+        if (!confirm('Delete resource?')) return;
+        try {
+            const res = await fetchAuth('/api/resources/' + id, { method: 'DELETE' });
+            if (res.error) throw new Error(res.error);
+            showToast('Success', 'Resource deleted', 'success');
+            loadFacultyResources();
+        } catch (e) {
+            showToast('Error', e.message, 'error');
+        }
+    }
+
+    // Hook into focusFacultySection or just call timeouts
+    setTimeout(() => {
+        loadFacultyNotices();
+        loadFacultyResources();
+    }, 1000);
 </script>
 
 </body>

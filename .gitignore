@@ -10,6 +10,7 @@ __pycache__/
 
 # VS Code settings
 .vscode/
+.antigravity/
 
 # OS files
 .DS_Store

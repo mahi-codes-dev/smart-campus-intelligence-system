@@ -1,11 +1,11 @@
 from flask import Blueprint, jsonify, request, g
-from auth.auth_middleware import login_required
+from auth.auth_middleware import token_required
 from services.wellbeing_service import save_wellbeing_entry, get_student_wellbeing_history
 
 wellbeing_bp = Blueprint('wellbeing', __name__)
 
 @wellbeing_bp.route('/wellbeing/entry', methods=['POST'])
-@login_required
+@token_required
 def report_wellbeing():
     data = request.get_json()
     stress_level = data.get('stress_level')
@@ -25,7 +25,7 @@ def report_wellbeing():
     return jsonify({"message": "Wellbeing reported successfully", "id": entry_id}), 201
 
 @wellbeing_bp.route('/wellbeing/history', methods=['GET'])
-@login_required
+@token_required
 def wellbeing_history():
     from services.student_service import get_student_record_by_user_id
     student = get_student_record_by_user_id(g.user_id)

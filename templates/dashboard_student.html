@@ -134,6 +134,53 @@
                 </div>
             </div>
 
+            <!-- Notices and Resources Section -->
+            <div class="grid-2col" style="margin-bottom: 32px;">
+                <!-- Notice Board -->
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-bullhorn"></i>
+                            Notice Board
+                        </h3>
+                        <span class="card-subtitle">Official announcements</span>
+                    </div>
+                    <div class="card-body">
+                        <ul class="insight-list custom-scrollbar" id="studentNoticesList" style="max-height: 300px;">
+                            <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Loading notices...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Study Resources -->
+                <div class="card card-premium">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-folder-open"></i>
+                            Study Resources
+                        </h3>
+                        <span class="card-subtitle">Materials shared by your faculty</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper custom-scrollbar" style="max-height: 300px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Subject</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="studentResourcesTable">
+                                    <tr>
+                                        <td colspan="2" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading resources...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Profile & Placement Section -->
             <div class="info-section">
                 <div class="grid-2col">
@@ -528,6 +575,59 @@
 <script src="{{ url_for('static', filename='ai_assistant.js') }}"></script>
 <script>
     loadDashboard();
+
+    async function loadStudentNotices() {
+        const list = document.getElementById('studentNoticesList');
+        try {
+            const res = await fetchAuth('/api/notices');
+            if (res.data) {
+                if (res.data.length === 0) {
+                    list.innerHTML = '<li class="insight-item">No new notices.</li>';
+                    return;
+                }
+                list.innerHTML = res.data.map(n => `
+                    <li class="insight-item" style="display:flex; flex-direction:column; gap:6px; align-items:flex-start;">
+                        <strong>${n.title}</strong>
+                        <span style="font-size:12px; color:#64748b;">${new Date(n.created_at).toLocaleDateString()} • ${n.author_name} (${n.author_role})</span>
+                        <p style="margin:2px 0;">${n.content}</p>
+                    </li>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+            list.innerHTML = '<li class="insight-item text-danger">Failed to load notices.</li>';
+        }
+    }
+
+    async function loadStudentResources() {
+        const tbody = document.getElementById('studentResourcesTable');
+        try {
+            const res = await fetchAuth('/api/resources');
+            if (res.data) {
+                if (res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="2" class="text-center">No study resources posted yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = res.data.map(r => `
+                    <tr>
+                        <td>
+                            <a href="${r.resource_link}" target="_blank" style="color:var(--primary); font-weight:600;"><i class="fas fa-link custom-icon"></i> ${r.title}</a>
+                            <div style="font-size:12px; color:#64748b; margin-top:4px;">${r.description || ''}</div>
+                        </td>
+                        <td>${r.subject_name}</td>
+                    </tr>
+                `).join('');
+            }
+        } catch (e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="2" class="text-center text-danger">Failed to load resources.</td></tr>';
+        }
+    }
+
+    setTimeout(() => {
+        loadStudentNotices();
+        loadStudentResources();
+    }, 1000);
 </script>
 
 </body>

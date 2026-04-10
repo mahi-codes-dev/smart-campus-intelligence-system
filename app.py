@@ -29,6 +29,8 @@ from routes.theme_routes import theme_bp
 from routes.peer_learning_routes import peer_learning_bp
 from routes.wellbeing_routes import wellbeing_bp
 from routes.ai_routes import ai_bp
+from routes.notice_routes import notice_bp
+from routes.resource_routes import resource_bp
 from services.attendance_service import ensure_attendance_table_consistency
 from services.faculty_dashboard_service import ensure_intervention_table_consistency
 from services.goals_service import ensure_goals_tables
@@ -40,6 +42,8 @@ from services.skills_service import ensure_skills_table_consistency
 from services.student_service import ensure_student_table_consistency, ensure_roll_number_available
 from services.subject_service import ensure_subject_table_consistency
 from services.theme_service import ThemeService
+from services.notice_board_service import NoticeBoardService
+from services.resources_service import ResourcesService
 from utils.validators import RequestValidator
 
 configure_logging(settings.log_level)
@@ -82,6 +86,8 @@ try:
     ensure_intervention_table_consistency()
     RealtimeNotificationService.ensure_notifications_table()
     ThemeService.ensure_theme_table()
+    NoticeBoardService.ensure_notices_table()
+    ResourcesService.ensure_resources_table()
     startup_status["ready"] = True
     startup_status["database"] = "connected"
 except Exception as schema_error:
@@ -111,6 +117,8 @@ app.register_blueprint(goals_bp)
 app.register_blueprint(peer_learning_bp)
 app.register_blueprint(wellbeing_bp)
 app.register_blueprint(ai_bp)
+app.register_blueprint(notice_bp)
+app.register_blueprint(resource_bp)
 
 @app.route("/")
 def home():
