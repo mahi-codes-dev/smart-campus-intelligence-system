@@ -6,328 +6,560 @@
     <title>Login - Smart Campus Intelligence System</title>
     <meta name="description" content="Sign in to Smart Campus Intelligence System — your data-driven campus platform.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body class="auth-body login-body">
+    <!-- Custom styling for the wow-factor -->
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+        body.glass-auth-body {
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            overflow: hidden;
+            position: relative;
+            color: #fff;
+        }
+        .bg-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+        .shape-blob {
+            position: absolute;
+            filter: blur(80px);
+            opacity: 0.6;
+            animation: moveBlob 15s infinite alternate ease-in-out;
+        }
+        .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #4f46e5; border-radius: 50%; }
+        .blob-2 { bottom: -20%; right: -10%; width: 600px; height: 600px; background: #06b6d4; border-radius: 50%; animation-delay: -5s; }
+        .blob-3 { top: 40%; left: 60%; width: 300px; height: 300px; background: #ec4899; border-radius: 50%; animation-delay: -10s; }
 
-<div class="auth-wrapper">
-    <div class="auth-split">
-        <!-- Left side - Branding -->
-        <div class="auth-branding premium-gradient">
-            <div class="auth-branding-shapes">
-                <div class="shape shape-1"></div>
-                <div class="shape shape-2"></div>
-                <div class="shape shape-3"></div>
+        @keyframes moveBlob {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(50px, 50px) scale(1.1); }
+        }
+
+        .glass-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            border-radius: 24px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: var(--glass-shadow);
+            overflow: hidden;
+            animation: fadeIn 1s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass-branding {
+            flex: 1;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.2);
+            border-right: 1px solid var(--glass-border);
+        }
+
+        .glass-branding .logo-wrapper {
+            width: 70px;
+            height: 70px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+
+        .glass-branding h1 {
+            font-size: 42px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            line-height: 1.1;
+            background: linear-gradient(to right, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .glass-branding p {
+            font-size: 18px;
+            color: #cbd5e1;
+            margin-bottom: 40px;
+            line-height: 1.5;
+        }
+
+        .glass-features .feature {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            font-size: 15px;
+            color: #f1f5f9;
+        }
+
+        .glass-features .feature i {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #06b6d4;
+            font-size: 18px;
+        }
+
+        .glass-form-side {
+            flex: 1;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+        }
+
+        .glass-form-side h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .glass-form-side h2 + p {
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+
+        .glass-input-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .glass-input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .glass-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .glass-input-wrapper i.fa-envelope,
+        .glass-input-wrapper i.fa-lock,
+        .glass-input-wrapper i.input-icon {
+            position: absolute;
+            left: 16px;
+            color: #94a3b8;
+            font-size: 16px;
+        }
+
+        .glass-input-wrapper input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 15px 15px 15px 45px;
+            border-radius: 12px;
+            color: #fff;
+            font-family: inherit;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .glass-input-wrapper input:focus {
+            outline: none;
+            border-color: #06b6d4;
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.15);
+        }
+
+        .glass-input-wrapper input::placeholder {
+            color: #64748b;
+        }
+
+        .glass-input-wrapper .toggle-password-btn {
+            position: absolute;
+            right: 16px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .glass-input-wrapper .toggle-password-btn:hover {
+            color: #fff;
+        }
+
+        .glass-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .glass-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            color: #cbd5e1;
+        }
+
+        .glass-checkbox input {
+            accent-color: #06b6d4;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .glass-forgot {
+            color: #06b6d4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .glass-forgot:hover {
+            color: #fff;
+        }
+
+        .btn-glass-primary {
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #4f46e5, #06b6d4);
+            color: white;
+            border: none;
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-glass-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(6, 182, 212, 0.4);
+        }
+
+        .btn-glass-secondary {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-family: inherit;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            text-decoration: none;
+            margin-top: 15px;
+        }
+
+        .btn-glass-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .glass-message-container p {
+            font-size: 14px;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+        .glass-message-container p.error {
+            display: block;
+            background: rgba(220, 38, 38, 0.2);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #fca5a5;
+        }
+        .glass-message-container p.success {
+            display: block;
+            background: rgba(22, 163, 74, 0.2);
+            border: 1px solid rgba(22, 163, 74, 0.3);
+            color: #86efac;
+        }
+
+        .glass-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 25px 0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .glass-divider::before, .glass-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .glass-divider span {
+            padding: 0 15px;
+        }
+
+        /* Forgot panel specifics */
+        .otp-input-group {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
+        .otp-input-group input {
+            width: 45px;
+            height: 50px;
+            text-align: center;
+            font-size: 20px;
+            padding: 0;
+        }
+        
+        @media (max-width: 900px) {
+            .glass-container {
+                flex-direction: column;
+                margin: 20px;
+                height: auto;
+            }
+            .glass-branding {
+                padding: 40px;
+                border-right: none;
+                border-bottom: 1px solid var(--glass-border);
+            }
+            .glass-form-side {
+                padding: 40px;
+            }
+        }
+    </style>
+</head>
+<body class="glass-auth-body">
+
+    <!-- Ambient animated background blobs -->
+    <div class="bg-shapes">
+        <div class="shape-blob blob-1"></div>
+        <div class="shape-blob blob-2"></div>
+        <div class="shape-blob blob-3"></div>
+    </div>
+
+    <!-- Glassmorphic Auth Container -->
+    <div class="glass-container">
+        <!-- Branding Side -->
+        <div class="glass-branding">
+            <div class="logo-wrapper">
+                <i class="fas fa-graduation-cap"></i>
             </div>
-            <div class="branding-content">
-                <div class="branding-logo">
-                    <div class="logo-circle">
-                        <i class="fas fa-graduation-cap"></i>
-                    </div>
+            <h1>Smart Campus</h1>
+            <p>Your intelligent, data-driven academic ecosystem. Experience seamless connectivity and real-time insights.</p>
+            
+            <div class="glass-features">
+                <div class="feature">
+                    <i class="fas fa-bolt"></i>
+                    <span>Real-time Actionable Intelligence</span>
                 </div>
-                <h1 class="branding-title">Smart Campus</h1>
-                <p class="branding-subtitle">Intelligence System</p>
-                
-                <div class="branding-separator"></div>
-                
-                <div class="branding-benefits">
-                    <div class="benefit-item">
-                        <div class="benefit-icon">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <div class="benefit-text">
-                            <h4>Advanced Analytics</h4>
-                            <p>Data-driven insights for success</p>
-                        </div>
-                    </div>
-                    <div class="benefit-item">
-                        <div class="benefit-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="benefit-text">
-                            <h4>Connected Community</h4>
-                            <p>Real-time collaboration tools</p>
-                        </div>
-                    </div>
-                    <div class="benefit-item">
-                        <div class="benefit-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div class="benefit-text">
-                            <h4>Bank-Grade Security</h4>
-                            <p>ISO certified protection</p>
-                        </div>
-                    </div>
+                <div class="feature">
+                    <i class="fas fa-network-wired"></i>
+                    <span>Unified Campus Operations</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-shield-halved"></i>
+                    <span>Enterprise Grade Security</span>
                 </div>
             </div>
         </div>
 
-        <!-- Right side - Login Form -->
-        <div class="auth-form-wrapper login-form-wrapper">
-            <div class="auth-container">
-                <!-- ============ LOGIN PANEL ============ -->
-                <div class="auth-card login-card" id="loginPanel">
-                    <div class="auth-header">
-                        <div class="header-badge">
-                            <i class="fas fa-lock"></i>
-                            <span>Sign In</span>
+        <!-- Form Side -->
+        <div class="glass-form-side">
+            <!-- ============ LOGIN PANEL ============ -->
+            <div id="loginPanel">
+                <h2>Welcome Back</h2>
+                <p>Sign in to your account</p>
+
+                <form id="loginForm" onsubmit="event.preventDefault(); login();">
+                    <div class="glass-input-group">
+                        <label for="email">Email Address</label>
+                        <div class="glass-input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="email" required placeholder="name@campus.edu">
                         </div>
-                        <h2>Welcome Back</h2>
-                        <p>Continue your Smart Campus journey</p>
                     </div>
 
-                    <form class="auth-form auth-form-enhanced" id="loginForm">
-                        <!-- Email Field -->
-                        <div class="form-group form-group-enhanced">
-                            <label for="email" class="form-label">
-                                <span>Email Address</span>
-                                <span class="required">*</span>
-                            </label>
-                            <div class="input-group">
-                                <i class="fas fa-envelope input-icon"></i>
-                                <input 
-                                    type="email" 
-                                    id="email" 
-                                    name="email"
-                                    class="form-control"
-                                    placeholder="you@example.com"
-                                    required
-                                >
-                                <span class="input-focus-border"></span>
-                            </div>
-                            <span class="error-message" id="emailError"></span>
+                    <div class="glass-input-group">
+                        <label for="password">Password</label>
+                        <div class="glass-input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="password" required placeholder="••••••••">
+                            <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)"></i>
                         </div>
+                    </div>
 
-                        <!-- Password Field -->
-                        <div class="form-group form-group-enhanced">
-                            <label for="password" class="form-label">
-                                <span>Password</span>
-                                <span class="required">*</span>
-                            </label>
-                            <div class="input-group password-input-group">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input 
-                                    type="password" 
-                                    id="password" 
-                                    name="password"
-                                    class="form-control"
-                                    placeholder="••••••••"
-                                    required
-                                >
-                                <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)" title="Show password"></i>
-                                <span class="input-focus-border"></span>
-                            </div>
-                            <span class="error-message" id="passwordError"></span>
-                        </div>
+                    <div class="glass-options">
+                        <label class="glass-checkbox">
+                            <input type="checkbox" id="rememberMe">
+                            <span>Remember me</span>
+                        </label>
+                        <a href="#" class="glass-forgot" onclick="showForgotPanel(); return false;">Forgot password?</a>
+                    </div>
 
-                        <!-- Remember & Forgot -->
-                        <div class="form-group form-group-enhanced login-options">
-                            <label class="checkbox-wrapper advanced-checkbox">
-                                <input type="checkbox" id="rememberMe">
-                                <span class="checkbox-custom"></span>
-                                <span class="checkbox-label">Remember me</span>
-                            </label>
-                            <a href="#" class="forgot-password-link" id="showForgotPassword" onclick="showForgotPanel(); return false;">Forgot password?</a>
-                        </div>
+                    <button type="submit" id="loginBtn" class="btn-glass-primary">
+                        <span>Sign In</span>
+                        <i class="fas fa-arrow-right"></i>
+                    </button>
 
-                        <!-- Submit Button -->
-                        <button type="button" onclick="login()" id="loginBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
-                            <span>Sign In</span>
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
+                    <div class="glass-message-container">
+                        <p id="message"></p>
+                    </div>
 
-                        <div class="message-container">
-                            <p id="message" class="message"></p>
-                        </div>
-                    </form>
-
-                    <!-- Auth Divider -->
-                    <div class="auth-divider">
+                    <div class="glass-divider">
                         <span>New to Smart Campus?</span>
                     </div>
 
-                    <!-- Sign Up Button -->
-                    <a href="/register" class="btn btn-secondary btn-block btn-enhanced">
-                        <span>Create Account</span>
-                        <i class="fas fa-plus"></i>
+                    <a href="/register" class="btn-glass-secondary">
+                        Create Account
                     </a>
+                </form>
+            </div>
 
-                    <!-- Footer -->
-                    <div class="auth-footer">
-                        <p>Protected by enterprise-grade security</p>
+            <!-- ============ FORGOT PASSWORD PANEL ============ -->
+            <div id="forgotPanel" style="display: none;">
+                <a href="#" class="glass-forgot" style="display: inline-block; margin-bottom: 20px;" onclick="showLoginPanel(); return false;">
+                    <i class="fas fa-arrow-left"></i> Back to login
+                </a>
+                
+                <h2>Reset Password</h2>
+                <p>Recover your account access</p>
+
+                <!-- Step 1 -->
+                <div id="forgotStep1">
+                    <div class="glass-input-group">
+                        <label for="forgotEmail">Your Email Address</label>
+                        <div class="glass-input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="forgotEmail" required placeholder="name@campus.edu">
+                        </div>
                     </div>
+                    <button type="button" onclick="sendOtp()" id="sendOtpBtn" class="btn-glass-primary">
+                        <span>Send OTP</span>
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
                 </div>
 
-                <!-- ============ FORGOT PASSWORD PANEL ============ -->
-                <div class="auth-card forgot-card" id="forgotPanel" style="display: none;">
-                    <div class="auth-header">
-                        <a href="#" class="back-to-login" id="backToLogin" onclick="showLoginPanel(); return false;">
-                            <i class="fas fa-arrow-left"></i>
-                            <span>Back to Sign In</span>
-                        </a>
-                        <div class="header-badge">
-                            <i class="fas fa-key"></i>
-                            <span>Reset Password</span>
+                <!-- Step 2 -->
+                <div id="forgotStep2" style="display: none;">
+                    <p style="color: #86efac; margin-bottom: 15px;"><i class="fas fa-check-circle"></i> OTP sent to <strong id="otpSentEmail"></strong></p>
+                    <div class="glass-input-group">
+                        <label>Enter 6-Digit OTP</label>
+                        <div class="otp-input-group glass-input-wrapper">
+                            <input type="text" id="otpDigit1" maxlength="1">
+                            <input type="text" id="otpDigit2" maxlength="1">
+                            <input type="text" id="otpDigit3" maxlength="1">
+                            <input type="text" id="otpDigit4" maxlength="1">
+                            <input type="text" id="otpDigit5" maxlength="1">
+                            <input type="text" id="otpDigit6" maxlength="1">
                         </div>
-                        <h2>Forgot Password?</h2>
-                        <p>No worries — we'll send you a One-Time Password</p>
                     </div>
+                    <p style="margin-bottom: 15px; font-size: 14px; color: #94a3b8;">Expires in <strong id="otpCountdown">15:00</strong></p>
+                    <button type="button" onclick="verifyOtp()" id="verifyOtpBtn" class="btn-glass-primary">
+                        <span>Verify OTP</span>
+                        <i class="fas fa-check"></i>
+                    </button>
+                </div>
 
-                    <!-- Step Indicator -->
-                    <div class="forgot-steps">
-                        <div class="step active" id="step1Indicator">
-                            <div class="step-circle">1</div>
-                            <span>Email</span>
-                        </div>
-                        <div class="step-line" id="stepLine1"></div>
-                        <div class="step" id="step2Indicator">
-                            <div class="step-circle">2</div>
-                            <span>Verify</span>
-                        </div>
-                        <div class="step-line" id="stepLine2"></div>
-                        <div class="step" id="step3Indicator">
-                            <div class="step-circle">3</div>
-                            <span>Reset</span>
+                <!-- Step 3 -->
+                <div id="forgotStep3" style="display: none;">
+                    <div class="glass-input-group">
+                        <label for="newPassword">New Password</label>
+                        <div class="glass-input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="newPassword" required placeholder="Create strong password">
+                            <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)"></i>
                         </div>
                     </div>
+                    <div class="glass-input-group">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <div class="glass-input-wrapper">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="confirmPassword" required placeholder="Confirm new password">
+                            <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)"></i>
+                        </div>
+                    </div>
+                    <button type="button" onclick="resetPassword()" id="resetPasswordBtn" class="btn-glass-primary">
+                        <span>Reset Password</span>
+                        <i class="fas fa-lock-open"></i>
+                    </button>
+                </div>
 
-                    <!-- Step 1: Enter Email -->
-                    <div class="forgot-step-content" id="forgotStep1">
-                        <div class="form-group form-group-enhanced">
-                            <label for="forgotEmail" class="form-label">
-                                <span>Your Email Address</span>
-                                <span class="required">*</span>
-                            </label>
-                            <div class="input-group">
-                                <i class="fas fa-envelope input-icon"></i>
-                                <input 
-                                    type="email" 
-                                    id="forgotEmail" 
-                                    class="form-control"
-                                    placeholder="you@example.com"
-                                    required
-                                >
-                                <span class="input-focus-border"></span>
-                            </div>
-                            <span class="error-message" id="forgotEmailError"></span>
-                        </div>
-                        <button type="button" onclick="sendOtp()" id="sendOtpBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
-                            <span>Send OTP</span>
-                            <i class="fas fa-paper-plane"></i>
-                        </button>
-                    </div>
-
-                    <!-- Step 2: Enter OTP -->
-                    <div class="forgot-step-content" id="forgotStep2" style="display: none;">
-                        <div class="otp-sent-notice">
-                            <i class="fas fa-check-circle"></i>
-                            <span>OTP sent to <strong id="otpSentEmail"></strong></span>
-                        </div>
-                        <div class="form-group form-group-enhanced">
-                            <label for="otpInput" class="form-label">
-                                <span>Enter 6-Digit OTP</span>
-                                <span class="required">*</span>
-                            </label>
-                            <div class="otp-input-group">
-                                <input type="text" id="otpDigit1" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
-                                <input type="text" id="otpDigit2" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                <input type="text" id="otpDigit3" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                <input type="text" id="otpDigit4" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                <input type="text" id="otpDigit5" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                                <input type="text" id="otpDigit6" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
-                            </div>
-                            <span class="error-message" id="otpError"></span>
-                        </div>
-                        <div class="otp-timer" id="otpTimer">
-                            <i class="fas fa-clock"></i>
-                            <span>Expires in <strong id="otpCountdown">15:00</strong></span>
-                        </div>
-                        <button type="button" onclick="verifyOtp()" id="verifyOtpBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
-                            <span>Verify OTP</span>
-                            <i class="fas fa-check"></i>
-                        </button>
-                        <div class="resend-otp">
-                            <span>Didn't receive it?</span>
-                            <a href="#" id="resendOtpLink" onclick="resendOtp(); return false;">Resend OTP</a>
-                        </div>
-                    </div>
-
-                    <!-- Step 3: New Password -->
-                    <div class="forgot-step-content" id="forgotStep3" style="display: none;">
-                        <div class="otp-sent-notice success">
-                            <i class="fas fa-shield-alt"></i>
-                            <span>Identity verified — set your new password</span>
-                        </div>
-                        <div class="form-group form-group-enhanced">
-                            <label for="newPassword" class="form-label">
-                                <span>New Password</span>
-                                <span class="required">*</span>
-                            </label>
-                            <div class="input-group password-input-group">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input 
-                                    type="password" 
-                                    id="newPassword" 
-                                    class="form-control"
-                                    placeholder="Create a strong password"
-                                    required
-                                >
-                                <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)" title="Show password"></i>
-                                <span class="input-focus-border"></span>
-                            </div>
-                            <span class="error-message" id="newPasswordError"></span>
-                        </div>
-                        <div class="form-group form-group-enhanced">
-                            <label for="confirmPassword" class="form-label">
-                                <span>Confirm Password</span>
-                                <span class="required">*</span>
-                            </label>
-                            <div class="input-group password-input-group">
-                                <i class="fas fa-lock input-icon"></i>
-                                <input 
-                                    type="password" 
-                                    id="confirmPassword" 
-                                    class="form-control"
-                                    placeholder="Confirm your password"
-                                    required
-                                >
-                                <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)" title="Show password"></i>
-                                <span class="input-focus-border"></span>
-                            </div>
-                            <span class="error-message" id="confirmPasswordError"></span>
-                        </div>
-                        <button type="button" onclick="resetPassword()" id="resetPasswordBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
-                            <span>Reset Password</span>
-                            <i class="fas fa-arrow-right"></i>
-                        </button>
-                    </div>
-
-                    <!-- Step 4: Success -->
-                    <div class="forgot-step-content" id="forgotStep4" style="display: none;">
-                        <div class="reset-success">
-                            <div class="success-icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <h3>Password Reset!</h3>
-                            <p>Your password has been changed successfully. You can now sign in with your new password.</p>
-                            <button type="button" onclick="showLoginPanel()" class="btn btn-primary btn-block btn-lg btn-enhanced">
-                                <span>Sign In Now</span>
-                                <i class="fas fa-sign-in-alt"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="message-container">
-                        <p id="forgotMessage" class="message"></p>
-                    </div>
+                <div class="glass-message-container">
+                    <p id="forgotMessage"></p>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
-<script src="{{ url_for('static', filename='auth.js') }}"></script>
+    <!-- Existing logic relies on auth.js and shared.js -->
+    <script src="{{ url_for('static', filename='shared.js') }}"></script>
+    <script src="{{ url_for('static', filename='auth.js') }}"></script>
+    <script>
+        // Additional helpers for the new UI elements if needed
+        function showForgotPanel() {
+            document.getElementById('loginPanel').style.display = 'none';
+            document.getElementById('forgotPanel').style.display = 'block';
+            document.getElementById('forgotStep1').style.display = 'block';
+            document.getElementById('forgotStep2').style.display = 'none';
+            document.getElementById('forgotStep3').style.display = 'none';
+            document.getElementById('forgotMessage').style.display = 'none';
+        }
+        function showLoginPanel() {
+            document.getElementById('forgotPanel').style.display = 'none';
+            document.getElementById('loginPanel').style.display = 'block';
+            document.getElementById('message').style.display = 'none';
+        }
 
+        // Auto-advance OTP inputs
+        const otpInputs = document.querySelectorAll('.otp-input-group input');
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('input', function() {
+                if(this.value.length === 1 && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+            });
+            input.addEventListener('keydown', function(e) {
+                if(e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                    otpInputs[index - 1].focus();
+                }
+            });
+        });
+    </script>
 </body>
 </html>
