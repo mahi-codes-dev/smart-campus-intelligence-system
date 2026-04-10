@@ -142,19 +142,23 @@ END $$;
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'student_interventions') THEN
-        -- We just cascade student deletion. Faculty deletion might be restrict or cascade. We use cascade for simplicity if faculty is deleted.
-        ALTER TABLE student_interventions DROP CONSTRAINT IF EXISTS student_interventions_student_id_fkey;
-        ALTER TABLE student_interventions DROP CONSTRAINT IF EXISTS student_interventions_faculty_id_fkey;
-        
-        ALTER TABLE student_interventions 
-        ADD CONSTRAINT student_interventions_student_id_fkey 
-        FOREIGN KEY (student_id) REFERENCES students(id) 
-        ON DELETE CASCADE;
+        -- student_id FK
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'student_interventions' AND column_name = 'student_id') THEN
+            ALTER TABLE student_interventions DROP CONSTRAINT IF EXISTS student_interventions_student_id_fkey;
+            ALTER TABLE student_interventions 
+            ADD CONSTRAINT student_interventions_student_id_fkey 
+            FOREIGN KEY (student_id) REFERENCES students(id) 
+            ON DELETE CASCADE;
+        END IF;
 
-        ALTER TABLE student_interventions 
-        ADD CONSTRAINT student_interventions_faculty_id_fkey 
-        FOREIGN KEY (faculty_id) REFERENCES users(id) 
-        ON DELETE SET NULL; -- If faculty is deleted, intervention remains but faculty_id becomes null
+        -- faculty_id FK (only if column exists)
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'student_interventions' AND column_name = 'faculty_id') THEN
+            ALTER TABLE student_interventions DROP CONSTRAINT IF EXISTS student_interventions_faculty_id_fkey;
+            ALTER TABLE student_interventions 
+            ADD CONSTRAINT student_interventions_faculty_id_fkey 
+            FOREIGN KEY (faculty_id) REFERENCES users(id) 
+            ON DELETE SET NULL;
+        END IF;
     END IF;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;

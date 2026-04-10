@@ -3,8 +3,13 @@ Theme Service - Manage user theme preferences
 Supports light and dark mode with persistence
 """
 
+import logging
+from typing import Any, Dict
+
 from database import get_db_connection
-from typing import Optional, Dict, Any
+
+
+logger = logging.getLogger(__name__)
 
 
 class ThemeService:
@@ -43,7 +48,7 @@ class ThemeService:
             conn.close()
             return True
         except Exception as e:
-            print(f"Theme table creation error: {e}")
+            logger.exception("Theme table creation error")
             return False
     
     @staticmethod
@@ -73,7 +78,7 @@ class ThemeService:
                 return result[0]
             return ThemeService.DEFAULT_THEME
         except Exception as e:
-            print(f"Error fetching user theme: {e}")
+            logger.exception("Error fetching user theme")
             return ThemeService.DEFAULT_THEME
     
     @staticmethod
@@ -109,7 +114,7 @@ class ThemeService:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error setting user theme: {e}")
+            logger.exception("Error setting user theme")
             return False
     
     @staticmethod
@@ -161,7 +166,7 @@ class ThemeService:
             conn.close()
             return True
         except Exception as e:
-            print(f"Error initializing user theme: {e}")
+            logger.exception("Error initializing user theme")
             return False
     
     @staticmethod
@@ -193,9 +198,5 @@ class ThemeService:
             
             return stats
         except Exception as e:
-            print(f"Error fetching theme stats: {e}")
+            logger.exception("Error fetching theme stats")
             return {'light': 0, 'dark': 0}
-
-
-# Initialize table on module load
-ThemeService.ensure_theme_table()

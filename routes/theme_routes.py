@@ -59,7 +59,7 @@ def set_user_theme():
         if not user_id:
             return jsonify({'error': 'User not found'}), 401
         
-        data = request.get_json()
+        data = request.get_json() or {}
         theme = data.get('theme', '').lower()
         
         if theme not in ['light', 'dark']:

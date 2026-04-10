@@ -157,36 +157,25 @@ JWT_EXP_HOURS=24
 
 ## Database Setup
 
-The application auto-syncs several academic tables on startup, but it expects the authentication tables to already exist:
+The application now bootstraps its own schema on startup through SQL migrations plus the active consistency checks. That includes:
 
 - `roles`
 - `users`
-
-### Minimum auth schema required
-
-Run this in PostgreSQL before starting the app for the first time:
-
-```sql
-CREATE TABLE IF NOT EXISTS roles (
-    id SERIAL PRIMARY KEY,
-    role_name VARCHAR(50) UNIQUE NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    role_id INTEGER NOT NULL REFERENCES roles(id)
-);
-
-INSERT INTO roles (id, role_name)
-VALUES
-    (1, 'Admin'),
-    (2, 'Faculty'),
-    (3, 'Student')
-ON CONFLICT (id) DO NOTHING;
-```
+- `departments`
+- `students`
+- `subjects`
+- `attendance`
+- `marks`
+- `skills`
+- `student_skills`
+- `mock_tests`
+- `student_goals`
+- `goal_milestones`
+- `student_badges`
+- `notifications`
+- `notification_preferences`
+- `theme_preferences`
+- `student_interventions`
 
 ### Tables managed by the application
 
@@ -213,6 +202,12 @@ Default local URL:
 
 ```text
 http://127.0.0.1:5000
+```
+
+Production entrypoint:
+
+```bash
+gunicorn wsgi:application
 ```
 
 Frontend pages:
@@ -346,10 +341,12 @@ The repository includes an `api-test.http` file for quick local API testing in e
 
 ## Health Check
 
-Use the health endpoint to verify the app can reach PostgreSQL:
+Use the health endpoints to verify runtime status:
 
 ```text
 GET /health
+GET /health/ready
+GET /health/live
 ```
 
 Expected response:
@@ -363,17 +360,15 @@ Expected response:
 
 ## Development Notes
 
-- JWT tokens are currently sent from the frontend using the `Authorization` header.
+- JWT auth is accepted through the `Authorization` header and an HttpOnly auth cookie.
 - The frontend is server-rendered with Flask templates and enhanced with vanilla JavaScript.
 - Chart rendering is powered by Chart.js from a CDN.
-- The app currently runs with `debug=True` in `app.py`, which is fine for local development but should be changed for production.
+- Database connections are pooled through `ThreadedConnectionPool`.
+- Login and registration endpoints are rate-limited in-process.
 
 ## Known Gaps / Future Improvements
 
-- Add database migrations instead of runtime schema sync
 - Add automated tests
-- Add a production-ready configuration setup
-- Improve validation and centralized error handling
 - Move auth token storage away from `localStorage`
 - Add API documentation with request/response schemas
 
@@ -389,9 +384,13 @@ JWT_ALGORITHM=HS256
 JWT_EXP_HOURS=24
 ```
 
-### `relation "roles" does not exist` or `relation "users" does not exist`
+### Startup bootstrap fails
 
-The auth tables are not auto-created by the app. Run the SQL from the `Database Setup` section first.
+Check `/health/ready` for the bootstrap error message and confirm:
+
+- PostgreSQL is reachable from the app
+- the configured database user can create or alter tables
+- required secrets such as `JWT_SECRET` and `SECRET_KEY` are present
 
 ### Database connection errors
 

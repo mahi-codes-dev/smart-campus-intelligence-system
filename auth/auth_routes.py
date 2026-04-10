@@ -6,7 +6,7 @@ import uuid
 
 from flask import Blueprint, jsonify, request, g
 
-from auth.auth_middleware_replacement import SECRET_KEY, JWT_ALGORITHM, token_required
+from auth.auth_middleware import SECRET_KEY, JWT_ALGORITHM, token_required
 from config import settings
 from core.rate_limiter import rate_limit
 from database import get_db_connection

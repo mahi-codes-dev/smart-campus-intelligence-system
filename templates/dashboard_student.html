@@ -1,12 +1,13 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <title>Student Dashboard - Smart Campus</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='ai_assistant.css') }}">
 </head>
-<body class="dashboard-body">
+<body class="dashboard-body" data-role="student">
 
 <div class="layout">
     <!-- Enhanced Sidebar -->
@@ -524,6 +525,7 @@
 <script src="{{ url_for('static', filename='shared.js') }}"></script>
 <script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
 <script src="{{ url_for('static', filename='student.js') }}"></script>
+<script src="{{ url_for('static', filename='ai_assistant.js') }}"></script>
 <script>
     loadDashboard();
 </script>

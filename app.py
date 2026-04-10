@@ -4,7 +4,7 @@ import psycopg2
 from flask import Flask, jsonify, render_template, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from auth.auth_middleware_replacement import token_required, role_required
+from auth.auth_middleware import token_required, role_required
 from auth.auth_routes import auth_bp
 from config import settings
 from core.logging_config import configure_logging
@@ -26,6 +26,9 @@ from routes.student_routes import student_bp
 from routes.student_skill_routes import student_skill_bp
 from routes.subject_routes import subject_bp
 from routes.theme_routes import theme_bp
+from routes.peer_learning_routes import peer_learning_bp
+from routes.wellbeing_routes import wellbeing_bp
+from routes.ai_routes import ai_bp
 from services.attendance_service import ensure_attendance_table_consistency
 from services.faculty_dashboard_service import ensure_intervention_table_consistency
 from services.goals_service import ensure_goals_tables
@@ -105,7 +108,9 @@ app.register_blueprint(prediction_bp)
 app.register_blueprint(theme_bp)
 app.register_blueprint(notification_bp)
 app.register_blueprint(goals_bp)
-# app.register_blueprint(get_top_students)  # 🔥 NEW BLUEPRINT FOR TOP STUDENTS
+app.register_blueprint(peer_learning_bp)
+app.register_blueprint(wellbeing_bp)
+app.register_blueprint(ai_bp)
 
 @app.route("/")
 def home():
@@ -120,12 +125,6 @@ def offline_page():
 @app.route("/health/live")
 def live_check():
     return jsonify({"status": "alive", "app": settings.app_name}), 200
-    # try:
-    #     conn = get_db_connection()
-    #     conn.close()
-    #     return jsonify({"message": "Secure Database Connected Successfully 🔐"}), 200
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
 
 @app.route("/health/ready")
 @app.route("/health")
@@ -291,10 +290,6 @@ def delete_student(id):
     except Exception as e:
         return jsonify({"error": str(e)})
     
-# @app.route("/test-mock")
-# def test_mock():
-#     return "Mock route test working"
-
 
 @app.route("/register")
 def register_page():
@@ -335,5 +330,4 @@ def admin_dashboard_page():
     return render_template('dashboard_admin.html')
 
 if __name__ == "__main__":
-    #print(app.url_map)
     app.run(debug=settings.flask_debug)

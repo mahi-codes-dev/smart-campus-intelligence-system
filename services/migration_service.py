@@ -7,6 +7,14 @@ from database import get_db_connection
 MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "migrations"
 
 
+def _load_migration(path: Path):
+    # Normalize line endings so checksums stay stable across LF/CRLF checkouts.
+    migration_sql = path.read_text(encoding="utf-8").replace("\r\n", "\n").replace("\r", "\n")
+    normalized_checksum = sha256(migration_sql.encode("utf-8")).hexdigest()
+    legacy_checksum = sha256(path.read_bytes()).hexdigest()
+    return migration_sql, normalized_checksum, legacy_checksum
+
+
 def _ensure_migrations_table(cur):
     cur.execute(
         """
@@ -35,9 +43,20 @@ def run_migrations():
 
         for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
             filename = path.name
-            checksum = sha256(path.read_bytes()).hexdigest()
+            migration_sql, checksum, legacy_checksum = _load_migration(path)
 
             if filename in applied:
+                if applied[filename] == legacy_checksum and applied[filename] != checksum:
+                    cur.execute(
+                        """
+                        UPDATE schema_migrations
+                        SET checksum = %s
+                        WHERE filename = %s
+                        """,
+                        (checksum, filename),
+                    )
+                    continue
+
                 if applied[filename] != checksum:
                     raise RuntimeError(
                         f"Migration {filename} has changed after being applied. "
@@ -45,7 +64,7 @@ def run_migrations():
                     )
                 continue
 
-            cur.execute(path.read_text(encoding="utf-8"))
+            cur.execute(migration_sql)
             cur.execute(
                 """
                 INSERT INTO schema_migrations (filename, checksum)

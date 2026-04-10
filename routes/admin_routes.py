@@ -88,8 +88,6 @@ def download_admin_export(export_name):
 def create_admin_subject():
     try:
         data = request.get_json() or {}
-        print("ADMIN_SUBJECT_CREATE_REQUEST:", data)
-
         name = (data.get("name") or "").strip()
         code = (data.get("code") or "").strip()
         department = (data.get("department") or "").strip()
@@ -185,7 +183,6 @@ def remove_admin_subject(subject_id):
 @role_required("Admin")
 def remove_user(user_id):
     try:
-        print("ADMIN_DELETE_USER_REQUEST:", {"user_id": user_id, "requested_by": request.user["user_id"]})
         deleted_user = delete_user(user_id, current_user_id=request.user["user_id"])
         return jsonify({
             "message": "User deleted successfully",

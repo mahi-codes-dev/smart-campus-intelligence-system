@@ -2,6 +2,7 @@
 Real-time Notification Service - WebSocket and polling-based notifications
 Handles notification creation, delivery, and status management
 """
+import json
 import psycopg2
 from datetime import datetime, timedelta
 from database import get_db_connection
@@ -256,7 +257,7 @@ class RealtimeNotificationService:
                 (user_id, title, message, type, priority, action_url, metadata, expires_at)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id, user_id, title, message, type, priority, is_read, created_at, action_url
-            """, (user_id, title, message, notification_type, priority, action_url, str(metadata), expires_at))
+            """, (user_id, title, message, notification_type, priority, action_url, json.dumps(metadata), expires_at))
 
             notification = cur.fetchone()
             conn.commit()
@@ -312,23 +313,30 @@ class RealtimeNotificationService:
 
             expires_at = datetime.now() + timedelta(days=30)
             metadata = metadata or {}
-
-            values_list = []
-            for uid in user_ids:
-                action_url_val = f"'{action_url}'" if action_url else 'NULL'
-                values_list.append(
-                    f"({uid}, '{title}', '{message}', '{notification_type}', '{priority}', {action_url_val}, '{metadata}', '{expires_at}')"
+            rows = [
+                (
+                    uid,
+                    title,
+                    message,
+                    notification_type,
+                    priority,
+                    action_url,
+                    json.dumps(metadata),
+                    expires_at,
                 )
-            
-            values = ",".join(values_list)
+                for uid in user_ids
+            ]
 
-            cur.execute(f"""
-                INSERT INTO notifications 
+            cur.executemany(
+                """
+                INSERT INTO notifications
                 (user_id, title, message, type, priority, action_url, metadata, expires_at)
-                VALUES {values}
-            """)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                rows,
+            )
 
-            count = cur.rowcount
+            count = len(rows)
             conn.commit()
             cur.close()
             conn.close()

@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 ﻿/* ================= ROOT DESIGN SYSTEM ================= */
 
 :root {
@@ -46,7 +47,7 @@ html, body {
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-light);
     color: var(--text-dark);
     line-height: 1.6;
@@ -207,7 +208,7 @@ button.logout-button:hover {
 }
 
 .auth-branding {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -281,8 +282,6 @@ button.logout-button:hover {
     background: rgba(255, 255, 255, 0.1);
     padding: 12px 16px;
     border-radius: 8px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .branding-features i {
@@ -700,7 +699,6 @@ button.logout-button:hover {
     font-size: 24px;
     color: white;
     flex-shrink: 0;
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .benefit-text h4 {
@@ -736,7 +734,6 @@ button.logout-button:hover {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
     padding: 48px;
     animation: slideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
 .login-card {
@@ -776,7 +773,7 @@ button.logout-button:hover {
 .auth-header h2 {
     font-size: 32px;
     margin-bottom: 8px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -840,7 +837,7 @@ button.logout-button:hover {
     background: white;
     color: var(--text-dark);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    font-family: inherit;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .form-control:hover {
@@ -962,7 +959,7 @@ button.logout-button:hover {
 }
 
 .advanced-checkbox input[type="checkbox"]:checked {
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     border-color: var(--primary);
 }
 
@@ -1238,26 +1235,6 @@ button.logout-button:hover {
     }
 }
 
-/* ================= RESPONSIVE AUTH (OLD SECTION) ================= */
-
-@media (max-width: 768px) {
-    .auth-split {
-        grid-template-columns: 1fr;
-    }
-
-    .auth-branding {
-        display: none;
-    }
-
-    .auth-form-wrapper {
-        padding: 20px;
-    }
-
-    .auth-card {
-        padding: 30px;
-    }
-}
-
 /* ================= LAYOUT ================= */
 
 .layout {
@@ -1418,7 +1395,7 @@ button.logout-button:hover {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     color: white;
     display: flex;
     align-items: center;
@@ -1827,7 +1804,7 @@ tbody tr:hover {
 
 .hero-card {
     grid-column: span 2;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     color: white;
 }
 
@@ -2483,7 +2460,7 @@ body.dark .component-metric {
     border-radius: 8px;
     font-size: 12px;
     color: var(--muted-light);
-    font-family: 'Courier New', monospace;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     line-height: 1.6;
 }
 
@@ -2774,7 +2751,7 @@ body.dark .styled-message--danger {
 .sidebar-logo {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -2868,7 +2845,6 @@ body.dark .styled-message--danger {
 .sidebar-btn {
     flex: 1;
     padding: 10px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.05);
     color: rgba(255, 255, 255, 0.8);
@@ -2938,7 +2914,7 @@ body.dark .styled-message--danger {
     margin: 0;
     font-size: 20px;
     font-weight: 700;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -2960,7 +2936,7 @@ body.dark .styled-message--danger {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    background: linear-gradient(135deg, #2563eb, #1e40af);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3766,4 +3742,323 @@ body.dark .intervention-empty {
 
 .info-section {
     margin-bottom: 32px;
+}
+
+/* ================= FORGOT PASSWORD PANEL ================= */
+
+.forgot-password-link {
+    font-size: 13px;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.forgot-password-link:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+.forgot-card {
+    max-width: 420px;
+}
+
+.back-to-login {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 500;
+    margin-bottom: 16px;
+    transition: color 0.2s ease;
+}
+
+.back-to-login:hover {
+    color: var(--primary);
+}
+
+.back-to-login i {
+    font-size: 12px;
+}
+
+/* Panel slide animation */
+.panel-slide-in {
+    animation: panelSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes panelSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Step Indicators */
+.forgot-steps {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    padding: 0 8px;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.step-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #9ca3af;
+    transition: all 0.4s ease;
+}
+
+.step span {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: color 0.4s ease;
+}
+
+.step.active .step-circle {
+    background: linear-gradient(135deg, var(--primary), #1e40af);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.step.active span {
+    color: var(--primary);
+}
+
+.step.completed .step-circle {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.step.completed .step-circle::after {
+    content: '✓';
+    font-size: 16px;
+}
+
+.step.completed span {
+    color: var(--success);
+}
+
+.step-line {
+    width: 48px;
+    height: 3px;
+    background: #e5e7eb;
+    margin: 0 4px;
+    border-radius: 2px;
+    align-self: flex-start;
+    margin-top: 17px;
+    transition: background 0.4s ease;
+}
+
+.step-line.active {
+    background: linear-gradient(90deg, var(--success), var(--primary));
+}
+
+/* OTP Sent Notice */
+.otp-sent-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #eff6ff;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: #1e40af;
+    border: 1px solid #dbeafe;
+}
+
+.otp-sent-notice i {
+    font-size: 18px;
+    color: var(--primary);
+}
+
+.otp-sent-notice.success {
+    background: #f0fdf4;
+    color: #166534;
+    border-color: #bbf7d0;
+}
+
+.otp-sent-notice.success i {
+    color: var(--success);
+}
+
+/* OTP Digit Inputs */
+.otp-input-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 8px;
+}
+
+.otp-digit {
+    width: 48px;
+    height: 56px;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: white;
+    color: var(--text-dark);
+    transition: all 0.3s ease;
+    font-family: 'Inter', system-ui, sans-serif;
+    caret-color: var(--primary);
+}
+
+.otp-digit:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12), 0 4px 12px rgba(79, 70, 229, 0.1);
+    transform: translateY(-2px);
+}
+
+.otp-digit:hover {
+    border-color: #d1d5db;
+}
+
+/* OTP Timer */
+.otp-timer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 16px 0;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.otp-timer i {
+    color: var(--primary);
+}
+
+.otp-timer.expired {
+    color: var(--danger);
+    background: #fef2f2;
+}
+
+.otp-timer.expired i {
+    color: var(--danger);
+}
+
+/* Resend OTP link */
+.resend-otp {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.resend-otp a {
+    color: var(--primary);
+    font-weight: 600;
+    text-decoration: none;
+    margin-left: 4px;
+}
+
+.resend-otp a:hover {
+    text-decoration: underline;
+}
+
+/* Reset Success */
+.reset-success {
+    text-align: center;
+    padding: 24px 0;
+}
+
+.reset-success .success-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    animation: successPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.reset-success .success-icon i {
+    font-size: 32px;
+    color: white;
+}
+
+@keyframes successPop {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.reset-success h3 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.reset-success p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+/* Responsive - OTP digits on small screens */
+@media (max-width: 480px) {
+    .otp-input-group {
+        gap: 6px;
+    }
+
+    .otp-digit {
+        width: 40px;
+        height: 48px;
+        font-size: 20px;
+    }
+
+    .forgot-steps {
+        gap: 0;
+    }
+
+    .step-line {
+        width: 32px;
+    }
 }

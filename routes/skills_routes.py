@@ -28,8 +28,6 @@ def create_skill():
 def assign_skill_to_student():
     try:
         data = request.get_json() or {}
-        print("FACULTY_ASSIGN_SKILL_REQUEST:", data)
-
         if not all(key in data for key in ("student_id", "skill_id")):
             return jsonify({"error": "Missing fields"}), 400
 

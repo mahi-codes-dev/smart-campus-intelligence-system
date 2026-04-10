@@ -317,6 +317,95 @@ body.dark-mode *:focus-visible {
     outline-offset: 2px;
 }
 
+/* ================= DARK MODE - FORGOT PASSWORD ================= */
+
+body.dark-mode .form-control {
+    background: var(--card-dark);
+    color: var(--text-dark);
+    border-color: var(--border-light);
+}
+
+body.dark-mode .form-control::placeholder {
+    color: var(--muted-dark);
+}
+
+body.dark-mode .form-control:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .form-control:hover {
+    border-color: var(--muted-dark);
+}
+
+body.dark-mode .otp-digit {
+    background: var(--card-dark);
+    color: var(--text-dark);
+    border-color: var(--border-light);
+}
+
+body.dark-mode .otp-digit:focus {
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+body.dark-mode .otp-sent-notice {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary-light);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+body.dark-mode .otp-sent-notice.success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+body.dark-mode .otp-timer {
+    background: var(--card-dark);
+    color: var(--text-secondary);
+}
+
+body.dark-mode .otp-timer.expired {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+}
+
+body.dark-mode .step-circle {
+    border-color: var(--border-light);
+    background: var(--card-dark);
+    color: var(--muted-light);
+}
+
+body.dark-mode .step span {
+    color: var(--muted-light);
+}
+
+body.dark-mode .step-line {
+    background: var(--border-light);
+}
+
+body.dark-mode .btn-secondary.btn-enhanced {
+    background: var(--card-light);
+    color: var(--primary-light);
+    border-color: var(--primary);
+}
+
+body.dark-mode .btn-secondary.btn-enhanced:hover {
+    background: var(--bg-light);
+}
+
+body.dark-mode .advanced-checkbox input[type="checkbox"] {
+    background: var(--card-dark);
+    border-color: var(--border-light);
+}
+
+body.dark-mode .auth-header h2 {
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
 /* ================= PRINT STYLES (LIGHT MODE ALWAYS) ================= */
 
 @media print {

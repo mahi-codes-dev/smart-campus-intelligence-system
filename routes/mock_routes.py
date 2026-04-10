@@ -15,7 +15,6 @@ mock_bp = Blueprint("mock_bp", __name__)
 def create_mock():
     try:
         data = request.get_json() or {}
-        print("FACULTY_MOCK_CREATE_REQUEST:", data)
 
         # ✅ Validation
         valid, error = validate_required_fields(data, ["student_id", "score", "test_name"])
@@ -47,7 +46,6 @@ def create_mock():
 def update_mock():
     try:
         data = request.get_json() or {}
-        print("FACULTY_MOCK_UPDATE_REQUEST:", data)
 
         valid, error = validate_required_fields(data, ["student_id", "score", "test_name"])
         if not valid:

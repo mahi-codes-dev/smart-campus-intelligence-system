@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Smart Campus Intelligence System</title>
+    <meta name="description" content="Sign in to Smart Campus Intelligence System — your data-driven campus platform.">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
@@ -64,7 +65,8 @@
         <!-- Right side - Login Form -->
         <div class="auth-form-wrapper login-form-wrapper">
             <div class="auth-container">
-                <div class="auth-card login-card">
+                <!-- ============ LOGIN PANEL ============ -->
+                <div class="auth-card login-card" id="loginPanel">
                     <div class="auth-header">
                         <div class="header-badge">
                             <i class="fas fa-lock"></i>
@@ -125,10 +127,11 @@
                                 <span class="checkbox-custom"></span>
                                 <span class="checkbox-label">Remember me</span>
                             </label>
+                            <a href="#" class="forgot-password-link" id="showForgotPassword" onclick="showForgotPanel(); return false;">Forgot password?</a>
                         </div>
 
                         <!-- Submit Button -->
-                        <button type="button" onclick="login()" class="btn btn-primary btn-block btn-lg btn-enhanced">
+                        <button type="button" onclick="login()" id="loginBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
                             <span>Sign In</span>
                             <i class="fas fa-arrow-right"></i>
                         </button>
@@ -151,35 +154,172 @@
 
                     <!-- Footer -->
                     <div class="auth-footer">
-                        <p>Issues logging in? <a href="#">Get help</a></p>
+                        <p>Protected by enterprise-grade security</p>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
-<script src="{{ url_for('static', filename='auth.js') }}"></script>
-<script>
-    // Enhanced login form functionality
-    document.getElementById('loginForm').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            login();
-        }
-    });
-</script>
+                <!-- ============ FORGOT PASSWORD PANEL ============ -->
+                <div class="auth-card forgot-card" id="forgotPanel" style="display: none;">
+                    <div class="auth-header">
+                        <a href="#" class="back-to-login" id="backToLogin" onclick="showLoginPanel(); return false;">
+                            <i class="fas fa-arrow-left"></i>
+                            <span>Back to Sign In</span>
+                        </a>
+                        <div class="header-badge">
+                            <i class="fas fa-key"></i>
+                            <span>Reset Password</span>
+                        </div>
+                        <h2>Forgot Password?</h2>
+                        <p>No worries — we'll send you a One-Time Password</p>
+                    </div>
 
-</body>
-</html>
+                    <!-- Step Indicator -->
+                    <div class="forgot-steps">
+                        <div class="step active" id="step1Indicator">
+                            <div class="step-circle">1</div>
+                            <span>Email</span>
+                        </div>
+                        <div class="step-line" id="stepLine1"></div>
+                        <div class="step" id="step2Indicator">
+                            <div class="step-circle">2</div>
+                            <span>Verify</span>
+                        </div>
+                        <div class="step-line" id="stepLine2"></div>
+                        <div class="step" id="step3Indicator">
+                            <div class="step-circle">3</div>
+                            <span>Reset</span>
+                        </div>
+                    </div>
 
-                <a href="/register" class="btn btn-secondary btn-block">
-                    <span>Create Account</span>
-                    <i class="fas fa-user-plus"></i>
-                </a>
+                    <!-- Step 1: Enter Email -->
+                    <div class="forgot-step-content" id="forgotStep1">
+                        <div class="form-group form-group-enhanced">
+                            <label for="forgotEmail" class="form-label">
+                                <span>Your Email Address</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="input-group">
+                                <i class="fas fa-envelope input-icon"></i>
+                                <input 
+                                    type="email" 
+                                    id="forgotEmail" 
+                                    class="form-control"
+                                    placeholder="you@example.com"
+                                    required
+                                >
+                                <span class="input-focus-border"></span>
+                            </div>
+                            <span class="error-message" id="forgotEmailError"></span>
+                        </div>
+                        <button type="button" onclick="sendOtp()" id="sendOtpBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
+                            <span>Send OTP</span>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
 
-                <div class="auth-footer">
-                    <p>By signing in, you agree to our <a href="#">Terms of Service</a></p>
+                    <!-- Step 2: Enter OTP -->
+                    <div class="forgot-step-content" id="forgotStep2" style="display: none;">
+                        <div class="otp-sent-notice">
+                            <i class="fas fa-check-circle"></i>
+                            <span>OTP sent to <strong id="otpSentEmail"></strong></span>
+                        </div>
+                        <div class="form-group form-group-enhanced">
+                            <label for="otpInput" class="form-label">
+                                <span>Enter 6-Digit OTP</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="otp-input-group">
+                                <input type="text" id="otpDigit1" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="one-time-code">
+                                <input type="text" id="otpDigit2" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                <input type="text" id="otpDigit3" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                <input type="text" id="otpDigit4" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                <input type="text" id="otpDigit5" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                                <input type="text" id="otpDigit6" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                            </div>
+                            <span class="error-message" id="otpError"></span>
+                        </div>
+                        <div class="otp-timer" id="otpTimer">
+                            <i class="fas fa-clock"></i>
+                            <span>Expires in <strong id="otpCountdown">15:00</strong></span>
+                        </div>
+                        <button type="button" onclick="verifyOtp()" id="verifyOtpBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
+                            <span>Verify OTP</span>
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <div class="resend-otp">
+                            <span>Didn't receive it?</span>
+                            <a href="#" id="resendOtpLink" onclick="resendOtp(); return false;">Resend OTP</a>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: New Password -->
+                    <div class="forgot-step-content" id="forgotStep3" style="display: none;">
+                        <div class="otp-sent-notice success">
+                            <i class="fas fa-shield-alt"></i>
+                            <span>Identity verified — set your new password</span>
+                        </div>
+                        <div class="form-group form-group-enhanced">
+                            <label for="newPassword" class="form-label">
+                                <span>New Password</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="input-group password-input-group">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input 
+                                    type="password" 
+                                    id="newPassword" 
+                                    class="form-control"
+                                    placeholder="Create a strong password"
+                                    required
+                                >
+                                <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)" title="Show password"></i>
+                                <span class="input-focus-border"></span>
+                            </div>
+                            <span class="error-message" id="newPasswordError"></span>
+                        </div>
+                        <div class="form-group form-group-enhanced">
+                            <label for="confirmPassword" class="form-label">
+                                <span>Confirm Password</span>
+                                <span class="required">*</span>
+                            </label>
+                            <div class="input-group password-input-group">
+                                <i class="fas fa-lock input-icon"></i>
+                                <input 
+                                    type="password" 
+                                    id="confirmPassword" 
+                                    class="form-control"
+                                    placeholder="Confirm your password"
+                                    required
+                                >
+                                <i class="fas fa-eye toggle-password-btn" onclick="togglePassword(this)" title="Show password"></i>
+                                <span class="input-focus-border"></span>
+                            </div>
+                            <span class="error-message" id="confirmPasswordError"></span>
+                        </div>
+                        <button type="button" onclick="resetPassword()" id="resetPasswordBtn" class="btn btn-primary btn-block btn-lg btn-enhanced">
+                            <span>Reset Password</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <!-- Step 4: Success -->
+                    <div class="forgot-step-content" id="forgotStep4" style="display: none;">
+                        <div class="reset-success">
+                            <div class="success-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h3>Password Reset!</h3>
+                            <p>Your password has been changed successfully. You can now sign in with your new password.</p>
+                            <button type="button" onclick="showLoginPanel()" class="btn btn-primary btn-block btn-lg btn-enhanced">
+                                <span>Sign In Now</span>
+                                <i class="fas fa-sign-in-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="message-container">
+                        <p id="forgotMessage" class="message"></p>
+                    </div>
                 </div>
             </div>
         </div>

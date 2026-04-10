@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.marks_service import add_marks, get_marks, save_marks
-from auth.auth_middleware_replacement import token_required, role_required
+from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
 from utils.validators import RequestValidator
 

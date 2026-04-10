@@ -4,7 +4,7 @@ from services.attendance_service import (
     get_attendance,
     save_attendance_percentage,
 )
-from auth.auth_middleware_replacement import token_required, role_required
+from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
 
 from services.student_service import get_student_record_by_user_id

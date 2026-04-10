@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request, g
-from auth.auth_middleware import token_required
+from auth.auth_middleware import role_required, token_required
 from services.realtime_notification_service import RealtimeNotificationService
 from database import get_db_connection
 import logging
@@ -199,6 +199,7 @@ def delete_notification(notification_id):
 
 @notification_bp.route("/api/notifications/clear-expired", methods=["DELETE"])
 @token_required
+@role_required("Admin")
 def clear_expired():
     """Clear expired notifications (admin action, but available for cleanup)"""
     try:

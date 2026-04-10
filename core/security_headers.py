@@ -4,7 +4,7 @@ Security headers middleware.
 Adds industry-standard HTTP security headers to every response so the
 app passes OWASP security header checks out of the box.
 """
-from flask import Flask
+from flask import Flask, request
 
 
 def apply_security_headers(app: Flask) -> None:
@@ -44,5 +44,8 @@ def apply_security_headers(app: Flask) -> None:
         response.headers["Permissions-Policy"] = (
             "geolocation=(), microphone=(), camera=(), payment=()"
         )
+
+        if request.is_secure:
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
         return response

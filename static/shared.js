@@ -2,7 +2,19 @@ function go(path) {
     window.location.href = path;
 }
 
-function logout() {
+async function logout() {
+    try {
+        await fetch("/auth/logout", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+                Authorization: localStorage.getItem("token") ? "Bearer " + localStorage.getItem("token") : "",
+            },
+        });
+    } catch (_error) {
+        // Ignore logout network failures and continue clearing client state.
+    }
+
     localStorage.removeItem("token");
     localStorage.removeItem("user_email");
     localStorage.removeItem("role_id");
@@ -51,6 +63,7 @@ async function fetchJson(path, options = {}) {
     const response = await fetch(path, {
         ...options,
         headers,
+        credentials: "same-origin",
     });
 
     const data = await response.json().catch(() => ({}));

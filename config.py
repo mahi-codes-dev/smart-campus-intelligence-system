@@ -68,6 +68,10 @@ class Settings:
     smtp_username: str | None
     smtp_password: str | None
     mail_default_sender: str
+    
+    # Gemini AI settings
+    gemini_api_key: str | None
+    gemini_model: str
 
 
 settings = Settings(
@@ -107,4 +111,6 @@ settings = Settings(
     smtp_username=_get_env("SMTP_USERNAME"),
     smtp_password=_get_env("SMTP_PASSWORD"),
     mail_default_sender=_get_env("MAIL_DEFAULT_SENDER", default="noreply@smartcampus.com"),
+    gemini_api_key=_get_env("GEMINI_API_KEY"),
+    gemini_model=_get_env("GEMINI_MODEL", default="gemini-2.0-flash"),
 )

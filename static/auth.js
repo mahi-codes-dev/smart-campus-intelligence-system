@@ -51,18 +51,16 @@ function showError(elementId, message) {
 /**
  * Show/hide message with animation
  */
-function showMessage(message, type = 'error') {
-    const messageEl = document.getElementById('message');
+function showMessage(message, type = 'error', targetId = 'message') {
+    const messageEl = document.getElementById(targetId);
     if (!messageEl) return;
 
     messageEl.textContent = message;
     messageEl.className = `message ${type}`;
     messageEl.style.display = 'block';
 
-    // Scroll into view
     messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-    // Auto hide success messages
     if (type === 'success') {
         setTimeout(() => {
             messageEl.className = 'message';
@@ -264,10 +262,12 @@ async function register() {
     const department = departmentInput ? departmentInput.value.trim() : "";
     const rollNumberInput = document.getElementById("rollNumber");
     const rollNumber = rollNumberInput ? rollNumberInput.value.trim() : "";
-    const registerBtn = event.target;
+    const registerBtn = document.querySelector('#registerForm button[onclick]');
 
-    registerBtn.disabled = true;
-    registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+    if (registerBtn) {
+        registerBtn.disabled = true;
+        registerBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+    }
 
     try {
         const data = await fetchJson("/auth/register", {
@@ -292,8 +292,10 @@ async function register() {
     } catch (error) {
         console.error(error);
         showMessage(error.message || "Registration failed. Please try again.", "error");
-        registerBtn.disabled = false;
-        registerBtn.innerHTML = '<span>Create Account</span><i class="fas fa-arrow-right"></i>';
+        if (registerBtn) {
+            registerBtn.disabled = false;
+            registerBtn.innerHTML = '<span>Create Account</span><i class="fas fa-arrow-right"></i>';
+        }
     }
 }
 
@@ -339,10 +341,12 @@ async function login() {
     const email = document.getElementById("email").value.trim();
     const password = document.getElementById("password").value;
     const rememberMe = document.getElementById("rememberMe")?.checked || false;
-    const loginBtn = event.target;
+    const loginBtn = document.getElementById("loginBtn");
 
-    loginBtn.disabled = true;
-    loginBtn.innerHTML = '<span><i class="fas fa-spinner fa-spin"></i> Signing In...</span>';
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<span><i class="fas fa-spinner fa-spin"></i> Signing In...</span>';
+    }
 
     try {
         const data = await fetchJson("/auth/login", {
@@ -374,9 +378,322 @@ async function login() {
     } catch (error) {
         console.error(error);
         showMessage(error.message || "Login failed. Please check your credentials.", "error");
-        loginBtn.disabled = false;
-        loginBtn.innerHTML = '<span>Sign In</span><i class="fas fa-arrow-right"></i>';
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<span>Sign In</span><i class="fas fa-arrow-right"></i>';
+        }
     }
+}
+
+// ================= FORGOT PASSWORD =================
+
+let _forgotEmail = "";
+let _otpValue = "";
+let _otpTimerInterval = null;
+
+/**
+ * Show the forgot password panel, hide login
+ */
+function showForgotPanel() {
+    const loginPanel = document.getElementById("loginPanel");
+    const forgotPanel = document.getElementById("forgotPanel");
+    if (loginPanel) loginPanel.style.display = "none";
+    if (forgotPanel) {
+        forgotPanel.style.display = "block";
+        forgotPanel.classList.add("panel-slide-in");
+    }
+    // Reset to step 1
+    _showForgotStep(1);
+    clearErrors();
+
+    // Pre-fill email if user already typed it on login
+    const loginEmail = document.getElementById("email");
+    const forgotEmail = document.getElementById("forgotEmail");
+    if (loginEmail && forgotEmail && loginEmail.value.trim()) {
+        forgotEmail.value = loginEmail.value.trim();
+    }
+}
+
+/**
+ * Show the login panel, hide forgot password
+ */
+function showLoginPanel() {
+    const loginPanel = document.getElementById("loginPanel");
+    const forgotPanel = document.getElementById("forgotPanel");
+    if (forgotPanel) {
+        forgotPanel.style.display = "none";
+        forgotPanel.classList.remove("panel-slide-in");
+    }
+    if (loginPanel) {
+        loginPanel.style.display = "block";
+        loginPanel.classList.add("panel-slide-in");
+    }
+    clearErrors();
+    _stopOtpTimer();
+
+    // Clear forgot message
+    const forgotMsg = document.getElementById("forgotMessage");
+    if (forgotMsg) { forgotMsg.textContent = ""; forgotMsg.style.display = "none"; }
+}
+
+/**
+ * Show a specific forgot-password step (1-4)
+ */
+function _showForgotStep(step) {
+    for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById(`forgotStep${i}`);
+        if (el) el.style.display = i === step ? "block" : "none";
+    }
+
+    // Update step indicators
+    for (let i = 1; i <= 3; i++) {
+        const indicator = document.getElementById(`step${i}Indicator`);
+        if (indicator) {
+            indicator.classList.remove("active", "completed");
+            if (i < step) indicator.classList.add("completed");
+            else if (i === step) indicator.classList.add("active");
+        }
+        if (i < 3) {
+            const line = document.getElementById(`stepLine${i}`);
+            if (line) {
+                line.classList.toggle("active", i < step);
+            }
+        }
+    }
+}
+
+/**
+ * Step 1: Send OTP to email
+ */
+async function sendOtp() {
+    clearErrors();
+    const emailInput = document.getElementById("forgotEmail");
+    const email = (emailInput?.value || "").trim();
+
+    if (!email) {
+        showError("forgotEmailError", "Email is required");
+        return;
+    }
+    if (!isValidEmail(email)) {
+        showError("forgotEmailError", "Please enter a valid email address");
+        return;
+    }
+
+    const btn = document.getElementById("sendOtpBtn");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
+
+    try {
+        await fetchJson("/auth/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+
+        _forgotEmail = email;
+        const sentLabel = document.getElementById("otpSentEmail");
+        if (sentLabel) sentLabel.textContent = email;
+
+        _showForgotStep(2);
+        _startOtpTimer(15 * 60); // 15 min
+        _initOtpInputs();
+    } catch (error) {
+        showMessage(error.message || "Failed to send OTP", "error", "forgotMessage");
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Send OTP</span><i class="fas fa-paper-plane"></i>';
+        }
+    }
+}
+
+/**
+ * Step 2: Verify OTP
+ */
+async function verifyOtp() {
+    clearErrors();
+    const otp = _getOtpValue();
+
+    if (!otp || otp.length !== 6) {
+        showError("otpError", "Please enter the complete 6-digit OTP");
+        return;
+    }
+
+    _otpValue = otp;
+    // Move to step 3 (new password) — actual verification happens on reset
+    _showForgotStep(3);
+    _stopOtpTimer();
+}
+
+/**
+ * Step 3: Reset password with OTP
+ */
+async function resetPassword() {
+    clearErrors();
+    const newPassword = document.getElementById("newPassword")?.value || "";
+    const confirmPassword = document.getElementById("confirmPassword")?.value || "";
+
+    if (!newPassword) {
+        showError("newPasswordError", "New password is required");
+        return;
+    }
+    if (newPassword.length < 6) {
+        showError("newPasswordError", "Password must be at least 6 characters");
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        showError("confirmPasswordError", "Passwords do not match");
+        return;
+    }
+
+    const btn = document.getElementById("resetPasswordBtn");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+    }
+
+    try {
+        await fetchJson("/auth/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: _forgotEmail,
+                otp: _otpValue,
+                new_password: newPassword
+            })
+        });
+
+        _showForgotStep(4);
+        if (typeof showToast === 'function') {
+            showToast("Password reset successful! 🔐");
+        }
+    } catch (error) {
+        showMessage(error.message || "Failed to reset password", "error", "forgotMessage");
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span>Reset Password</span><i class="fas fa-arrow-right"></i>';
+        }
+    }
+}
+
+/**
+ * Resend OTP
+ */
+async function resendOtp() {
+    const link = document.getElementById("resendOtpLink");
+    if (link) link.textContent = "Sending...";
+
+    try {
+        await fetchJson("/auth/forgot-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: _forgotEmail })
+        });
+
+        _startOtpTimer(15 * 60);
+        if (typeof showToast === 'function') {
+            showToast("New OTP sent! 📧");
+        }
+        // Clear existing OTP inputs
+        for (let i = 1; i <= 6; i++) {
+            const d = document.getElementById(`otpDigit${i}`);
+            if (d) d.value = "";
+        }
+        document.getElementById("otpDigit1")?.focus();
+    } catch (error) {
+        showMessage(error.message || "Failed to resend OTP", "error", "forgotMessage");
+    } finally {
+        if (link) link.textContent = "Resend OTP";
+    }
+}
+
+// ================= OTP INPUT HELPERS =================
+
+/**
+ * Initialize OTP single-digit inputs with auto-advance
+ */
+function _initOtpInputs() {
+    for (let i = 1; i <= 6; i++) {
+        const input = document.getElementById(`otpDigit${i}`);
+        if (!input) continue;
+
+        input.value = "";
+
+        input.addEventListener("input", function () {
+            this.value = this.value.replace(/[^0-9]/g, "");
+            if (this.value.length === 1 && i < 6) {
+                document.getElementById(`otpDigit${i + 1}`)?.focus();
+            }
+        });
+
+        input.addEventListener("keydown", function (e) {
+            if (e.key === "Backspace" && !this.value && i > 1) {
+                document.getElementById(`otpDigit${i - 1}`)?.focus();
+            }
+            if (e.key === "Enter") {
+                verifyOtp();
+            }
+        });
+
+        input.addEventListener("paste", function (e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData.getData("text") || "").replace(/[^0-9]/g, "").slice(0, 6);
+            for (let j = 0; j < pasted.length; j++) {
+                const d = document.getElementById(`otpDigit${j + 1}`);
+                if (d) d.value = pasted[j];
+            }
+            const lastFilled = Math.min(pasted.length, 6);
+            document.getElementById(`otpDigit${lastFilled}`)?.focus();
+        });
+    }
+
+    document.getElementById("otpDigit1")?.focus();
+}
+
+/**
+ * Read OTP value from 6 digit inputs
+ */
+function _getOtpValue() {
+    let otp = "";
+    for (let i = 1; i <= 6; i++) {
+        otp += document.getElementById(`otpDigit${i}`)?.value || "";
+    }
+    return otp;
+}
+
+// ================= OTP TIMER =================
+
+function _startOtpTimer(seconds) {
+    _stopOtpTimer();
+    let remaining = seconds;
+    const el = document.getElementById("otpCountdown");
+    const timerContainer = document.getElementById("otpTimer");
+
+    function tick() {
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        if (el) el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        if (remaining <= 0) {
+            _stopOtpTimer();
+            if (el) el.textContent = "Expired";
+            if (timerContainer) timerContainer.classList.add("expired");
+        }
+        remaining--;
+    }
+
+    tick();
+    _otpTimerInterval = setInterval(tick, 1000);
+}
+
+function _stopOtpTimer() {
+    if (_otpTimerInterval) {
+        clearInterval(_otpTimerInterval);
+        _otpTimerInterval = null;
+    }
+    const timerContainer = document.getElementById("otpTimer");
+    if (timerContainer) timerContainer.classList.remove("expired");
 }
 
 // ================= PAGE INITIALIZATION =================
@@ -398,12 +715,13 @@ function initLoginPage() {
         }
     }
 
-    // Handle Enter key
+    // Handle Enter key on login form
     const form = document.getElementById("loginForm");
     if (form) {
         form.addEventListener("keypress", (e) => {
             if (e.key === "Enter") {
-                login.call({ target: form.querySelector("button") });
+                e.preventDefault();
+                login();
             }
         });
     }
@@ -420,7 +738,8 @@ function initRegisterPage() {
     if (form) {
         form.addEventListener("keypress", (e) => {
             if (e.key === "Enter") {
-                register.call({ target: form.querySelector("button") });
+                e.preventDefault();
+                register();
             }
         });
     }

@@ -1,9 +1,11 @@
 import inspect
 from functools import wraps
 
-from flask import g, jsonify, request
 import jwt
+from flask import g, jsonify, request
+
 from config import settings
+from database import get_db_connection
 
 SECRET_KEY = settings.jwt_secret
 JWT_ALGORITHM = settings.jwt_algorithm
@@ -26,31 +28,52 @@ def _build_current_user(payload):
         "role_name": role_name,
     }
 
+
+def _get_request_token():
+    auth_header = request.headers.get("Authorization", "")
+    parts = auth_header.split(" ", 1)
+    if len(parts) == 2 and parts[0].lower() == "bearer":
+        token = parts[1].strip()
+        if token:
+            return token
+
+    cookie_token = request.cookies.get(settings.auth_cookie_name, "")
+    return cookie_token.strip() or None
+
+
 def token_required(f):
     signature = inspect.signature(f)
     expects_current_user = "current_user" in signature.parameters
 
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = None
-
-        auth_header = request.headers.get("Authorization", "")
-        parts = auth_header.split(" ", 1)
-        if len(parts) == 2 and parts[0].lower() == "bearer":
-            token = parts[1].strip()
+        token = _get_request_token()
 
         if not token:
             return jsonify({"error": "Token is missing"}), 401
 
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
+            
+            jti = payload.get("jti")
+            if jti:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                try:
+                    cur.execute("SELECT 1 FROM jwt_blacklist WHERE jti = %s", (jti,))
+                    if cur.fetchone():
+                        return jsonify({"error": "Token has been revoked"}), 401
+                finally:
+                    cur.close()
+                    conn.close()
+
             current_user = _build_current_user(payload)
-            data = current_user
             request.user_id = current_user.get("user_id")
+            request.user = current_user  # type: ignore[attr-defined]
+            request.environ["user"] = current_user
             g.user = current_user
             g.user_id = current_user.get("user_id")
             g.user_role = current_user.get("role")
-            request.user = data   # ✅ ADD THIS LINE
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401
         except jwt.InvalidTokenError:
@@ -63,19 +86,15 @@ def token_required(f):
 
     return decorated
 
-# ✅ ROLE REQUIRED (UPDATED TO USE request.user)
+
 def role_required(required_role):
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-
-            # 🔥 Ensure token_required runs first
             if not hasattr(request, "user"):
                 return jsonify({"error": "Unauthorized"}), 401
 
             user_role = request.user.get("role_name") or ROLE_MAP.get(request.user.get("role_id"))
-
-            # 🔥 Map role_id → role name
 
             if user_role != required_role:
                 return jsonify({"error": "Access denied"}), 403
@@ -83,4 +102,5 @@ def role_required(required_role):
             return f(*args, **kwargs)
 
         return decorated
+
     return decorator

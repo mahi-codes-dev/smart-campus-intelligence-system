@@ -13,7 +13,6 @@ student_skill_bp = Blueprint("student_skill_bp", __name__)
 def add_skill():
     try:
         data = request.get_json() or {}
-        print("STUDENT_SKILL_ADD_REQUEST:", data)
         student = get_student_record_by_user_id(request.user["user_id"])  # type: ignore
 
         if not student:
