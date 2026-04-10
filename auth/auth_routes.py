@@ -1,13 +1,21 @@
-from flask import Blueprint, request, jsonify
-from database import get_db_connection
 import bcrypt
 import jwt
 import datetime
-from auth.auth_middleware import SECRET_KEY, JWT_ALGORITHM
+import logging
+import uuid
+
+from flask import Blueprint, jsonify, request, g
+
+from auth.auth_middleware_replacement import SECRET_KEY, JWT_ALGORITHM, token_required
 from config import settings
+from core.rate_limiter import rate_limit
+from database import get_db_connection
 from services.student_service import ensure_student_table_consistency, get_all_departments, sync_student_record
+from services.email_service import create_and_store_otp, send_otp_email, verify_and_use_otp
+from utils.validators import sanitize_string, validate_email, validate_password, validate_roll_number
 
 auth_bp = Blueprint("auth_bp", __name__)
+logger = logging.getLogger(__name__)
 
 JWT_EXP_HOURS = settings.jwt_exp_hours
 
@@ -20,6 +28,29 @@ def _get_dashboard_path(role_name):
     }
 
     return role_to_path.get((role_name or "").lower(), "/")
+
+
+def _set_auth_cookie(response, token):
+    response.set_cookie(
+        settings.auth_cookie_name,
+        token,
+        max_age=JWT_EXP_HOURS * 60 * 60,
+        httponly=True,
+        secure=settings.auth_cookie_secure,
+        samesite=settings.auth_cookie_samesite,
+        domain=settings.auth_cookie_domain,
+        path="/",
+    )
+    return response
+
+
+def _clear_auth_cookie(response):
+    response.delete_cookie(
+        settings.auth_cookie_name,
+        domain=settings.auth_cookie_domain,
+        path="/",
+    )
+    return response
 
 
 def _get_roles():
@@ -68,26 +99,26 @@ def get_departments():
 
 @auth_bp.route("/register", methods=["POST"])
 @auth_bp.route("/auth/register", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300)
 def register():
     conn = None
     cur = None
 
     try:
         data = request.get_json() or {}
-        print("REGISTER_REQUEST:", data)
 
-        name = (data.get("name") or "").strip()
-        email = (data.get("email") or "").strip()
-        password = data.get("password") or ""
-        department = (data.get("department") or "").strip()
-        roll_number = (data.get("roll_number") or "").strip()
+        name = sanitize_string(data.get("name"), max_length=100)
+        email = validate_email(data.get("email"))
+        password = validate_password(data.get("password"))
+        department = sanitize_string(data.get("department"), max_length=100, allow_empty=True)
+        roll_number = sanitize_string(data.get("roll_number"), max_length=50, allow_empty=True)
 
         try:
             role_id = int(data.get("role_id") or 0)
         except (TypeError, ValueError):
             return jsonify({"error": "Invalid role selected"}), 400
 
-        if not name or not email or not password or not role_id:
+        if not role_id:
             return jsonify({"error": "Missing fields"}), 400
 
         if role_id == 3 and not department:
@@ -95,6 +126,8 @@ def register():
 
         if role_id == 3 and not roll_number:
             return jsonify({"error": "Roll number is required for student registration"}), 400
+        if role_id == 3:
+            roll_number = validate_roll_number(roll_number)
 
         ensure_student_table_consistency()
 
@@ -142,7 +175,7 @@ def register():
         cur.close()
         conn.close()
 
-        return jsonify({
+        response = jsonify({
             "message": "User registered successfully",
             "user": {
                 "id": user_id,
@@ -152,7 +185,8 @@ def register():
                 "roll_number": student_record["roll_number"] if student_record else None,
                 "department": department or None,
             }
-        }), 201
+        })
+        return response, 201
 
     except ValueError as e:
         if conn:
@@ -169,17 +203,21 @@ def register():
             cur.close()
         if conn:
             conn.close()
+        logger.exception("User registration failed")
         return jsonify({"error": str(e)}), 500
 
 
 @auth_bp.route("/auth/login", methods=["POST"])
+@rate_limit(max_requests=10, window_seconds=60)
 def login():
+    conn = None
+    cur = None
+
     try:
         data = request.get_json() or {}
-        print("LOGIN_REQUEST:", data)
 
-        email = (data.get("email") or "").strip()
-        password = data.get("password") or ""
+        email = validate_email(data.get("email"))
+        password = str(data.get("password") or "")
 
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
@@ -198,11 +236,9 @@ def login():
         )
         user = cur.fetchone()
 
-        cur.close()
-        conn.close()
-
         if user is None:
             return jsonify({"error": "User not found"}), 404
+
 
         stored_password = user[3]
 
@@ -210,6 +246,7 @@ def login():
             return jsonify({"error": "Invalid password"}), 401
 
         token = jwt.encode({
+            "jti": str(uuid.uuid4()),
             "user_id": user[0],
             "email": user[2],
             "role_id": user[4],
@@ -219,7 +256,7 @@ def login():
         role_name = user[5] or ""
         dashboard_path = _get_dashboard_path(role_name)
 
-        return jsonify({
+        response = jsonify({
             "message": "Login successful",
             "token": token,
             "user": {
@@ -230,7 +267,88 @@ def login():
                 "role_name": role_name,
                 "dashboard_path": dashboard_path,
             }
-        }), 200
+        })
+        _set_auth_cookie(response, token)
+        return response, 200
 
     except Exception as e:
+        logger.exception("Login failed")
         return jsonify({"error": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@auth_bp.route("/auth/logout", methods=["POST"])
+@token_required
+def logout():
+    jti = request.user.get("jti")
+    if jti:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("""
+                INSERT INTO jwt_blacklist (jti) VALUES (%s)
+                ON CONFLICT (jti) DO NOTHING
+            """, (jti,))
+            conn.commit()
+        except Exception as e:
+            logger.error(f"Failed to blacklist token: {e}")
+        finally:
+            cur.close()
+            conn.close()
+
+    response = jsonify({"message": "Logout successful"})
+    _clear_auth_cookie(response)
+    return response, 200
+
+@auth_bp.route("/auth/forgot-password", methods=["POST"])
+@rate_limit(max_requests=5, window_seconds=300)
+def forgot_password():
+    data = request.get_json() or {}
+    try:
+        email = validate_email(data.get("email"))
+        otp = create_and_store_otp(email)
+        if otp:
+            send_otp_email(email, otp)
+        
+        # Always return success to prevent email enumeration
+        return jsonify({"message": "If the email is valid, an OTP has been sent."}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({"error": "Failed to process request."}), 500
+
+@auth_bp.route("/auth/reset-password", methods=["POST"])
+@rate_limit(max_requests=10, window_seconds=300)
+def reset_password():
+    data = request.get_json() or {}
+    try:
+        email = validate_email(data.get("email"))
+        otp = data.get("otp")
+        new_password = validate_password(data.get("new_password"))
+        
+        if not otp:
+            return jsonify({"error": "OTP is required"}), 400
+            
+        if not verify_and_use_otp(email, otp):
+            return jsonify({"error": "Invalid or expired OTP"}), 400
+            
+        hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE users SET password = %s WHERE LOWER(email) = LOWER(%s)", (hashed_password, email))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({"message": "Password has been reset successfully."}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.error(str(e))
+        return jsonify({"error": "Failed to reset password."}), 500

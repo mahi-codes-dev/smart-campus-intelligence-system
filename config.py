@@ -13,6 +13,11 @@ def _to_bool(value):
     return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _default_debug():
+    flask_env = os.getenv("FLASK_ENV", "development")
+    return "true" if flask_env.strip().lower() == "development" else "false"
+
+
 def _get_env(name, default=None, *, aliases=None, required=False, cast=str):
     candidates = [name, *(aliases or [])]
 
@@ -47,6 +52,22 @@ class Settings:
     flask_debug: bool
     app_name: str
     app_url: str
+    log_level: str
+    strict_startup_validation: bool
+    db_pool_minconn: int
+    db_pool_maxconn: int
+    trust_proxy_count: int
+    auth_cookie_name: str
+    auth_cookie_secure: bool
+    auth_cookie_samesite: str
+    auth_cookie_domain: str | None
+    
+    # Email settings for OTP
+    smtp_server: str
+    smtp_port: int
+    smtp_username: str | None
+    smtp_password: str | None
+    mail_default_sender: str
 
 
 settings = Settings(
@@ -61,7 +82,29 @@ settings = Settings(
     jwt_exp_hours=_get_env("JWT_EXP_HOURS", default="24", cast=int),
     flask_secret_key=_get_env("SECRET_KEY", aliases=["JWT_SECRET"], required=True),
     flask_env=_get_env("FLASK_ENV", default="development"),
-    flask_debug=_get_env("FLASK_DEBUG", default="true", cast=_to_bool),
+    flask_debug=_get_env("FLASK_DEBUG", default=_default_debug(), cast=_to_bool),
     app_name=_get_env("APP_NAME", default="Smart Campus Intelligence System"),
     app_url=_get_env("APP_URL", default="http://localhost:5000"),
+    log_level=_get_env("LOG_LEVEL", default="INFO").upper(),
+    strict_startup_validation=_get_env(
+        "STRICT_STARTUP_VALIDATION",
+        default="false" if _to_bool(_default_debug()) else "true",
+        cast=_to_bool,
+    ),
+    db_pool_minconn=_get_env("DB_POOL_MINCONN", default="1", cast=int),
+    db_pool_maxconn=_get_env("DB_POOL_MAXCONN", default="10", cast=int),
+    trust_proxy_count=_get_env("TRUST_PROXY_COUNT", default="1", cast=int),
+    auth_cookie_name=_get_env("AUTH_COOKIE_NAME", default="smart_campus_token"),
+    auth_cookie_secure=_get_env(
+        "AUTH_COOKIE_SECURE",
+        default="false" if _to_bool(_default_debug()) else "true",
+        cast=_to_bool,
+    ),
+    auth_cookie_samesite=_get_env("AUTH_COOKIE_SAMESITE", default="Lax"),
+    auth_cookie_domain=_get_env("AUTH_COOKIE_DOMAIN"),
+    smtp_server=_get_env("SMTP_SERVER", default="smtp.gmail.com"),
+    smtp_port=_get_env("SMTP_PORT", default="587", cast=int),
+    smtp_username=_get_env("SMTP_USERNAME"),
+    smtp_password=_get_env("SMTP_PASSWORD"),
+    mail_default_sender=_get_env("MAIL_DEFAULT_SENDER", default="noreply@smartcampus.com"),
 )
