@@ -1,77 +1,94 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My Skills</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% set top_nav_enabled = True %}
 
-<div class="layout">
-    <div class="sidebar">
-        <h2>Smart Campus</h2>
-        <ul>
-            <li onclick="go('/student-dashboard')">
-                <i class="fas fa-chart-line"></i> Dashboard
-            </li>
-            <li onclick="go('/student-progress')">
-                <i class="fas fa-user-graduate"></i> My Progress
-            </li>
-            <li class="active" onclick="go('/student-skills')">
-                <i class="fas fa-code"></i> Skills
-            </li>
-            <li onclick="go('/student-profile')">
-                <i class="fas fa-id-card"></i> Profile
-            </li>
-        </ul>
-    </div>
+{% block title %}My Skills - Smart Campus Intelligence{% endblock %}
 
-    <div class="main">
-        <div class="topbar">
-            <span>Welcome, <span id="userEmail"></span></span>
-            <button class="logout-button" onclick="logout()">Logout</button>
+{% block breadcrumb %}Career{% endblock %}
+{% block page_title %}Professional Skills{% endblock %}
+
+{% block top_nav %}
+<li class="top-nav-item" onclick="go('/student-dashboard')">
+    <i class="fas fa-home top-nav-icon"></i>
+    <span>Dashboard</span>
+</li>
+<li class="top-nav-item" onclick="go('/student-progress')">
+    <i class="fas fa-chart-line top-nav-icon"></i>
+    <span>Progress</span>
+</li>
+<li class="top-nav-item active" onclick="go('/student-skills')">
+    <i class="fas fa-star top-nav-icon"></i>
+    <span>Skills</span>
+</li>
+<li class="top-nav-item" onclick="go('/student-profile')">
+    <i class="fas fa-user-circle top-nav-icon"></i>
+    <span>Profile</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-premium">
+    <div class="grid-2col">
+        <!-- Skill Summary -->
+        <div class="card card-premium">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-award"></i> Skills Inventory</h3>
+            </div>
+            <div class="card-body">
+                <div class="skill-summary" style="text-align: center; padding: 24px;">
+                    <h2 id="skillsCount" style="font-size: 3rem; color: var(--primary); margin: 0;">0</h2>
+                    <p class="text-secondary" id="skillsSummaryMessage">Add your technical and soft skills.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="dashboard-container">
-            <h1>My Skills</h1>
-
-            <div class="card skill-summary-card">
-                <div class="section-heading">
-                    <h3>Total Skills</h3>
-                    <span class="subtle-text" id="skillsCount">0 skills added</span>
-                </div>
-                <p class="empty-state" id="skillsSummaryMessage">
-                    Add your skills to make your student profile more complete.
-                </p>
+        <!-- Add Skill Form -->
+        <div class="card card-premium">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-plus-circle"></i> Add New Skill</h3>
             </div>
-
-            <div class="card">
-                <h3>Add Skill</h3>
-                <div class="skill-form">
-                    <input class="text-input" type="text" id="skillInput" placeholder="Enter skill (e.g. Python)">
-                    <select class="text-input" id="skillLevel">
-                        <option value="Beginner">Beginner</option>
-                        <option value="Intermediate" selected>Intermediate</option>
-                        <option value="Advanced">Advanced</option>
-                    </select>
-                    <button class="primary-button" onclick="addSkill()">Add</button>
+            <div class="card-body">
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>Skill Name</label>
+                        <input type="text" id="skillInput" class="form-control" placeholder="e.g. Python, React, Leadership">
+                    </div>
+                    <div class="form-row">
+                        <label>Proficiency</label>
+                        <select id="skillLevel" class="form-select">
+                            <option value="Beginner">Beginner</option>
+                            <option value="Intermediate" selected>Intermediate</option>
+                            <option value="Advanced">Advanced</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary w-100" onclick="addSkill()" style="margin-top: 24px;">
+                        <i class="fas fa-plus"></i> Add to Profile
+                    </button>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="card">
-                <h3>Your Skills</h3>
-                <p class="empty-state" id="skillsEmptyState" hidden>No skills added yet. Start by adding your first skill.</p>
-                <div id="skillsList" class="skills-chip-list"></div>
+    <!-- Skills List -->
+    <div class="card card-premium" style="margin-top: 32px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-list-ul"></i> Verified Skills</h3>
+        </div>
+        <div class="card-body">
+            <div id="skillsEmptyState" class="empty-state" style="padding: 40px; text-align: center;">
+                <i class="fas fa-layer-group fa-4x" style="opacity: 0.1; margin-bottom: 20px;"></i>
+                <p class="text-secondary">No skills added yet. Start by adding your first skill above.</p>
+            </div>
+            <div id="skillsList" class="skills-catalog">
+                <!-- Skills will be injected here -->
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
+{% block extra_js %}
 <script src="{{ url_for('static', filename='student.js') }}"></script>
 <script>
     loadSkills();
 </script>
-
-</body>
-</html>
+{% endblock %}

@@ -1,769 +1,249 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Faculty Dashboard - Smart Campus</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='ai_assistant.css') }}">
-</head>
-<body class="dashboard-body" data-role="faculty">
+{% extends "base.html" %}
 
-<div class="layout">
-    <!-- Enhanced Sidebar -->
-    <div class="sidebar sidebar-premium">
-        <div class="sidebar-header">
-            <div class="sidebar-logo">
-                <i class="fas fa-chalkboard-user"></i>
-            </div>
-            <h2>Smart Campus</h2>
+{% block title %}Faculty Dashboard - Smart Campus Intelligence{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='ai_assistant.css') }}">
+<style>
+    /* Section targeting fix for sidebar clicks */
+    .dashboard-premium section { scroll-margin-top: 100px; }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}Faculty Portal{% endblock %}
+{% block page_title %}Faculty Command Center{% endblock %}
+
+{% block sidebar_nav %}
+<li class="nav-item active" onclick="go('/faculty-dashboard')">
+    <i class="fas fa-home nav-icon"></i>
+    <span>Dashboard</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('attendanceSection')">
+    <i class="fas fa-calendar-check nav-icon"></i>
+    <span>Attendance</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('classroomSection')">
+    <i class="fas fa-people-group nav-icon"></i>
+    <span>Classroom</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('interventionSection')">
+    <i class="fas fa-hand-holding-heart nav-icon"></i>
+    <span>Interventions</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('marksSection')">
+    <i class="fas fa-pencil-alt nav-icon"></i>
+    <span>Marks</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('mockSection')">
+    <i class="fas fa-file-invoice nav-icon"></i>
+    <span>Mock Tests</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('noticesSection')">
+    <i class="fas fa-bullhorn nav-icon"></i>
+    <span>Notice Board</span>
+</li>
+<li class="nav-item" onclick="focusFacultySection('resourcesSection')">
+    <i class="fas fa-folder-open nav-icon"></i>
+    <span>Study Resources</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-premium">
+    <!-- Section Header -->
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Faculty Overview</h2>
+            <p class="section-subtitle">Manage academic performance and student interventions.</p>
         </div>
+        <button class="btn btn-primary btn-sm" onclick="loadFacultyDashboard()">
+            <i class="fas fa-sync"></i>
+            <span>Refresh Data</span>
+        </button>
+    </div>
 
-        <nav class="sidebar-nav">
-            <ul class="nav-menu">
-                <li class="nav-item active" onclick="go('/faculty-dashboard')">
-                    <i class="fas fa-home nav-icon"></i>
-                    <span>Dashboard</span>
-                    <span class="nav-badge"></span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('attendanceSection')">
-                    <i class="fas fa-calendar-check nav-icon"></i>
-                    <span>Attendance</span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('classroomSection')">
-                    <i class="fas fa-people-group nav-icon"></i>
-                    <span>Classroom</span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('interventionSection')">
-                    <i class="fas fa-hand-holding-heart nav-icon"></i>
-                    <span>Interventions</span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('marksSection')">
-                    <i class="fas fa-pencil-alt nav-icon"></i>
-                    <span>Marks</span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('mockSection')">
-                    <i class="fas fa-file-invoice nav-icon"></i>
-                    <span>Mock Tests</span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('noticesSection')">
-                    <i class="fas fa-bullhorn nav-icon"></i>
-                    <span>Notice Board</span>
-                </li>
-                <li class="nav-item" onclick="focusFacultySection('resourcesSection')">
-                    <i class="fas fa-folder-open nav-icon"></i>
-                    <span>Study Resources</span>
-                </li>
-            </ul>
-        </nav>
-
-        <div class="sidebar-footer">
-            <button class="sidebar-btn toggle-theme-btn" onclick="toggleTheme()" title="Toggle theme">
-                <i class="fas fa-moon"></i>
-                <span>Theme</span>
-            </button>
-            <button class="sidebar-btn logout-btn" onclick="logout()" title="Logout">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </button>
+    <!-- Key Metrics -->
+    <div class="stats-grid" style="margin-bottom: 32px;">
+        <div class="stat-card stat-card-primary">
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+            <div class="stat-content">
+                <p class="stat-label">My Students</p>
+                <p class="stat-value" id="facultyStudentCount">0</p>
+            </div>
+        </div>
+        <div class="stat-card stat-card-success">
+            <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+            <div class="stat-content">
+                <p class="stat-label">Avg. Marks</p>
+                <p class="stat-value" id="facultyAverageMarks">0</p>
+            </div>
+        </div>
+        <div class="stat-card stat-card-warning">
+            <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-content">
+                <p class="stat-label">At Risk</p>
+                <p class="stat-value" id="facultyAtRiskCount">0</p>
+            </div>
+        </div>
+        <div class="stat-card stat-card-info">
+            <div class="stat-icon"><i class="fas fa-book"></i></div>
+            <div class="stat-content">
+                <p class="stat-label">Subjects</p>
+                <p class="stat-value" id="facultySubjectCount">0</p>
+            </div>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="main main-premium">
-        <!-- Enhanced Topbar -->
-        <div class="topbar topbar-premium">
-            <div class="topbar-left">
-                <div class="breadcrumb">
-                    <span class="breadcrumb-item active">Faculty Dashboard</span>
+    <!-- Classroom Workflow -->
+    <section id="classroomSection" class="card card-premium" style="margin-bottom: 32px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-people-group"></i> Classroom Workflow</h3>
+        </div>
+        <div class="card-body">
+            <div class="grid-2col" style="margin-bottom: 20px;">
+                <div class="form-group">
+                    <label class="form-label">Subject</label>
+                    <select class="form-control" id="facultyClassSubjectFilter"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Department</label>
+                    <select class="form-control" id="facultyClassDepartmentFilter">
+                        <option value="All">All Departments</option>
+                    </select>
                 </div>
             </div>
-            
-            <div class="topbar-center">
-                <h1 class="topbar-title">Welcome back, <span id="userFirstName">Faculty</span></h1>
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Roll No.</th>
+                            <th>Attendance %</th>
+                            <th>Marks</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="facultyClassRosterTable">
+                        <tr><td colspan="5" class="text-center">Select subject to load roster</td></tr>
+                    </tbody>
+                </table>
             </div>
+        </div>
+    </section>
 
-            <div class="topbar-right">
-                <div class="user-info">
-                    <div class="user-avatar">
-                        <i class="fas fa-chalkboard-user"></i>
-                    </div>
-                    <div class="user-details">
-                        <span class="user-name" id="userEmail">Loading...</span>
-                        <span class="user-role">Faculty Member</span>
-                    </div>
+    <!-- Intervention Watchlist -->
+    <section id="interventionSection" class="card card-premium" style="margin-bottom: 32px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-hand-holding-heart"></i> Intervention Watchlist</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Focus Area</th>
+                            <th>Open Cases</th>
+                            <th>Due Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="facultyInterventionWatchlistTable">
+                        <tr><td colspan="5" class="text-center">Loading watchlist...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Notice Board -->
+    <section id="noticesSection" class="card card-premium" style="margin-bottom: 32px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-bullhorn"></i> Campus Notices</h3>
+        </div>
+        <div class="card-body">
+            <div class="grid-2col">
+                <div>
+                    <h4 class="mb-3">Post a Notice</h4>
+                    <form onsubmit="submitFacultyNotice(event)">
+                        <div class="form-group">
+                            <input class="form-control" id="facultyNoticeTitle" placeholder="Title" required>
+                        </div>
+                        <div class="form-group">
+                            <textarea class="form-control" id="facultyNoticeContent" rows="3" placeholder="Content..." required></textarea>
+                        </div>
+                        <button class="btn btn-primary btn-block">Post Notice</button>
+                    </form>
+                </div>
+                <div class="custom-scrollbar" style="max-height: 300px; overflow-y: auto;">
+                    <ul class="insight-list" id="facultyNoticesList"></ul>
                 </div>
             </div>
         </div>
+    </section>
 
-        <!-- Dashboard Content -->
-        <div class="dashboard-premium">
-            <!-- Section Header -->
-            <div class="section-header">
-                <div>
-                    <h2 class="section-title">Faculty Control Panel</h2>
-                    <p class="section-subtitle">Manage attendance, marks, and mock test performance for students</p>
-                </div>
-                <button class="btn btn-primary btn-sm" onclick="loadFacultyDashboard()">
-                    <i class="fas fa-sync"></i>
-                    <span>Refresh Data</span>
-                </button>
-            </div>
-
-            <!-- Key Metrics -->
-            <div class="stats-grid" style="margin-bottom: 32px;">
-                <div class="stat-card stat-card-primary">
-                    <div class="stat-icon">
-                        <i class="fas fa-users"></i>
+    <!-- Resources Section -->
+    <section id="resourcesSection" class="card card-premium">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-folder-open"></i> Study Resources</h3>
+        </div>
+        <div class="card-body">
+            <div class="grid-2col">
+                <form onsubmit="submitFacultyResource(event)">
+                    <div class="form-group">
+                        <label class="form-label">Title</label>
+                        <input class="form-control" id="facultyResourceTitle" placeholder="Resource Title" required>
                     </div>
-                    <div class="stat-content">
-                        <p class="stat-label">Total Students</p>
-                        <p class="stat-value" id="facultyStudentCount">0</p>
-                    </div>
-                </div>
-
-                <div class="stat-card stat-card-success">
-                    <div class="stat-icon">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="stat-label">Average Marks</p>
-                        <p class="stat-value" id="facultyAverageMarks">0</p>
-                    </div>
-                </div>
-
-                <div class="stat-card stat-card-warning">
-                    <div class="stat-icon">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="stat-label">Students At Risk</p>
-                        <p class="stat-value" id="facultyAtRiskCount">0</p>
-                    </div>
-                </div>
-
-                <div class="stat-card stat-card-info">
-                    <div class="stat-icon">
-                        <i class="fas fa-book"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="stat-label">Available Subjects</p>
-                        <p class="stat-value" id="facultySubjectCount">0</p>
-                    </div>
-                </div>
-
-                <div class="stat-card stat-card-danger">
-                    <div class="stat-icon">
-                        <i class="fas fa-hand-holding-heart"></i>
-                    </div>
-                    <div class="stat-content">
-                        <p class="stat-label">Open Support Cases</p>
-                        <p class="stat-value" id="facultyOpenCaseCount">0</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Search and Filter Section -->
-            <div class="grid-2col" style="margin-bottom: 32px;">
-                <div class="card card-premium">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-search"></i>
-                            Search Students
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <input class="form-control" id="facultySearch" type="search" placeholder="Search by name, email, or roll no...">
-                    </div>
-                </div>
-
-                <div class="card card-premium">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-filter"></i>
-                            Filter by Department
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <select class="form-control" id="facultyDepartmentFilter">
-                            <option value="All">All Departments</option>
+                    <div class="form-group">
+                        <label class="form-label">Subject</label>
+                        <select class="form-control" id="facultyResourceSubject">
+                            <option value="">General Resource</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Link</label>
+                        <input class="form-control" id="facultyResourceLink" type="url" placeholder="https://..." required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-control" id="facultyResourceDesc" rows="2" placeholder="Brief description..."></textarea>
+                    </div>
+                    <button class="btn btn-primary btn-block" type="submit">Share Resource</button>
+                </form>
+                <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Subject</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyResourcesTable"></tbody>
+                    </table>
                 </div>
             </div>
-
-            <div class="card card-premium" id="interventionSection" style="margin-bottom: 32px;">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-hand-holding-heart"></i>
-                        Intervention Hub
-                    </h3>
-                    <span class="card-subtitle">Track who needs outreach, follow-up, and academic recovery planning</span>
-                </div>
-                <div class="card-body">
-                    <div class="intervention-kpi-grid" style="margin-bottom: 24px;">
-                        <div class="intervention-kpi">
-                            <span>Focus Students</span>
-                            <strong id="facultyInterventionFocusStudents">0</strong>
-                        </div>
-                        <div class="intervention-kpi">
-                            <span>Open Cases</span>
-                            <strong id="facultyInterventionOpenCases">0</strong>
-                        </div>
-                        <div class="intervention-kpi">
-                            <span>Overdue Follow-ups</span>
-                            <strong id="facultyInterventionOverdueCases">0</strong>
-                        </div>
-                        <div class="intervention-kpi">
-                            <span>Due This Week</span>
-                            <strong id="facultyInterventionDueThisWeek">0</strong>
-                        </div>
-                        <div class="intervention-kpi">
-                            <span>Need First Case</span>
-                            <strong id="facultyInterventionStudentsWithoutCase">0</strong>
-                        </div>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Department</th>
-                                    <th>Focus</th>
-                                    <th>Open Cases</th>
-                                    <th>Latest Status</th>
-                                    <th>Due Date</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="facultyInterventionWatchlistTable">
-                                <tr>
-                                    <td colspan="7" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading intervention watchlist...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card card-premium" id="classroomSection" style="margin-bottom: 32px;">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-people-group"></i>
-                        Classroom Workflow
-                    </h3>
-                    <span class="card-subtitle">Run attendance and marks entry for a subject roster in one place</span>
-                </div>
-                <div class="card-body">
-                    <div class="grid-2col" style="margin-bottom: 24px;">
-                        <div class="faculty-field">
-                            <label for="facultyClassSubjectFilter" class="form-label">Subject</label>
-                            <select class="form-control" id="facultyClassSubjectFilter"></select>
-                        </div>
-                        <div class="faculty-field">
-                            <label for="facultyClassDepartmentFilter" class="form-label">Department</label>
-                            <select class="form-control" id="facultyClassDepartmentFilter">
-                                <option value="All">All Departments</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="grid-2col" style="margin-bottom: 24px;">
-                        <div class="faculty-field">
-                            <label for="facultyClassSearch" class="form-label">Search Roster</label>
-                            <input class="form-control" id="facultyClassSearch" type="search" placeholder="Search by name, email, or roll no...">
-                        </div>
-                        <div class="faculty-field">
-                            <label for="facultyClassExamType" class="form-label">Exam Type For Batch Marks</label>
-                            <input class="form-control" id="facultyClassExamType" type="text" placeholder="e.g. Midterm, Quiz 1, Internal Assessment">
-                        </div>
-                    </div>
-
-                    <div class="stats-grid" style="margin-bottom: 24px;">
-                        <div class="stat-card stat-card-info">
-                            <div class="stat-content">
-                                <p class="stat-label">Selected Subject</p>
-                                <p class="stat-value" id="facultyClassSubjectName">--</p>
-                            </div>
-                        </div>
-
-                        <div class="stat-card stat-card-primary">
-                            <div class="stat-content">
-                                <p class="stat-label">Roster Size</p>
-                                <p class="stat-value" id="facultyClassRosterCount">0</p>
-                            </div>
-                        </div>
-
-                        <div class="stat-card stat-card-warning">
-                            <div class="stat-content">
-                                <p class="stat-label">Avg Attendance</p>
-                                <p class="stat-value" id="facultyClassAverageAttendance">0</p>
-                            </div>
-                        </div>
-
-                        <div class="stat-card stat-card-success">
-                            <div class="stat-content">
-                                <p class="stat-label">Avg Marks</p>
-                                <p class="stat-value" id="facultyClassAverageMarks">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Roll No.</th>
-                                    <th>Attendance %</th>
-                                    <th>Marks</th>
-                                    <th>Last Exam</th>
-                                    <th>Readiness</th>
-                                    <th>Risk</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="facultyClassRosterTable">
-                                <tr>
-                                    <td colspan="8" class="text-center">Select a subject to load the classroom roster.</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
-                        <button class="btn btn-secondary" type="button" onclick="loadFacultyClassroom()">
-                            <i class="fas fa-rotate"></i>
-                            <span>Refresh Roster</span>
-                        </button>
-                        <button class="btn btn-primary" type="button" onclick="saveFacultyClassroomAttendance()">
-                            <i class="fas fa-calendar-check"></i>
-                            <span>Save Attendance Session</span>
-                        </button>
-                        <button class="btn btn-primary" type="button" onclick="saveFacultyClassroomMarks()">
-                            <i class="fas fa-pen"></i>
-                            <span>Save Marks Sheet</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Students Table -->
-            <div class="card card-premium">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-list"></i>
-                        Students List
-                    </h3>
-                    <span class="card-subtitle">Select a student to manage their academic records</span>
-                </div>
-                <div class="card-body">
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Roll No.</th>
-                                    <th>Email</th>
-                                    <th>Department</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="facultyStudentsTable">
-                                <tr>
-                                    <td colspan="6" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- At-Risk Students Table -->
-            <div class="card card-premium">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        Students At Risk
-                    </h3>
-                    <span class="card-subtitle">Students needing immediate academic attention</span>
-                </div>
-                <div class="card-body">
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Roll No.</th>
-                                    <th>Department</th>
-                                    <th>Average Marks</th>
-                                    <th>Status</th>
-                                    <th>Support Cases</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="facultyRiskTable">
-                                <tr>
-                                    <td colspan="7" class="text-center loading"><i class="fas fa-spinner fa-spin"></i> Loading at-risk students...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Student Detail Profile -->
-            <div class="card card-premium">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-user-graduate"></i>
-                        Student Detail Profile
-                    </h3>
-                    <span class="card-subtitle">Detailed academic view for the selected student</span>
-                </div>
-                <div class="card-body">
-                    <div class="grid-2col">
-                        <div>
-                            <h4 style="margin-bottom: 16px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Profile Info</h4>
-                            <div class="profile-section">
-                                <div class="profile-row">
-                                    <span class="profile-label">Name</span>
-                                    <span class="profile-value" id="facultyDetailName">Select a student</span>
-                                </div>
-                                <div class="profile-row">
-                                    <span class="profile-label">Email</span>
-                                    <span class="profile-value" id="facultyDetailEmail">--</span>
-                                </div>
-                                <div class="profile-row">
-                                    <span class="profile-label">Roll No.</span>
-                                    <span class="profile-value" id="facultyDetailRollNumber">--</span>
-                                </div>
-                                <div class="profile-row">
-                                    <span class="profile-label">Department</span>
-                                    <span class="profile-value" id="facultyDetailDepartment">--</span>
-                                </div>
-                                <div class="profile-row">
-                                    <span class="profile-label">Readiness Score</span>
-                                    <span class="profile-value" id="facultyDetailReadiness">--</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <h4 style="margin-bottom: 16px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Performance Summary</h4>
-                            <ul class="insight-list" id="facultyDetailSummary">
-                                <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Select a student to load profile details</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Subject Marks Table -->
-                    <h4 style="margin: 24px 0 16px 0; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Subject-wise Performance</h4>
-                    <div class="table-wrapper">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Subject</th>
-                                    <th>Code</th>
-                                    <th>Avg Marks</th>
-                                    <th>Latest Marks</th>
-                                </tr>
-                            </thead>
-                            <tbody id="facultyDetailMarksTable">
-                                <tr>
-                                    <td colspan="4" class="text-center">Select a student to view subject-wise marks</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Attendance and Mock -->
-                    <div class="grid-2col" style="margin-top: 24px;">
-                        <div>
-                            <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Attendance History</h4>
-                            <ul class="insight-list custom-scrollbar" id="facultyDetailAttendanceList">
-                                <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Select a student to view attendance</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Mock Tests</h4>
-                            <ul class="insight-list custom-scrollbar" id="facultyDetailMockList">
-                                <li class="insight-item"><i class="fas fa-spinner fa-spin"></i> Select a student to view mock scores</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div class="grid-2col" style="margin-top: 24px;">
-                        <div>
-                            <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Log Support Intervention</h4>
-                            <form class="faculty-form" onsubmit="submitFacultyIntervention(event)">
-                                <div class="faculty-field">
-                                    <label for="interventionType" class="form-label">Intervention Type</label>
-                                    <select class="form-control" id="interventionType">
-                                        <option value="academic">Academic</option>
-                                        <option value="attendance">Attendance</option>
-                                        <option value="mock">Mock Practice</option>
-                                        <option value="skills">Skills</option>
-                                        <option value="wellbeing">Wellbeing</option>
-                                        <option value="placement">Placement</option>
-                                    </select>
-                                </div>
-                                <div class="grid-2col" style="margin-bottom: 0;">
-                                    <div class="faculty-field">
-                                        <label for="interventionPriority" class="form-label">Priority</label>
-                                        <select class="form-control" id="interventionPriority">
-                                            <option value="medium">Medium</option>
-                                            <option value="high">High</option>
-                                            <option value="urgent">Urgent</option>
-                                            <option value="low">Low</option>
-                                        </select>
-                                    </div>
-                                    <div class="faculty-field">
-                                        <label for="interventionDueDate" class="form-label">Follow-up Due Date</label>
-                                        <input class="form-control" id="interventionDueDate" type="date">
-                                    </div>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="interventionSummary" class="form-label">Summary</label>
-                                    <textarea class="form-control faculty-textarea" id="interventionSummary" placeholder="What is the issue and why does this student need support?"></textarea>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="interventionActionPlan" class="form-label">Action Plan</label>
-                                    <textarea class="form-control faculty-textarea" id="interventionActionPlan" placeholder="What should happen next: extra classes, check-in, subject practice, attendance recovery plan, etc."></textarea>
-                                </div>
-                                <label class="advanced-checkbox" style="margin-bottom: 20px;">
-                                    <input id="interventionNotifyStudent" type="checkbox" checked>
-                                    <span class="checkbox-label">Notify student about this support plan</span>
-                                </label>
-                                <button class="btn btn-primary btn-block" type="submit">
-                                    <i class="fas fa-save"></i>
-                                    <span>Save Support Case</span>
-                                </button>
-                            </form>
-                        </div>
-                        <div>
-                            <h4 style="margin-bottom: 12px; font-size: 14px; color: var(--muted-light); text-transform: uppercase; letter-spacing: 0.5px;">Support History</h4>
-                            <div class="intervention-history" id="facultyInterventionHistory">
-                                <div class="intervention-empty">Select a student to review support actions.</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Faculty Management Forms -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 24px; margin-top: 24px;">
-                <div class="card card-premium" id="attendanceSection">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-calendar-check"></i>
-                            Manage Attendance
-                        </h3>
-                        <span class="card-subtitle">Save subject-wise attendance percentage</span>
-                    </div>
-                    <div class="card-body">
-                        <form class="faculty-form" onsubmit="submitAttendance(event)">
-                            <div class="faculty-field">
-                                <label for="attendanceStudent" class="form-label">Student</label>
-                                <input class="form-control" id="attendanceStudent" type="text" readonly placeholder="Select from table...">
-                                <input id="attendanceStudentId" type="hidden">
-                            </div>
-                            <div class="faculty-field">
-                                <label for="attendanceSubject" class="form-label">Subject</label>
-                                <select class="form-control" id="attendanceSubject"></select>
-                            </div>
-                            <div class="faculty-field">
-                                <label for="attendancePercentage" class="form-label">Attendance %</label>
-                                <input class="form-control" id="attendancePercentage" type="number" min="0" max="100" placeholder="0-100">
-                            </div>
-                            <button class="btn btn-primary btn-block" type="submit">
-                                <i class="fas fa-save"></i>
-                                <span>Save Attendance</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card card-premium" id="marksSection">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-pencil-alt"></i>
-                            Manage Marks
-                        </h3>
-                        <span class="card-subtitle">Create or update class marks</span>
-                    </div>
-                    <div class="card-body">
-                        <form class="faculty-form" onsubmit="submitMarks(event)">
-                            <div class="faculty-field">
-                                <label for="marksStudent" class="form-label">Student</label>
-                                <input class="form-control" id="marksStudent" type="text" readonly placeholder="Select from table...">
-                                <input id="marksStudentId" type="hidden">
-                            </div>
-                            <div class="faculty-field">
-                                <label for="marksSubject" class="form-label">Subject</label>
-                                <select class="form-control" id="marksSubject"></select>
-                            </div>
-                            <div class="faculty-field">
-                                <label for="marksExamType" class="form-label">Exam Type</label>
-                                <input class="form-control" id="marksExamType" type="text" placeholder="e.g. Midterm, Final">
-                            </div>
-                            <div class="faculty-field">
-                                <label for="marksValue" class="form-label">Marks (0-100)</label>
-                                <input class="form-control" id="marksValue" type="number" min="0" max="100" placeholder="0-100">
-                            </div>
-                            <button class="btn btn-primary btn-block" type="submit">
-                                <i class="fas fa-save"></i>
-                                <span>Save Marks</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-                <div class="card card-premium" id="mockSection">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-file-invoice"></i>
-                            Manage Mock Tests
-                        </h3>
-                        <span class="card-subtitle">Track placement preparation progress</span>
-                    </div>
-                    <div class="card-body">
-                        <form class="faculty-form" onsubmit="submitMockTest(event)">
-                            <div class="faculty-field">
-                                <label for="mockStudent" class="form-label">Student</label>
-                                <input class="form-control" id="mockStudent" type="text" readonly placeholder="Select from table...">
-                                <input id="mockStudentId" type="hidden">
-                            </div>
-                            <div class="faculty-field">
-                                <label for="mockTestName" class="form-label">Test Name</label>
-                                <input class="form-control" id="mockTestName" type="text" placeholder="e.g. Aptitude Test 1">
-                            </div>
-                            <div class="faculty-field">
-                                <label for="mockScore" class="form-label">Score (0-100)</label>
-                                <input class="form-control" id="mockScore" type="number" min="0" max="100" placeholder="0-100">
-                            </div>
-                            <button class="btn btn-primary btn-block" type="submit">
-                                <i class="fas fa-save"></i>
-                                <span>Save Mock Test</span>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Notice Board section -->
-            <div class="card card-premium" id="noticesSection" style="margin-bottom: 32px; display: none;">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-bullhorn"></i> Campus Notice Board</h3>
-                    <p class="card-subtitle">Announcements from Admin and notices you send to students</p>
-                </div>
-                <div class="card-body">
-                    <div class="grid-2col" style="margin-bottom: 24px;">
-                        <div>
-                            <h4>Post a Notice</h4>
-                            <form class="faculty-form" onsubmit="submitFacultyNotice(event)" style="margin-top: 15px;">
-                                <div class="faculty-field">
-                                    <label for="facultyNoticeTitle" class="form-label">Title</label>
-                                    <input class="form-control" id="facultyNoticeTitle" type="text" placeholder="Notice Title" required>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="facultyNoticeContent" class="form-label">Content</label>
-                                    <textarea class="form-control faculty-textarea" id="facultyNoticeContent" rows="3" placeholder="Write notice here..." required></textarea>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="facultyNoticeTarget" class="form-label">Target</label>
-                                    <select class="form-control" id="facultyNoticeTarget" required>
-                                        <option value="Student">Students Only</option>
-                                        <option value="All">All Students & Faculty</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-primary btn-block" type="submit">
-                                    <i class="fas fa-paper-plane"></i>
-                                    <span>Send Notice</span>
-                                </button>
-                            </form>
-                        </div>
-                        <div>
-                            <h4>Recent Notices</h4>
-                            <ul class="insight-list custom-scrollbar" id="facultyNoticesList" style="max-height: 400px; margin-top: 15px;">
-                                <li class="insight-item">Loading notices...</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Resources section -->
-            <div class="card card-premium" id="resourcesSection" style="margin-bottom: 32px; display: none;">
-                <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-folder-open"></i> Study Materials & Resources</h3>
-                    <p class="card-subtitle">Share links and study materials with students</p>
-                </div>
-                <div class="card-body">
-                    <div class="grid-2col" style="margin-bottom: 24px;">
-                        <div>
-                            <h4>Share a Resource</h4>
-                            <form class="faculty-form" onsubmit="submitFacultyResource(event)" style="margin-top: 15px;">
-                                <div class="faculty-field">
-                                    <label for="facultyResourceTitle" class="form-label">Title</label>
-                                    <input class="form-control" id="facultyResourceTitle" type="text" placeholder="e.g. Chapter 1 Notes" required>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="facultyResourceDesc" class="form-label">Description (optional)</label>
-                                    <textarea class="form-control faculty-textarea" id="facultyResourceDesc" rows="2" placeholder="Brief description"></textarea>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="facultyResourceLink" class="form-label">Resource Link (URL)</label>
-                                    <input class="form-control" id="facultyResourceLink" type="url" placeholder="https://drive.google.com/..." required>
-                                </div>
-                                <div class="faculty-field">
-                                    <label for="facultyResourceSubject" class="form-label">Subject</label>
-                                    <select class="form-control" id="facultyResourceSubject">
-                                        <option value="">General (No specific subject)</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-primary btn-block" type="submit">
-                                    <i class="fas fa-upload"></i>
-                                    <span>Share Resource</span>
-                                </button>
-                            </form>
-                        </div>
-                        <div>
-                            <h4>Shared Resources</h4>
-                            <div class="table-wrapper" style="margin-top: 15px;">
-                                <table class="data-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Title</th>
-                                            <th>Subject</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="facultyResourcesTable">
-                                        <tr>
-                                            <td colspan="3" class="text-center">Loading resources...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
-    </div>
+    </section>
 </div>
+{% endblock %}
 
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
-<script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
+{% block extra_js %}
 <script src="{{ url_for('static', filename='faculty.js') }}"></script>
 <script src="{{ url_for('static', filename='ai_assistant.js') }}"></script>
 <script>
     loadFacultyDashboard();
     
-    // Setup for Notices and Resources
+    // Smooth scroll and focus for faculty sections
+    function focusFacultySection(id) {
+        const elem = document.getElementById(id);
+        if (elem) {
+            elem.scrollIntoView({ behavior: 'smooth' });
+            elem.classList.add('premium-glow-pulse');
+            setTimeout(() => elem.classList.remove('premium-glow-pulse'), 2000);
+        }
+    }
+
     async function loadFacultyNotices() {
         const list = document.getElementById('facultyNoticesList');
         try {
@@ -774,11 +254,13 @@
                     return;
                 }
                 list.innerHTML = res.data.map(n => `
-                    <li class="insight-item" style="display:flex; flex-direction:column; gap:8px; align-items:flex-start;">
-                        <strong>${n.title}</strong>
-                        <span style="font-size:12px; color:#64748b;">${new Date(n.created_at).toLocaleString()} • ${n.author_name} (${n.author_role})</span>
-                        <p style="margin:5px 0;">${n.content}</p>
-                        ${n.author_role === 'Faculty' ? `<button class="btn btn-sm btn-danger" onclick="deleteFacultyNotice(${n.id})" style="align-self:flex-end;"><i class="fas fa-trash"></i> Delete</button>` : ''}
+                    <li class="insight-item">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <strong>${n.title}</strong>
+                            <button class="btn btn-sm btn-icon text-danger" onclick="deleteFacultyNotice(${n.id})"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <p style="font-size:13px; margin: 4px 0;">${n.content}</p>
+                        <small>${new Date(n.created_at).toLocaleDateString()} • ${n.author_name}</small>
                     </li>
                 `).join('');
             }
@@ -789,20 +271,20 @@
 
     async function submitFacultyNotice(e) {
         e.preventDefault();
-        const btn = e.target.querySelector('button[type="submit"]');
+        const btn = e.target.querySelector('button');
         setLoading(btn, true);
         try {
             const data = {
                 title: document.getElementById('facultyNoticeTitle').value,
                 content: document.getElementById('facultyNoticeContent').value,
-                target_role: document.getElementById('facultyNoticeTarget').value
+                target_role: 'Student'
             };
             const res = await fetchAuth('/api/notices', {
                 method: 'POST',
                 body: JSON.stringify(data)
             });
             if (res.error) throw new Error(res.error);
-            showToast('Success', res.message, 'success');
+            showToast('Success', 'Notice posted', 'success');
             e.target.reset();
             loadFacultyNotices();
         } catch (error) {
@@ -839,7 +321,7 @@
                             <a href="${r.resource_link}" target="_blank" style="color:var(--primary); font-weight:600;">${r.title}</a>
                             <div style="font-size:12px; color:#64748b;">${r.description || ''}</div>
                         </td>
-                        <td>${r.subject_name}</td>
+                        <td>${r.subject_name || 'General'}</td>
                         <td>
                             <button class="btn btn-sm btn-danger" onclick="deleteFacultyResource(${r.id})"><i class="fas fa-trash"></i></button>
                         </td>
@@ -890,12 +372,10 @@
         }
     }
 
-    // Hook into focusFacultySection or just call timeouts
+    // Initialize after some delay to ensure page data is ready
     setTimeout(() => {
         loadFacultyNotices();
         loadFacultyResources();
-    }, 1000);
+    }, 800);
 </script>
-
-</body>
-</html>
+{% endblock %}

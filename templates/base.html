@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Smart Campus Intelligence{% endblock %}</title>
+    
+    <!-- Fonts & Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Core Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="dashboard-body">
+    <div class="layout {% if top_nav_enabled %}layout-top-nav{% endif %}">
+        <!-- Unified Sidebar -->
+        <aside class="sidebar sidebar-premium">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <h2>Smart Campus</h2>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul class="nav-menu">
+                    {% block sidebar_nav %}{% endblock %}
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-btn toggle-theme-btn" onclick="toggleTheme()" title="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                    <span>Theme</span>
+                </button>
+                <button class="sidebar-btn logout-btn" onclick="logout()" title="Logout">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main main-premium">
+            <!-- Global Topbar -->
+            <header class="topbar topbar-premium">
+                <div class="topbar-left">
+                    <div class="breadcrumb">
+                        <span class="breadcrumb-item">{% block breadcrumb %}Dashboard{% endblock %}</span>
+                    </div>
+                    {% if top_nav_enabled %}
+                    <ul class="top-nav-menu">
+                        {% block top_nav %}{% endblock %}
+                    </ul>
+                    {% endif %}
+                </div>
+                
+                <div class="topbar-center">
+                    <h1 class="topbar-title">{% block page_title %}Overview{% endblock %}</h1>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name" id="topbarUserName">Loading...</span>
+                            <span class="user-role" id="topbarUserRole">User</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Content -->
+            <div class="dashboard-content-wrapper">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Core Scripts -->
+    <script src="{{ url_for('static', filename='shared.js') }}"></script>
+    <script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
+    
+    {% block extra_js %}{% endblock %}
+    
+    <script>
+        // Global User Info Sync
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            if (user.first_name) {
+                const nameElem = document.getElementById('topbarUserName');
+                if (nameElem) nameElem.textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+                
+                const roleElem = document.getElementById('topbarUserRole');
+                if (roleElem) roleElem.textContent = user.role || 'User';
+            }
+        });
+    </script>
+</body>
+</html>

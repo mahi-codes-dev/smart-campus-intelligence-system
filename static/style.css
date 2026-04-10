@@ -4062,3 +4062,64 @@ body.dark .intervention-empty {
         width: 32px;
     }
 }
+
+/* ================= STUDENT TOP NAVIGATION ================= */
+
+.layout-top-nav .sidebar {
+    display: none !important;
+}
+
+.layout-top-nav .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+
+.top-nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-left: 32px;
+    list-style: none;
+    padding: 0;
+}
+
+.top-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-dark);
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: 8px;
+    opacity: 0.7;
+}
+
+.top-nav-item:hover, .top-nav-item.active {
+    opacity: 1;
+    color: var(--primary);
+    background: rgba(79, 70, 229, 0.08);
+}
+
+.top-nav-icon {
+    font-size: 16px;
+}
+
+@media (max-width: 991px) {
+    .top-nav-menu {
+        display: none; /* Mobile will still use a menu toggle if needed, or just stay simple */
+    }
+}
+
+/* Helper for pulsing focus */
+.premium-glow-pulse {
+    animation: premium-glow-pulse 2s infinite;
+}
+
+@keyframes premium-glow-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(79, 70, 229, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}

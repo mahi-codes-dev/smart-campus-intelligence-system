@@ -842,3 +842,25 @@ function renderAtRiskStudents(students, containerId = "atRiskStudentsContainer")
     html += '</tbody></table></div>';
     container.innerHTML = html;
 }
+
+/**
+ * Global fetch wrapper with automatic token inclusion.
+ */
+async function fetchAuth(path, options = {}) {
+    return fetchJson(path, options);
+}
+
+/**
+ * Unified loading state for buttons.
+ */
+function setLoading(button, isLoading, originalHtml = null) {
+    if (!button) return;
+    if (isLoading) {
+        button.dataset.originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    } else {
+        button.disabled = false;
+        button.innerHTML = originalHtml || button.dataset.originalHtml || "Submit";
+    }
+}

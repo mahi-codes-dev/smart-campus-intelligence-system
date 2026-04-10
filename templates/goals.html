@@ -1,176 +1,147 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Goals - Smart Campus</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <style>
-        /* ── Goals Page Styles ─────────────────────────── */
-        .goals-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1.25rem; }
-        .goal-card  { background:var(--card-light); border-radius:12px; padding:1.25rem; border:1px solid var(--border-light);
-                      box-shadow:var(--shadow-sm); transition:box-shadow .2s; position:relative; }
-        .goal-card:hover { box-shadow:var(--shadow-md); }
+{% extends "base.html" %}
 
-        .goal-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.75rem; }
-        .goal-title  { font-weight:600; font-size:1rem; margin:0; }
-        .goal-cat    { font-size:.75rem; padding:.2rem .6rem; border-radius:20px; background:var(--primary); color:#fff; white-space:nowrap; }
-        .goal-cat.health    { background:#16a34a; }
-        .goal-cat.skills    { background:#d97706; }
-        .goal-cat.career    { background:#7c3aed; }
-        .goal-cat.personal  { background:#0891b2; }
+{% block title %}My Goals - Smart Campus Intelligence{% endblock %}
 
-        .goal-desc   { font-size:.875rem; color:var(--text-secondary); margin:.5rem 0 .75rem; min-height:1.5em; }
+{% block extra_css %}
+<style>
+    /* ── Goals Page Styles ─────────────────────────── */
+    .goals-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:1.25rem; }
+    .goal-card  { background:var(--card-light); border-radius:12px; padding:1.25rem; border:1px solid var(--border-light);
+                  box-shadow:var(--shadow-sm); transition:box-shadow .2s; position:relative; }
+    .goal-card:hover { box-shadow:var(--shadow-md); }
 
-        .goal-progress { margin-bottom:.75rem; }
-        .goal-progress-bar { height:8px; background:var(--border-light); border-radius:4px; overflow:hidden; }
-        .goal-progress-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--secondary)); border-radius:4px; transition:width .5s ease; }
-        .goal-progress-labels { display:flex; justify-content:space-between; font-size:.75rem; color:var(--text-secondary); margin-top:.3rem; }
+    .goal-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:.75rem; }
+    .goal-title  { font-weight:600; font-size:1rem; margin:0; }
+    .goal-cat    { font-size:.75rem; padding:.2rem .6rem; border-radius:20px; background:var(--primary); color:#fff; white-space:nowrap; }
+    .goal-cat.health    { background:#16a34a; }
+    .goal-cat.skills    { background:#d97706; }
+    .goal-cat.career    { background:#7c3aed; }
+    .goal-cat.personal  { background:#0891b2; }
 
-        .goal-meta   { display:flex; gap:.75rem; flex-wrap:wrap; font-size:.8rem; color:var(--text-secondary); margin-bottom:.75rem; }
-        .goal-meta span { display:flex; align-items:center; gap:.3rem; }
+    .goal-desc   { font-size:.875rem; color:var(--text-secondary); margin:.5rem 0 .75rem; min-height:1.5em; }
 
-        .goal-actions { display:flex; gap:.5rem; }
-        .btn-xs { padding:.3rem .65rem; font-size:.8rem; border-radius:6px; border:none; cursor:pointer; transition:.15s; }
-        .btn-xs.primary { background:var(--primary); color:#fff; }
-        .btn-xs.danger  { background:transparent; color:var(--danger); border:1px solid var(--danger); }
-        .btn-xs.ghost   { background:transparent; color:var(--text-secondary); border:1px solid var(--border-light); }
-        .btn-xs:hover   { opacity:.85; }
+    .goal-progress { margin-bottom:.75rem; }
+    .goal-progress-bar { height:8px; background:var(--border-light); border-radius:4px; overflow:hidden; }
+    .goal-progress-fill { height:100%; background:linear-gradient(90deg,var(--primary),var(--secondary)); border-radius:4px; transition:width .5s ease; }
+    .goal-progress-labels { display:flex; justify-content:space-between; font-size:.75rem; color:var(--text-secondary); margin-top:.3rem; }
 
-        /* priority badges */
-        .priority-high   { color:#dc2626; font-weight:700; }
-        .priority-medium { color:#d97706; font-weight:600; }
-        .priority-low    { color:#16a34a; }
+    .goal-meta   { display:flex; gap:.75rem; flex-wrap:wrap; font-size:.8rem; color:var(--text-secondary); margin-bottom:.75rem; }
+    .goal-meta span { display:flex; align-items:center; gap:.3rem; }
 
-        /* Status badges */
-        .status-badge { display:inline-block; font-size:.72rem; padding:.2rem .55rem; border-radius:20px; font-weight:600; }
-        .status-active    { background:#dbeafe; color:#1e40af; }
-        .status-completed { background:#dcfce7; color:#166534; }
-        .status-paused    { background:#fef3c7; color:#92400e; }
-        .status-cancelled { background:#fee2e2; color:#991b1b; }
+    .goal-actions { display:flex; gap:.5rem; }
+    .btn-xs { padding:.3rem .65rem; font-size:.8rem; border-radius:6px; border:none; cursor:pointer; transition:.15s; }
+    .btn-xs.primary { background:var(--primary); color:#fff; }
+    .btn-xs.danger  { background:transparent; color:var(--danger); border:1px solid var(--danger); }
+    .btn-xs.ghost   { background:transparent; color:var(--text-secondary); border:1px solid var(--border-light); }
+    .btn-xs:hover   { opacity:.85; }
 
-        /* Summary bar */
-        .summary-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1rem; margin-bottom:1.5rem; }
-        .summary-stat { background:var(--card-light); border-radius:10px; padding:1rem; text-align:center;
-                        border:1px solid var(--border-light); box-shadow:var(--shadow-sm); }
-        .summary-stat .val { font-size:1.8rem; font-weight:700; color:var(--primary); }
-        .summary-stat .lbl { font-size:.8rem; color:var(--text-secondary); margin-top:.15rem; }
+    /* priority badges */
+    .priority-high   { color:#dc2626; font-weight:700; }
+    .priority-medium { color:#d97706; font-weight:600; }
+    .priority-low    { color:#16a34a; }
 
-        /* Badges */
-        .badge-list { display:flex; gap:.75rem; flex-wrap:wrap; }
-        .badge-item { display:flex; align-items:center; gap:.5rem; background:var(--bg-lighter);
-                      border-radius:8px; padding:.5rem .9rem; font-size:.85rem; border:1px solid var(--border-light); }
-        .badge-icon { font-size:1.4rem; }
-        .badge-earned { opacity:1; }
-        .badge-locked { opacity:.35; filter:grayscale(1); }
+    /* Status badges */
+    .status-badge { display:inline-block; font-size:.72rem; padding:.2rem .55rem; border-radius:20px; font-weight:600; }
+    .status-active    { background:#dbeafe; color:#1e40af; }
+    .status-completed { background:#dcfce7; color:#166534; }
+    .status-paused    { background:#fef3c7; color:#92400e; }
+    .status-cancelled { background:#fee2e2; color:#991b1b; }
 
-        /* Modal */
-        .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000;
-                         display:flex; align-items:center; justify-content:center; padding:1rem; }
-        .modal-box { background:var(--card-light); border-radius:12px; padding:1.5rem; width:100%; max-width:480px;
-                     max-height:90vh; overflow-y:auto; }
-        .modal-title { font-size:1.1rem; font-weight:700; margin-bottom:1rem; }
-        .modal-actions { display:flex; gap:.75rem; justify-content:flex-end; margin-top:1rem; }
-        .hidden { display:none !important; }
+    /* Summary bar */
+    .summary-bar { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .summary-stat { background:var(--card-light); border-radius:10px; padding:1rem; text-align:center;
+                    border:1px solid var(--border-light); box-shadow:var(--shadow-sm); }
+    .summary-stat .val { font-size:1.8rem; font-weight:700; color:var(--primary); }
+    .summary-stat .lbl { font-size:.8rem; color:var(--text-secondary); margin-top:.15rem; }
 
-        .form-row { margin-bottom:.9rem; }
-        .form-row label { display:block; font-size:.85rem; font-weight:600; margin-bottom:.35rem; }
-        .form-row input, .form-row textarea, .form-row select {
-            width:100%; padding:.55rem .75rem; border:1px solid var(--border-light); border-radius:7px;
-            font-size:.9rem; background:var(--bg-lighter); color:var(--text-dark); }
-        .form-row input:focus, .form-row textarea:focus, .form-row select:focus {
-            outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(79,70,229,.15); }
+    /* Badges */
+    .badge-list { display:flex; gap:.75rem; flex-wrap:wrap; }
+    .badge-item { display:flex; align-items:center; gap:.5rem; background:var(--bg-lighter);
+                  border-radius:8px; padding:.5rem .9rem; font-size:.85rem; border:1px solid var(--border-light); }
+    .badge-icon { font-size:1.4rem; }
+    .badge-earned { opacity:1; }
+    .badge-locked { opacity:.35; filter:grayscale(1); }
 
-        /* empty state */
-        .empty-state { text-align:center; padding:3rem 1rem; color:var(--text-secondary); }
-        .empty-state .icon { font-size:3.5rem; margin-bottom:1rem; }
-        .empty-state p { font-size:1rem; margin-bottom:1.25rem; }
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:1000;
+                     display:flex; align-items:center; justify-content:center; padding:1rem; }
+    .modal-box { background:var(--card-light); border-radius:12px; padding:1.5rem; width:100%; max-width:480px;
+                 max-height:90vh; overflow-y:auto; }
+    .modal-title { font-size:1.1rem; font-weight:700; margin-bottom:1rem; }
+    .modal-actions { display:flex; gap:.75rem; justify-content:flex-end; margin-top:1rem; }
+    .hidden { display:none !important; }
 
-        .milestone-list { list-style:none; padding:0; margin:.5rem 0; }
-        .milestone-list li { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; font-size:.85rem;
-                             border-bottom:1px solid var(--border-light); }
-        .milestone-list li:last-child { border-bottom:none; }
-        .milestone-list input[type=checkbox] { width:16px; height:16px; cursor:pointer; }
-        .milestone-done { text-decoration:line-through; color:var(--text-secondary); }
-    </style>
-    <!-- PWA -->
-    <link rel="manifest" href="/static/manifest.json">
-    <meta name="theme-color" content="#4f46e5">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-</head>
-<body class="dashboard-body">
+    .form-row { margin-bottom:.9rem; }
+    .form-row label { display:block; font-size:.85rem; font-weight:600; margin-bottom:.35rem; }
+    .form-row input, .form-row textarea, .form-row select {
+        width:100%; padding:.55rem .75rem; border:1px solid var(--border-light); border-radius:7px;
+        font-size:.9rem; background:var(--bg-lighter); color:var(--text-dark); }
+    .form-row input:focus, .form-row textarea:focus, .form-row select:focus {
+        outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(79,70,229,.15); }
 
-<div class="layout">
-    <!-- Sidebar -->
-    <div class="sidebar sidebar-premium">
-        <div class="sidebar-header">
-            <div class="sidebar-logo"><i class="fas fa-graduation-cap"></i></div>
-            <h2>Smart Campus</h2>
-        </div>
-        <nav class="sidebar-nav">
-            <ul class="nav-menu">
-                <li class="nav-item" onclick="go('/student-dashboard')"><i class="fas fa-home nav-icon"></i><span>Dashboard</span></li>
-                <li class="nav-item" onclick="go('/student-progress')"><i class="fas fa-chart-line nav-icon"></i><span>Progress</span></li>
-                <li class="nav-item active" onclick="go('/goals')"><i class="fas fa-bullseye nav-icon"></i><span>Goals</span></li>
-                <li class="nav-item" onclick="go('/student-skills')"><i class="fas fa-star nav-icon"></i><span>Skills</span></li>
-                <li class="nav-item" onclick="go('/student-profile')"><i class="fas fa-user-circle nav-icon"></i><span>Profile</span></li>
-            </ul>
-        </nav>
-        <div class="sidebar-footer">
-            <button class="sidebar-btn toggle-theme-btn" onclick="toggleTheme()"><i class="fas fa-moon"></i><span>Theme</span></button>
-            <button class="sidebar-btn logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+    /* empty state */
+    .empty-state { text-align:center; padding:3rem 1rem; color:var(--text-secondary); }
+    .empty-state .icon { font-size:3.5rem; margin-bottom:1rem; }
+    .empty-state p { font-size:1rem; margin-bottom:1.25rem; }
+
+    .milestone-list { list-style:none; padding:0; margin:.5rem 0; }
+    .milestone-list li { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; font-size:.85rem;
+                         border-bottom:1px solid var(--border-light); }
+    .milestone-list li:last-child { border-bottom:none; }
+    .milestone-list input[type=checkbox] { width:16px; height:16px; cursor:pointer; }
+    .milestone-done { text-decoration:line-through; color:var(--text-secondary); }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}Tracking{% endblock %}
+{% block page_title %}Goal Crusher{% endblock %}
+
+{% block sidebar_nav %}
+<li class="nav-item" onclick="go('/student-dashboard')"><i class="fas fa-home nav-icon"></i><span>Dashboard</span></li>
+<li class="nav-item" onclick="go('/student-progress')"><i class="fas fa-chart-line nav-icon"></i><span>Progress</span></li>
+<li class="nav-item active" onclick="go('/goals')"><i class="fas fa-bullseye nav-icon"></i><span>Goals</span></li>
+<li class="nav-item" onclick="go('/student-skills')"><i class="fas fa-star nav-icon"></i><span>Skills</span></li>
+<li class="nav-item" onclick="go('/student-profile')"><i class="fas fa-user-circle nav-icon"></i><span>Profile</span></li>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-premium">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+        <button class="btn btn-primary" onclick="openCreateModal()">
+            <i class="fas fa-plus"></i> New Goal
+        </button>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="summary-bar" id="summaryBar">
+        <div class="summary-stat"><div class="val" id="totalGoals">—</div><div class="lbl">Total Goals</div></div>
+        <div class="summary-stat"><div class="val" id="activeGoals">—</div><div class="lbl">Active</div></div>
+        <div class="summary-stat"><div class="val" id="completedGoals">—</div><div class="lbl">Completed</div></div>
+        <div class="summary-stat"><div class="val" id="completionRate">—</div><div class="lbl">Completion Rate</div></div>
+    </div>
+
+    <!-- Badges -->
+    <div class="card card-premium" style="margin-bottom:1.5rem;" id="badgesCard">
+        <h3 class="card-title" style="margin-bottom:1rem;"><i class="fas fa-medal" style="color:#d97706;"></i> Badges Earned</h3>
+        <div class="badge-list" id="badgeList">
+            <span class="text-muted" style="font-size:.9rem;">Complete goals to earn badges!</span>
         </div>
     </div>
 
-    <!-- Main -->
-    <div class="main main-premium">
-        <div class="topbar topbar-premium">
-            <div class="topbar-left"><span class="breadcrumb-item active">My Goals</span></div>
-            <div class="topbar-center"><h1 class="topbar-title">Goal Tracker</h1></div>
-            <div class="topbar-right">
-                <button class="btn btn-primary" onclick="openCreateModal()">
-                    <i class="fas fa-plus"></i> New Goal
-                </button>
-            </div>
-        </div>
+    <!-- Filter tabs -->
+    <div class="tabs" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button class="btn-xs primary active-tab" onclick="filterGoals('all', this)">All</button>
+        <button class="btn-xs ghost" onclick="filterGoals('active', this)">Active</button>
+        <button class="btn-xs ghost" onclick="filterGoals('completed', this)">Completed</button>
+        <button class="btn-xs ghost" onclick="filterGoals('paused', this)">Paused</button>
+    </div>
 
-        <div class="dashboard-container dashboard-premium">
-
-            <!-- Summary bar -->
-            <div class="summary-bar" id="summaryBar">
-                <div class="summary-stat"><div class="val" id="totalGoals">—</div><div class="lbl">Total Goals</div></div>
-                <div class="summary-stat"><div class="val" id="activeGoals">—</div><div class="lbl">Active</div></div>
-                <div class="summary-stat"><div class="val" id="completedGoals">—</div><div class="lbl">Completed</div></div>
-                <div class="summary-stat"><div class="val" id="completionRate">—</div><div class="lbl">Completion Rate</div></div>
-            </div>
-
-            <!-- Badges -->
-            <div class="card" style="margin-bottom:1.5rem;" id="badgesCard">
-                <h3 class="section-title" style="margin-bottom:1rem;"><i class="fas fa-medal" style="color:#d97706;"></i> Badges Earned</h3>
-                <div class="badge-list" id="badgeList">
-                    <span class="text-muted" style="font-size:.9rem;">Complete goals to earn badges!</span>
-                </div>
-            </div>
-
-            <!-- Filter tabs -->
-            <div class="tabs" style="margin-bottom:1.25rem; display:flex; gap:.5rem; flex-wrap:wrap;">
-                <button class="btn-xs primary active-tab" onclick="filterGoals('all', this)">All</button>
-                <button class="btn-xs ghost" onclick="filterGoals('active', this)">Active</button>
-                <button class="btn-xs ghost" onclick="filterGoals('completed', this)">Completed</button>
-                <button class="btn-xs ghost" onclick="filterGoals('paused', this)">Paused</button>
-            </div>
-
-            <!-- Goals grid -->
-            <div class="goals-grid" id="goalsGrid">
-                <div class="empty-state" id="emptyState" style="grid-column:1/-1">
-                    <div class="icon">🎯</div>
-                    <p>No goals yet. Set your first goal to get started!</p>
-                    <button class="btn btn-primary" onclick="openCreateModal()"><i class="fas fa-plus"></i> Create Goal</button>
-                </div>
-            </div>
+    <!-- Goals grid -->
+    <div class="goals-grid" id="goalsGrid">
+        <div class="empty-state" id="emptyState" style="grid-column:1/-1">
+            <div class="icon">🎯</div>
+            <p>No goals yet. Set your first goal to get started!</p>
+            <button class="btn btn-primary" onclick="openCreateModal()"><i class="fas fa-plus"></i> Create Goal</button>
         </div>
     </div>
 </div>
@@ -254,9 +225,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
-<script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
+{% block extra_js %}
 <script>
 const API = '/api/goals';
 let allGoals = [];
@@ -481,10 +452,4 @@ window.addEventListener('DOMContentLoaded', () => {
     loadGoals();
 });
 </script>
-<script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/sw.js", {scope: "/"}).catch(() => {});
-  }
-</script>
-</body>
-</html>
+{% endblock %}

@@ -1,179 +1,136 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Student Profile</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dark-mode.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% set top_nav_enabled = True %}
 
-<div class="layout">
-    <div class="sidebar">
-        <h2>Smart Campus</h2>
-        <ul>
-            <li onclick="go('/student-dashboard')">
-                <i class="fas fa-chart-line"></i> Dashboard
-            </li>
-            <li onclick="go('/student-progress')">
-                <i class="fas fa-user-graduate"></i> My Progress
-            </li>
-            <li onclick="go('/student-skills')">
-                <i class="fas fa-code"></i> Skills
-            </li>
-            <li class="active" onclick="go('/student-profile')">
-                <i class="fas fa-id-card"></i> Profile
-            </li>
-        </ul>
-    </div>
+{% block title %}Student Profile - Smart Campus Intelligence{% endblock %}
 
-    <div class="main">
-        <div class="topbar">
-            <span>Welcome, <span id="userEmail"></span></span>
-            <div>
-                <button class="toggle-button" onclick="toggleTheme()">Theme</button>
-                <button class="logout-button" onclick="logout()">Logout</button>
+{% block breadcrumb %}Identity{% endblock %}
+{% block page_title %}Student Profile{% endblock %}
+
+{% block top_nav %}
+<li class="top-nav-item" onclick="go('/student-dashboard')">
+    <i class="fas fa-home top-nav-icon"></i>
+    <span>Dashboard</span>
+</li>
+<li class="top-nav-item" onclick="go('/student-progress')">
+    <i class="fas fa-chart-line top-nav-icon"></i>
+    <span>Progress</span>
+</li>
+<li class="top-nav-item" onclick="go('/student-skills')">
+    <i class="fas fa-star top-nav-icon"></i>
+    <span>Skills</span>
+</li>
+<li class="top-nav-item active" onclick="go('/student-profile')">
+    <i class="fas fa-user-circle top-nav-icon"></i>
+    <span>Profile</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-premium">
+    <!-- Profile Grid -->
+    <div class="grid-2col" style="margin-bottom: 32px;">
+        <div class="card card-premium">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-user-circle"></i> Personal Details</h3>
+            </div>
+            <div class="card-body">
+                <div class="profile-section">
+                    <div class="profile-row"><span>Name</span><strong id="profileName">Loading...</strong></div>
+                    <div class="profile-row"><span>Roll No.</span><strong id="profileRollNumber">Loading...</strong></div>
+                    <div class="profile-row"><span>Email</span><strong id="profileEmail">Loading...</strong></div>
+                    <div class="profile-row"><span>Department</span><strong id="profileDepartment">Loading...</strong></div>
+                </div>
+                <ul class="insight-list" id="profileSummaryList" style="margin-top: 16px;">
+                    <li class="insight-item">Loading performance summary...</li>
+                </ul>
             </div>
         </div>
 
-        <div class="dashboard-container">
-            <div class="section-heading">
-                <div>
-                    <h1>Student Profile</h1>
-                    <p class="subtle-text">Full academic profile with readiness summary and subject-wise performance.</p>
+        <div class="card card-premium">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-tachometer-alt"></i> Performance Stats</h3>
+            </div>
+            <div class="card-body">
+                <div class="profile-section">
+                    <div class="profile-row"><span>Readiness Score</span><strong id="profileReadiness">--</strong></div>
+                    <div class="profile-row"><span>Status</span><strong id="profileStatus">--</strong></div>
+                    <div class="profile-row"><span>Risk Level</span><strong id="profileRisk">--</strong></div>
+                    <div class="profile-row"><span>Placement Outlook</span><strong id="profilePlacement">--</strong></div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="grid profile-grid">
-                <div class="card profile-card">
-                    <div class="section-heading">
-                        <h2>Profile Details</h2>
-                        <span class="subtle-text">Live student information</span>
-                    </div>
-                    <div class="profile-details">
-                        <div class="profile-row">
-                            <span>Name</span>
-                            <strong id="profileName">Loading...</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Roll No.</span>
-                            <strong id="profileRollNumber">Loading...</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Email</span>
-                            <strong id="profileEmail">Loading...</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Department</span>
-                            <strong id="profileDepartment">Loading...</strong>
-                        </div>
-                    </div>
-                    <ul class="reason-list" id="profileSummaryList">
-                        <li>Loading performance summary...</li>
-                    </ul>
-                </div>
-
-                <div class="card placement-details-card">
-                    <div class="section-heading">
-                        <h2>Performance Snapshot</h2>
-                        <span class="subtle-text">Overall profile status</span>
-                    </div>
-                    <div class="profile-details">
-                        <div class="profile-row">
-                            <span>Readiness Score</span>
-                            <strong id="profileReadiness">--</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Status</span>
-                            <strong id="profileStatus">--</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Risk Level</span>
-                            <strong id="profileRisk">--</strong>
-                        </div>
-                        <div class="profile-row">
-                            <span>Placement Outlook</span>
-                            <strong id="profilePlacement">--</strong>
-                        </div>
-                    </div>
+    <!-- Alerts Section -->
+    <div class="card card-premium" style="margin-bottom: 32px;">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-bell"></i> Critical Alerts</h3>
+        </div>
+        <div class="card-body">
+            <div id="profileAlerts" class="alert-grid">
+                <div class="alert-card alert-info">
+                    <i class="fas fa-sync fa-spin"></i>
+                    <span>Updating your academic alerts...</span>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="card">
-                <div class="section-heading">
-                    <div>
-                        <h2>Alerts</h2>
-                        <span class="subtle-text">Highlighted areas that need action.</span>
-                    </div>
-                </div>
-                <div class="alert-grid" id="profileAlerts">
-                    <div class="alert-card alert-card--warning">
-                        <strong>Fetching alerts...</strong>
-                        <p>The latest academic alerts are loading.</p>
-                    </div>
-                </div>
+    <!-- Insights and Charts -->
+    <div class="grid-2col" style="margin-bottom: 32px;">
+        <div class="card card-premium">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-lightbulb"></i> Why This Outlook?</h3>
             </div>
+            <div class="card-body">
+                <ul id="placementReasons" class="insight-list">
+                    <li class="insight-item">Analyzing your placement reasoning...</li>
+                </ul>
+            </div>
+        </div>
 
-            <div class="grid profile-grid">
-                <div class="card profile-card">
-                    <div class="section-heading">
-                        <div>
-                            <h2>Placement Reasons</h2>
-                            <span class="subtle-text">Why the current placement outlook was predicted.</span>
-                        </div>
-                    </div>
-                    <ul id="placementReasons" class="reason-list">
-                        <li>Loading placement reasoning...</li>
-                    </ul>
-                </div>
-
-                <div class="card placement-details-card">
-                    <div class="section-heading">
-                        <div>
-                            <h2>Subject Trend</h2>
-                            <span class="subtle-text">Average marks across subjects.</span>
-                        </div>
-                    </div>
+        <div class="card card-premium">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-chart-line"></i> Subject Trends</h3>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
                     <canvas id="profileSubjectPerformanceChart"></canvas>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <div class="card">
-                <div class="section-heading">
-                    <div>
-                        <h2>Subject-wise Performance</h2>
-                        <span class="subtle-text">Detailed marks summary by subject.</span>
-                    </div>
-                </div>
-                <div class="faculty-table-wrapper">
-                    <table class="faculty-table">
-                        <thead>
-                            <tr>
-                                <th>Subject</th>
-                                <th>Code</th>
-                                <th>Average Marks</th>
-                                <th>Latest Marks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="profileSubjectPerformanceTable">
-                            <tr>
-                                <td colspan="4">Loading subject performance...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+    <!-- Detailed Table -->
+    <div class="card card-premium">
+        <div class="card-header">
+            <h3 class="card-title"><i class="fas fa-table"></i> Academic Breakdown</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Code</th>
+                            <th>Avg Marks</th>
+                            <th>Latest Marks</th>
+                        </tr>
+                    </thead>
+                    <tbody id="profileSubjectPerformanceTable">
+                        <tr><td colspan="4" class="text-center">Loading breakdown...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
-<script src="{{ url_for('static', filename='dark-mode.js') }}"></script>
 <script src="{{ url_for('static', filename='student.js') }}"></script>
 <script>
     loadProfile();
 </script>
-
-</body>
-</html>
+{% endblock %}

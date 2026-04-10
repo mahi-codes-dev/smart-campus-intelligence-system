@@ -1,86 +1,101 @@
-﻿<!DOCTYPE html>
-<html>
-<head>
-    <title>My Progress</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-</head>
-<body>
+{% extends "base.html" %}
+{% set top_nav_enabled = True %}
 
-<div class="layout">
-    <div class="sidebar">
-        <h2>Smart Campus</h2>
-        <ul>
-            <li onclick="go('/student-dashboard')">
-                <i class="fas fa-chart-line"></i> Dashboard
-            </li>
-            <li class="active" onclick="go('/student-progress')">
-                <i class="fas fa-user-graduate"></i> My Progress
-            </li>
-            <li onclick="go('/student-skills')">
-                <i class="fas fa-code"></i> Skills
-            </li>
-            <li onclick="go('/student-profile')">
-                <i class="fas fa-id-card"></i> Profile
-            </li>
-        </ul>
-    </div>
+{% block title %}My Progress - Smart Campus Intelligence{% endblock %}
 
-    <div class="main">
-        <div class="topbar">
-            <span>Welcome, <span id="userEmail"></span></span>
-            <button class="logout-button" onclick="logout()">Logout</button>
+{% block breadcrumb %}Development{% endblock %}
+{% block page_title %}My Academic Progress{% endblock %}
+
+{% block top_nav %}
+<li class="top-nav-item" onclick="go('/student-dashboard')">
+    <i class="fas fa-home top-nav-icon"></i>
+    <span>Dashboard</span>
+</li>
+<li class="top-nav-item active" onclick="go('/student-progress')">
+    <i class="fas fa-chart-line top-nav-icon"></i>
+    <span>Progress</span>
+</li>
+<li class="top-nav-item" onclick="go('/student-skills')">
+    <i class="fas fa-star top-nav-icon"></i>
+    <span>Skills</span>
+</li>
+<li class="top-nav-item" onclick="go('/student-profile')">
+    <i class="fas fa-user-circle top-nav-icon"></i>
+    <span>Profile</span>
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-premium">
+    <!-- Quick Metrics -->
+    <div class="metrics-grid" style="margin-bottom: 32px;">
+        <div class="metric-card card-premium" id="attendanceCard">
+            <div class="metric-icon" style="background: rgba(var(--primary-rgb), 0.1); color: var(--primary);">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="metric-info">
+                <h4 class="metric-label">Attendance</h4>
+                <p class="metric-value" id="attendance">--</p>
+                <span class="metric-trend" id="attendanceNote"></span>
+            </div>
         </div>
 
-        <div class="dashboard-container">
-            <h1>My Progress</h1>
-
-            <div class="grid">
-                <div class="card metric-card" id="attendanceCard">
-                    <h3>Attendance</h3>
-                    <p id="attendance"></p>
-                    <span class="metric-note" id="attendanceNote"></span>
-                </div>
-
-                <div class="card metric-card" id="marksCard">
-                    <h3>Marks</h3>
-                    <p id="marks"></p>
-                    <span class="metric-note" id="marksNote"></span>
-                </div>
-
-                <div class="card metric-card" id="mockCard">
-                    <h3>Mock Score</h3>
-                    <p id="mock"></p>
-                    <span class="metric-note" id="mockNote"></span>
-                </div>
-
-                <div class="card metric-card" id="skillsCard">
-                    <h3>Skills Score</h3>
-                    <p id="skills"></p>
-                    <span class="metric-note" id="skillsNote"></span>
-                </div>
+        <div class="metric-card card-premium" id="marksCard">
+            <div class="metric-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+                <i class="fas fa-graduation-cap"></i>
             </div>
+            <div class="metric-info">
+                <h4 class="metric-label">GPA / Marks</h4>
+                <p class="metric-value" id="marks">--</p>
+                <span class="metric-trend" id="marksNote"></span>
+            </div>
+        </div>
 
-            <div class="card">
-                <div class="section-heading">
-                    <h2>Performance Chart</h2>
-                    <div class="breakdown-summary">
-                        <span class="metric-chip metric-chip--success" id="progressStrengthText">Best Area: --</span>
-                        <span class="metric-chip metric-chip--danger" id="progressWeaknessText">Needs Improvement: --</span>
-                    </div>
-                </div>
+        <div class="metric-card card-premium" id="mockCard">
+            <div class="metric-icon" style="background: rgba(245, 158, 11, 0.1); color: #f59e0b;">
+                <i class="fas fa-file-alt"></i>
+            </div>
+            <div class="metric-info">
+                <h4 class="metric-label">Mock Score</h4>
+                <p class="metric-value" id="mock">--</p>
+                <span class="metric-trend" id="mockNote"></span>
+            </div>
+        </div>
+
+        <div class="metric-card card-premium" id="skillsCard">
+            <div class="metric-icon" style="background: rgba(139, 92, 246, 0.1); color: #8b5cf6;">
+                <i class="fas fa-brain"></i>
+            </div>
+            <div class="metric-info">
+                <h4 class="metric-label">Skills Index</h4>
+                <p class="metric-value" id="skills">--</p>
+                <span class="metric-trend" id="skillsNote"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Analysis -->
+    <div class="card card-premium">
+        <div class="card-header" style="flex-wrap: wrap; gap: 16px;">
+            <h3 class="card-title"><i class="fas fa-chart-area"></i> Performance Analysis</h3>
+            <div class="header-actions">
+                <span class="badge badge-success" id="progressStrengthText">Best: --</span>
+                <span class="badge badge-warning" id="progressWeaknessText">Focus: --</span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="chart-container" style="height: 400px;">
                 <canvas id="performanceChart"></canvas>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='shared.js') }}"></script>
 <script src="{{ url_for('static', filename='student.js') }}"></script>
 <script>
     loadProgress();
 </script>
-
-</body>
-</html>
+{% endblock %}

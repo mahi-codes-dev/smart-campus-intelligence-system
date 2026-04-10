@@ -87,7 +87,7 @@ def token_required(f):
     return decorated
 
 
-def role_required(required_role):
+def role_required(*required_roles):
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
@@ -96,8 +96,8 @@ def role_required(required_role):
 
             user_role = request.user.get("role_name") or ROLE_MAP.get(request.user.get("role_id"))
 
-            if user_role != required_role:
-                return jsonify({"error": "Access denied"}), 403
+            if user_role not in required_roles:
+                return jsonify({"error": f"Access denied. Required roles: {', '.join(required_roles)}"}), 403
 
             return f(*args, **kwargs)
 
