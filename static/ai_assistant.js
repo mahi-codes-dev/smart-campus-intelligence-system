@@ -25,12 +25,15 @@ class AIAssistant {
         
         this.container.innerHTML = `
             <button class="ai-toggle-btn" title="AI Assistant">
-                <i class="fas fa-robot"></i>
+                <i class="fas fa-comment-dots"></i>
             </button>
             <div class="ai-chat-window">
                 <div class="ai-chat-header">
-                    <i class="fas fa-brain"></i>
-                    <h3>Campus AI Assistant</h3>
+                    <div class="ai-chat-header-info">
+                        <div class="ai-status-dot"></div>
+                        <h3>Campus AI</h3>
+                    </div>
+                    <i class="fas fa-robot" style="opacity: 0.5;"></i>
                 </div>
                 <div class="ai-chat-messages" id="ai-chat-messages">
                     <div class="message ai">
@@ -38,9 +41,9 @@ class AIAssistant {
                     </div>
                 </div>
                 <div class="ai-chat-input">
-                    <input type="text" placeholder="Ask me anything..." id="ai-chat-input">
+                    <input type="text" placeholder="Type your message..." id="ai-chat-input">
                     <button id="ai-send-btn">
-                        <i class="fas fa-paper-plane"></i>
+                        <i class="fas fa-arrow-up"></i>
                     </button>
                 </div>
             </div>
@@ -71,17 +74,24 @@ class AIAssistant {
         this.chatWindow.classList.toggle('active', this.isOpen);
         if (this.isOpen) {
             this.inputField.focus();
+            const icon = this.container.querySelector('.ai-toggle-btn i');
+            icon.className = this.isOpen ? 'fas fa-times' : 'fas fa-comment-dots';
+        } else {
+            const icon = this.container.querySelector('.ai-toggle-btn i');
+            icon.className = 'fas fa-comment-dots';
         }
     }
 
     async handleSendMessage() {
         const message = this.inputField.value.trim();
-        if (!message) return;
+        if (!message || this.isThinking) return;
 
+        this.isThinking = true;
         this.addMessage(message, 'user');
         this.inputField.value = '';
+        this.inputField.disabled = true;
         
-        const loadingMsg = this.addMessage('Thinking...', 'ai');
+        const loadingMsg = this.showTypingIndicator();
         
         try {
             const endpoint = this.role === 'faculty' ? '/ai/chat/faculty' : '/ai/chat/student';
@@ -92,23 +102,46 @@ class AIAssistant {
                 body: JSON.stringify(body)
             });
             
+            loadingMsg.remove();
+            
             if (data.error) {
-                loadingMsg.textContent = `Error: ${data.error}`;
+                this.addMessage(`Error: ${data.error}`, 'ai');
             } else {
-                loadingMsg.textContent = data.response;
+                this.addMessage(data.response, 'ai');
             }
         } catch (error) {
-            loadingMsg.textContent = "Sorry, I'm having trouble connecting right now.";
+            loadingMsg.remove();
+            this.addMessage("Sorry, I'm having trouble connecting right now.", 'ai');
             console.error("AI Chat Error:", error);
+        } finally {
+            this.isThinking = false;
+            this.inputField.disabled = false;
+            this.inputField.focus();
         }
         
         this.scrollToBottom();
     }
 
+    showTypingIndicator() {
+        const div = document.createElement('div');
+        div.className = 'message ai';
+        div.innerHTML = `
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        `;
+        this.messagesContainer.appendChild(div);
+        this.scrollToBottom();
+        return div;
+    }
+
     addMessage(text, side) {
         const div = document.createElement('div');
         div.className = `message ${side}`;
-        div.textContent = text;
+        // Support simple multiline
+        div.innerHTML = text.replace(/\n/g, '<br>');
         this.messagesContainer.appendChild(div);
         this.scrollToBottom();
         return div;

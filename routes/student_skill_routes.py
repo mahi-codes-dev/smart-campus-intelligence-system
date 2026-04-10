@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
-from services.student_skill_service import get_student_skills
+from services.skills_service import get_student_skills
+
 from services.skills_service import assign_skill, get_or_create_skill
 from services.student_service import get_student_record_by_user_id
 from auth.auth_middleware import token_required, role_required
