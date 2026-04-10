@@ -87,16 +87,10 @@ class AIAssistant {
             const endpoint = this.role === 'faculty' ? '/ai/chat/faculty' : '/ai/chat/student';
             const body = this.role === 'faculty' ? { query: message } : { message: message };
 
-            const response = await fetch(endpoint, {
+            const data = await fetchAuth(endpoint, {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}` // If needed, though cookie should work
-                },
                 body: JSON.stringify(body)
             });
-
-            const data = await response.json();
             
             if (data.error) {
                 loadingMsg.textContent = `Error: ${data.error}`;

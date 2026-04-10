@@ -233,15 +233,9 @@ const API = '/api/goals';
 let allGoals = [];
 let currentFilter = 'all';
 
-function authHeaders() {
-    const token = localStorage.getItem('token');
-    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-}
-
 async function loadSummary() {
     try {
-        const r = await fetch(`${API}/summary`, { headers: authHeaders() });
-        const d = await r.json();
+        const d = await fetchAuth(`${API}/summary`);
         if (d.success) {
             const s = d.data;
             document.getElementById('totalGoals').textContent = s.total;
@@ -274,8 +268,7 @@ function renderBadges(badges) {
 async function loadGoals(status = null) {
     const url = status && status !== 'all' ? `${API}/?status=${status}` : `${API}/`;
     try {
-        const r = await fetch(url, { headers: authHeaders() });
-        const d = await r.json();
+        const d = await fetchAuth(url);
         if (d.success) {
             allGoals = d.data;
             renderGoals(allGoals);
@@ -378,16 +371,14 @@ async function saveGoal() {
     if (!payload.title) return alert('Title is required');
     const url  = editId ? `${API}/${editId}` : `${API}/`;
     const meth = editId ? 'PUT' : 'POST';
-    const r = await fetch(url, { method: meth, headers: authHeaders(), body: JSON.stringify(payload) });
-    const d = await r.json();
+    const d = await fetchAuth(url, { method: meth, body: JSON.stringify(payload) });
     if (d.success) { closeModal(); loadGoals(currentFilter); loadSummary(); }
     else alert(d.message || 'Error saving goal');
 }
 
 async function deleteGoal(id) {
     if (!confirm('Delete this goal?')) return;
-    const r = await fetch(`${API}/${id}`, { method: 'DELETE', headers: authHeaders() });
-    const d = await r.json();
+    const d = await fetchAuth(`${API}/${id}`, { method: 'DELETE' });
     if (d.success) { loadGoals(currentFilter); loadSummary(); }
 }
 
@@ -407,17 +398,15 @@ async function saveProgress() {
     const id  = document.getElementById('progressGoalId').value;
     const val = parseFloat(document.getElementById('progressValue').value);
     if (isNaN(val)) return alert('Please enter a valid number');
-    const r = await fetch(`${API}/${id}/progress`, {
-        method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ current_value: val })
+    const d = await fetchAuth(`${API}/${id}/progress`, {
+        method: 'PATCH', body: JSON.stringify({ current_value: val })
     });
-    const d = await r.json();
     if (d.success) { closeProgressModal(); loadGoals(currentFilter); loadSummary(); if (d.message.includes('🎉')) alert(d.message); }
     else alert(d.message);
 }
 
 async function loadMilestones(goalId) {
-    const r = await fetch(`${API}/${goalId}/milestones`, { headers: authHeaders() });
-    const d = await r.json();
+    const d = await fetchAuth(`${API}/${goalId}/milestones`);
     const list = document.getElementById('msList');
     if (d.success && d.data.length) {
         list.innerHTML = d.data.map(m => `
@@ -434,15 +423,15 @@ async function addMilestone() {
     const goalId = document.getElementById('progressGoalId').value;
     const title  = document.getElementById('msInput').value.trim();
     if (!title) return;
-    await fetch(`${API}/${goalId}/milestones`, {
-        method:'POST', headers:authHeaders(), body:JSON.stringify({title})
+    await fetchAuth(`${API}/${goalId}/milestones`, {
+        method:'POST', body:JSON.stringify({title})
     });
     document.getElementById('msInput').value = '';
     loadMilestones(goalId);
 }
 
 async function toggleMs(id) {
-    await fetch(`${API}/milestones/${id}/toggle`, { method:'PATCH', headers:authHeaders() });
+    await fetchAuth(`${API}/milestones/${id}/toggle`, { method:'PATCH' });
     loadMilestones(document.getElementById('progressGoalId').value);
 }
 
