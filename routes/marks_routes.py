@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from services.marks_service import add_marks, get_marks, save_marks
-from auth.auth_middleware import token_required, role_required
+from auth.auth_middleware_replacement import token_required, role_required
+from utils.validators import RequestValidator
+from utils.validators import RequestValidator
 
 marks_bp = Blueprint("marks_bp", __name__)
 
@@ -10,16 +12,14 @@ marks_bp = Blueprint("marks_bp", __name__)
 @role_required("Faculty")
 def create_marks():
     try:
-        data = request.get_json() or {}
-        print("FACULTY_MARKS_CREATE_REQUEST:", data)
-
-        if not all(k in data for k in ("student_id", "subject_id", "marks")):
-            return jsonify({"error": "student_id, subject_id, and marks are required"}), 400
-
-        student_id = data["student_id"]
-        subject_id = data["subject_id"]
-        marks_value = data["marks"]
-        exam_type = data.get("exam_type")
+        v = RequestValidator(request.get_json())
+        v.required("student_id", "subject_id", "marks").integer("student_id").integer("subject_id").integer("marks", min_val=0, max_val=100)
+        if v.has_errors():
+            return jsonify({"error": v.first_error()}), 400
+        student_id = v.validated_data["student_id"]
+        subject_id = v.validated_data["subject_id"]
+        marks_value = v.validated_data["marks"]
+        exam_type = v.data.get("exam_type")
 
         add_marks(student_id, subject_id, marks_value, exam_type)
 
@@ -34,17 +34,15 @@ def create_marks():
 @role_required("Faculty")
 def update_marks():
     try:
-        data = request.get_json() or {}
-        print("FACULTY_MARKS_UPDATE_REQUEST:", data)
-
-        if not all(k in data for k in ("student_id", "subject_id", "marks")):
-            return jsonify({"error": "student_id, subject_id, and marks are required"}), 400
-
+        v = RequestValidator(request.get_json())
+        v.required("student_id", "subject_id", "marks").integer("student_id").integer("subject_id").integer("marks", min_val=0, max_val=100)
+        if v.has_errors():
+            return jsonify({"error": v.first_error()}), 400
         action = save_marks(
-            data["student_id"],
-            data["subject_id"],
-            data["marks"],
-            data.get("exam_type"),
+            v.validated_data["student_id"],
+            v.validated_data["subject_id"],
+            v.validated_data["marks"],
+            v.data.get("exam_type"),
         )
 
         return jsonify({
@@ -59,7 +57,7 @@ def update_marks():
 @token_required
 def fetch_marks():
     try:
-        user = request.environ.get("user")
+        user = request.user
         if not user or user.get("role_id") not in (1, 2):
             return jsonify({"error": "Access denied"}), 403
 

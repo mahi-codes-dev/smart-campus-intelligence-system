@@ -1,46 +1,71 @@
-from flask import Flask, jsonify, request
-import psycopg2
+import logging
 from pathlib import Path
-from database import get_db_connection
-from auth.auth_middleware import token_required, role_required
-from config import settings
-from routes.student_routes import student_bp
+import psycopg2
+from flask import Flask, jsonify, render_template, request
+from werkzeug.middleware.proxy_fix import ProxyFix
+
+from auth.auth_middleware_replacement import token_required, role_required
 from auth.auth_routes import auth_bp
-from routes.subject_routes import subject_bp
-from routes.attendance_routes import attendance_bp
-from routes.marks_routes import marks_bp
-from routes.readiness_routes import readiness_bp
-from routes.skills_routes import skills_bp
-from routes.mock_routes import mock_bp
-from routes.faculty_routes import faculty_bp
-from routes.faculty_dashboard_routes import faculty_dashboard_bp
-from routes.student_skill_routes import student_skill_bp
+from config import settings
+from core.logging_config import configure_logging
+from core.security_headers import apply_security_headers
+from database import get_db_connection
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.admin_routes import admin_bp
-from routes.prediction_routes import prediction_bp
-from routes.theme_routes import theme_bp
-from routes.notification_routes import notification_bp
+from routes.attendance_routes import attendance_bp
+from routes.faculty_dashboard_routes import faculty_dashboard_bp
+from routes.faculty_routes import faculty_bp
 from routes.goals_routes import goals_bp
-from core.security_headers import apply_security_headers
+from routes.marks_routes import marks_bp
+from routes.mock_routes import mock_bp
+from routes.prediction_routes import prediction_bp
+from routes.notification_routes import notification_bp
+from routes.readiness_routes import readiness_bp
+from routes.skills_routes import skills_bp
+from routes.student_routes import student_bp
+from routes.student_skill_routes import student_skill_bp
+from routes.subject_routes import subject_bp
+from routes.theme_routes import theme_bp
 from services.attendance_service import ensure_attendance_table_consistency
+from services.faculty_dashboard_service import ensure_intervention_table_consistency
+from services.goals_service import ensure_goals_tables
 from services.marks_service import ensure_marks_table_consistency
+from services.migration_service import run_migrations
 from services.mock_service import ensure_mock_tests_table_consistency
+from services.realtime_notification_service import RealtimeNotificationService
 from services.skills_service import ensure_skills_table_consistency
 from services.student_service import ensure_student_table_consistency, ensure_roll_number_available
 from services.subject_service import ensure_subject_table_consistency
-from services.goals_service import ensure_goals_tables
-from services.realtime_notification_service import RealtimeNotificationService
-from services.migration_service import run_migrations
-# from routes.readiness_routes import get_top_students
-from flask import render_template
+from services.theme_service import ThemeService
+from utils.validators import RequestValidator
 
+configure_logging(settings.log_level)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 app.config["SECRET_KEY"] = settings.flask_secret_key
 app.config["ENV"] = settings.flask_env
 app.config["DEBUG"] = settings.flask_debug
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SECURE"] = settings.auth_cookie_secure
+app.config["SESSION_COOKIE_SAMESITE"] = settings.auth_cookie_samesite
+
+if settings.trust_proxy_count > 0:
+    app.wsgi_app = ProxyFix(  # type: ignore[assignment]
+        app.wsgi_app,
+        x_for=settings.trust_proxy_count,
+        x_proto=settings.trust_proxy_count,
+        x_host=settings.trust_proxy_count,
+    )
+
 apply_security_headers(app)
+
+startup_status = {
+    "ready": False,
+    "database": "unknown",
+    "bootstrap_error": None,
+}
 
 try:
     run_migrations()
@@ -51,9 +76,17 @@ try:
     ensure_mock_tests_table_consistency()
     ensure_skills_table_consistency()
     ensure_goals_tables()
+    ensure_intervention_table_consistency()
     RealtimeNotificationService.ensure_notifications_table()
+    ThemeService.ensure_theme_table()
+    startup_status["ready"] = True
+    startup_status["database"] = "connected"
 except Exception as schema_error:
-    print("STUDENT_SCHEMA_SYNC_ERROR:", schema_error)
+    startup_status["database"] = "disconnected"
+    startup_status["bootstrap_error"] = str(schema_error)
+    logger.exception("Application bootstrap failed")
+    if settings.strict_startup_validation:
+        raise
 
 app.register_blueprint(student_bp)
 app.register_blueprint(auth_bp)
@@ -77,6 +110,16 @@ app.register_blueprint(goals_bp)
 @app.route("/")
 def home():
     return render_template("login.html")
+
+
+@app.route("/offline")
+def offline_page():
+    return render_template("offline.html")
+
+
+@app.route("/health/live")
+def live_check():
+    return jsonify({"status": "alive", "app": settings.app_name}), 200
     # try:
     #     conn = get_db_connection()
     #     conn.close()
@@ -84,22 +127,22 @@ def home():
     # except Exception as e:
     #     return jsonify({"error": str(e)}), 500
 
+@app.route("/health/ready")
 @app.route("/health")
 def health_check():
+    status = dict(startup_status)
+
     try:
         conn = get_db_connection()
         conn.close()
-        return jsonify({
-            "status": "healthy",
-            "database": "connected"
-        }), 200
+        status["database"] = "connected"
     except Exception as e:
-        return jsonify({
-            "status": "unhealthy",
-            "database": "disconnected",
-            "error": str(e)
-        }), 500
-    
+        status["database"] = "disconnected"
+        status["ready"] = False
+        status["bootstrap_error"] = status.get("bootstrap_error") or str(e)
+
+    status["status"] = "healthy" if status.get("ready") else "unhealthy"
+    return jsonify(status), 200 if status["status"] == "healthy" else 503
 
 @app.route("/create-table")
 @token_required
@@ -122,18 +165,15 @@ def add_student():
     cur = None
 
     try:
-        data = request.get_json()
-
-        if not data or "name" not in data or "email" not in data or "department" not in data or "roll_number" not in data:
-            return jsonify({"error": "Missing required fields"}), 400
-
-        name = data["name"]
-        email = data["email"]
-        department = data["department"]
-        roll_number = (data["roll_number"] or "").strip()
-
-        if not roll_number:
-            return jsonify({"error": "Roll number is required"}), 400
+        data = request.get_json() or {}
+        v = RequestValidator(data)
+        v.required("name", "email", "department", "roll_number").sanitize("name", 100).email("email").sanitize("department", 100).roll_number("roll_number")
+        if v.has_errors():
+            return jsonify({"error": v.first_error()}), 400
+        name = v.validated_data["name"]
+        email = v.validated_data["email"]
+        department = v.validated_data["department"]
+        roll_number = v.validated_data["roll_number"]
 
         conn = get_db_connection()
         cur = conn.cursor()
@@ -145,8 +185,6 @@ def add_student():
         """, (name, email, department, roll_number))
 
         conn.commit()
-        cur.close()
-        conn.close()
 
         return jsonify({"message": "Student added successfully 🎓"}), 201
 
@@ -184,15 +222,15 @@ def update_student(id):
     cur = None
 
     try:
-        data = request.get_json()
-
-        name = data["name"]
-        email = data["email"]
-        department = data["department"]
-        roll_number = (data.get("roll_number") or "").strip()
-
-        if not roll_number:
-            return jsonify({"error": "Roll number is required"}), 400
+        data = request.get_json() or {}
+        v = RequestValidator(data)
+        v.required("name", "email", "department", "roll_number").sanitize("name", 100).email("email").sanitize("department", 100).roll_number("roll_number")
+        if v.has_errors():
+            return jsonify({"error": v.first_error()}), 400
+        name = v.validated_data["name"]
+        email = v.validated_data["email"]
+        department = v.validated_data["department"]
+        roll_number = v.validated_data["roll_number"]
 
         conn = get_db_connection()
         cur = conn.cursor()

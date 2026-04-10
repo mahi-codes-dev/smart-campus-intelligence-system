@@ -4,7 +4,9 @@ from services.attendance_service import (
     get_attendance,
     save_attendance_percentage,
 )
-from auth.auth_middleware import token_required, role_required
+from auth.auth_middleware_replacement import token_required, role_required
+from utils.validators import RequestValidator
+
 from services.student_service import get_student_record_by_user_id
 
 attendance_bp = Blueprint("attendance_bp", __name__)
@@ -17,26 +19,26 @@ attendance_bp = Blueprint("attendance_bp", __name__)
 def add_attendance():
     try:
         data = request.get_json() or {}
-        print("FACULTY_ATTENDANCE_REQUEST:", data)
-
-        if not all(k in data for k in ("student_id", "subject_id")):
-            return jsonify({"error": "Missing required fields"}), 400
-
-        student_id = data["student_id"]
-        subject_id = data["subject_id"]
-
+        v = RequestValidator(data)
+        v.required("student_id", "subject_id").integer("student_id").integer("subject_id")
+        
         if "attendance_percentage" in data:
-            save_attendance_percentage(
-                student_id,
-                subject_id,
-                data["attendance_percentage"],
-            )
+            v.float_num("attendance_percentage", 0, 100)
+            
+        if v.has_errors():
+            return jsonify({"error": v.first_error()}), 400
 
+        student_id = v.validated_data["student_id"]
+        subject_id = v.validated_data["subject_id"]
+
+        if "attendance_percentage" in v.validated_data:
+            perc = v.validated_data["attendance_percentage"]
+            save_attendance_percentage(student_id, subject_id, perc)
             return jsonify({
                 "message": "Attendance percentage saved successfully",
                 "student_id": student_id,
                 "subject_id": subject_id,
-                "attendance_percentage": int(round(float(data["attendance_percentage"]))),
+                "attendance_percentage": int(round(perc)),
             }), 200
 
         if "status" not in data:
