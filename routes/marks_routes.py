@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.marks_service import add_marks, get_marks, save_marks
 from auth.auth_middleware import token_required, role_required
@@ -26,7 +28,7 @@ def create_marks():
         return jsonify({"message": "Marks added successfully"}), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @marks_bp.route("/marks", methods=["PUT"])
@@ -50,7 +52,7 @@ def update_marks():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @marks_bp.route("/marks", methods=["GET"])
@@ -65,4 +67,4 @@ def fetch_marks():
         return jsonify(data), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

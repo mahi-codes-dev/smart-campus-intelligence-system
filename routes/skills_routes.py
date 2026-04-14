@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.skills_service import add_skill, assign_skill, get_student_skills
 from services.student_service import get_student_record_by_user_id
@@ -19,7 +21,7 @@ def create_skill():
         return jsonify({"message": "Skill added"}), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @skills_bp.route("/faculty/student-skills", methods=["POST"])
@@ -42,7 +44,7 @@ def assign_skill_to_student():
         }), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @skills_bp.route("/student/skills", methods=["GET"])
@@ -58,4 +60,4 @@ def get_my_skills():
         return jsonify(get_student_skills(student["id"])), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

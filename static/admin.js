@@ -620,7 +620,7 @@ async function loadAdminDashboard() {
         return;
     }
 
-    setUser();
+    syncTopbarUser();
     initializeAdminControls();
 
     try {

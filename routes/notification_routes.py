@@ -50,7 +50,7 @@ def get_notifications():
 
     except Exception as e:
         logger.error(f"Error getting notifications: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/unread-count", methods=["GET"])
@@ -68,7 +68,7 @@ def get_unread_count():
 
     except Exception as e:
         logger.error(f"Error getting unread count: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/statistics", methods=["GET"])
@@ -86,7 +86,7 @@ def get_notification_statistics():
 
     except Exception as e:
         logger.error(f"Error getting notification statistics: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/preferences", methods=["GET"])
@@ -103,7 +103,7 @@ def get_notification_preferences():
 
     except Exception as e:
         logger.error(f"Error getting notification preferences: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/preferences", methods=["PUT"])
@@ -124,7 +124,7 @@ def update_notification_preferences():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error(f"Error updating notification preferences: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/<int:notification_id>/read", methods=["PUT"])
@@ -149,7 +149,7 @@ def mark_as_read(notification_id):
 
     except Exception as e:
         logger.error(f"Error marking notification as read: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/mark-all-read", methods=["PUT"])
@@ -169,7 +169,7 @@ def mark_all_as_read():
 
     except Exception as e:
         logger.error(f"Error marking all as read: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/<int:notification_id>", methods=["DELETE"])
@@ -194,7 +194,7 @@ def delete_notification(notification_id):
 
     except Exception as e:
         logger.error(f"Error deleting notification: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/clear-expired", methods=["DELETE"])
@@ -213,7 +213,7 @@ def clear_expired():
 
     except Exception as e:
         logger.error(f"Error clearing expired notifications: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @notification_bp.route("/api/notifications/poll", methods=["GET"])
@@ -246,5 +246,5 @@ def poll_notifications():
 
     except Exception as e:
         logger.error(f"Error polling notifications: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 

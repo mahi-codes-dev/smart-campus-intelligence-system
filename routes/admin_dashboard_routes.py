@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, jsonify, request
 from services.admin_dashboard_service import get_admin_dashboard
 from services.readiness_service import get_all_scored_students
@@ -19,7 +21,7 @@ def admin_dashboard():
         return jsonify(data), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_dashboard_bp.route("/admin/students", methods=["GET"])
@@ -47,4 +49,4 @@ def admin_students_list():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

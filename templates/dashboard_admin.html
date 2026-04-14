@@ -236,11 +236,11 @@
                 body: JSON.stringify(data)
             });
             if (res.error) throw new Error(res.error);
-            showToast('Success', res.message, 'success');
+            showToast(res.message, 'success');
             e.target.reset();
             loadAdminNotices();
         } catch (error) {
-            showToast('Error', error.message, 'error');
+            showToast(error.message, 'error');
         } finally {
             setLoading(btn, false);
         }
@@ -251,10 +251,10 @@
         try {
             const res = await fetchAuth('/api/notices/' + id, { method: 'DELETE' });
             if (res.error) throw new Error(res.error);
-            showToast('Success', 'Notice deleted', 'success');
+            showToast('Notice deleted', 'success');
             loadAdminNotices();
         } catch (e) {
-            showToast('Error', e.message, 'error');
+            showToast(e.message, 'error');
         }
     }
 

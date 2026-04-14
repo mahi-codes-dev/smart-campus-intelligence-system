@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.subject_service import create_subject, get_all_subjects
 from auth.auth_middleware import token_required, role_required
@@ -27,7 +29,7 @@ def add_subject():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @subject_bp.route("/subjects", methods=["GET"])
@@ -38,4 +40,4 @@ def get_subjects():
         return jsonify(subjects), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

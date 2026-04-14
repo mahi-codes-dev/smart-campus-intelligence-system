@@ -28,7 +28,7 @@ function isValidEmail(email) {
  * Validate password strength
  */
 function isStrongPassword(password) {
-    return password.length >= 6;
+    return password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
 }
 
 /**
@@ -51,8 +51,14 @@ function showError(elementId, message) {
 /**
  * Show/hide message with animation
  */
-function showMessage(message, type = 'error', targetId = 'message') {
-    const messageEl = document.getElementById(targetId);
+function showMessage(message, type = 'error', targetId = null) {
+    // Auto-detect the right message element
+    const candidates = targetId ? [targetId] : ['loginMessage','registerMessage','forgotMessage','message'];
+    let messageEl = null;
+    for (const id of candidates) {
+        const el = document.getElementById(id);
+        if (el) { messageEl = el; break; }
+    }
     if (!messageEl) return;
 
     messageEl.textContent = message;
@@ -364,13 +370,14 @@ async function login() {
         localStorage.setItem("user_email", data.user.email);
         localStorage.setItem("role_id", data.user.role_id);
         localStorage.setItem("role_name", data.user.role_name || "");
+        localStorage.setItem("user_name", data.user.name || "");
         
         if (rememberMe) {
             localStorage.setItem("remember_email", email);
         }
 
         showMessage("Login successful! Redirecting...", "success");
-        showToast("Welcome back! 👋");
+        showToast("Welcome back!", "success");
         
         setTimeout(() => {
             window.location.href = data.user.dashboard_path || "/";
@@ -539,8 +546,8 @@ async function resetPassword() {
         showError("newPasswordError", "New password is required");
         return;
     }
-    if (newPassword.length < 6) {
-        showError("newPasswordError", "Password must be at least 6 characters");
+    if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+        showError("newPasswordError", "Password must be 8+ chars with uppercase and a number");
         return;
     }
     if (newPassword !== confirmPassword) {
@@ -567,7 +574,7 @@ async function resetPassword() {
 
         _showForgotStep(4);
         if (typeof showToast === 'function') {
-            showToast("Password reset successful! 🔐");
+            showToast("Password reset successful!", "success");
         }
     } catch (error) {
         showMessage(error.message || "Failed to reset password", "error", "forgotMessage");
@@ -594,7 +601,7 @@ async function resendOtp() {
 
         _startOtpTimer(15 * 60);
         if (typeof showToast === 'function') {
-            showToast("New OTP sent! 📧");
+            showToast("New OTP sent!", "success");
         }
         // Clear existing OTP inputs
         for (let i = 1; i <= 6; i++) {

@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.mock_service import add_mock_test, get_mock_scores, save_mock_test
 from auth.auth_middleware import token_required, role_required
@@ -85,4 +87,4 @@ def fetch_mock(student_id):
         return jsonify(data), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

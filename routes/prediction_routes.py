@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, jsonify, request
 from services.prediction_service import predict_placement_from_score
 from services.student_dashboard_service import get_student_dashboard_data
@@ -32,4 +34,4 @@ def predict(student_id):
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

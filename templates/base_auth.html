@@ -3,190 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Smart Campus Auth{% endblock %}</title>
-    
-    <!-- Fonts & Icons -->
+    <title>{% block title %}Smart Campus{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Core Styles -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='fixes.css') }}">
     <style>
-        :root {
-            --glass-bg: rgba(255, 255, 255, 0.08);
-            --glass-border: rgba(255, 255, 255, 0.15);
-            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-        }
-        
-        body.glass-auth-body {
-            font-family: 'Outfit', sans-serif;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            overflow: hidden;
-            position: relative;
-            color: #fff;
-        }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Inter', sans-serif; overflow: hidden; }
 
-        .bg-shapes {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            z-index: 0;
-        }
+    .auth-page {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        height: 100vh;
+        overflow: hidden;
+    }
 
-        .shape-blob {
-            position: absolute;
-            filter: blur(80px);
-            opacity: 0.5;
-            animation: moveBlob 20s infinite alternate ease-in-out;
-        }
+    /* Left — gradient branding panel */
+    .auth-brand {
+        background: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+        display: flex; align-items: center; justify-content: center;
+        padding: 48px 40px; position: relative; overflow: hidden;
+        color: #fff;
+    }
+    /* Decorative circles */
+    .auth-brand::before {
+        content: ''; position: absolute;
+        top: -20%; right: -15%; width: 420px; height: 420px;
+        background: rgba(255,255,255,.12); border-radius: 50%;
+    }
+    .auth-brand::after {
+        content: ''; position: absolute;
+        bottom: -25%; left: -10%; width: 360px; height: 360px;
+        background: rgba(255,255,255,.08); border-radius: 50%;
+    }
+    .auth-brand-inner { position: relative; z-index: 1; text-align: center; max-width: 380px; }
+    .brand-icon-wrap {
+        width: 96px; height: 96px; border-radius: 50%;
+        background: rgba(255,255,255,.15);
+        border: 2px solid rgba(255,255,255,.3);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 44px; margin: 0 auto 24px;
+    }
+    .brand-name { font-size: 34px; font-weight: 800; margin-bottom: 4px; }
+    .brand-tag  { font-size: 13px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; opacity: .75; margin-bottom: 40px; }
+    .brand-features { display: flex; flex-direction: column; gap: 16px; text-align: left; }
+    .brand-feature {
+        display: flex; align-items: center; gap: 14px;
+        background: rgba(255,255,255,.12); border-radius: 10px;
+        padding: 12px 16px; backdrop-filter: blur(4px);
+    }
+    .brand-feature-icon {
+        width: 38px; height: 38px; border-radius: 8px;
+        background: rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; flex-shrink: 0;
+    }
+    .brand-feature-text strong { display: block; font-size: 14px; font-weight: 600; }
+    .brand-feature-text span   { font-size: 12px; opacity: .8; }
 
-        .blob-1 { top: -10%; left: -10%; width: 500px; height: 500px; background: #4f46e5; border-radius: 50%; }
-        .blob-2 { bottom: -20%; right: -10%; width: 600px; height: 600px; background: #06b6d4; border-radius: 50%; animation-delay: -7s; }
-        .blob-3 { top: 40%; left: 60%; width: 300px; height: 300px; background: #6366f1; border-radius: 50%; animation-delay: -12s; }
+    /* Right — white form panel */
+    .auth-form-panel {
+        background: #f8fafc; display: flex;
+        align-items: center; justify-content: center;
+        padding: 32px; overflow-y: auto;
+    }
+    .auth-card {
+        background: #fff; border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        padding: 40px 36px; width: 100%; max-width: 420px;
+        animation: authIn .35s ease;
+    }
+    @keyframes authIn { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 
-        @keyframes moveBlob {
-            0% { transform: translate(0, 0) scale(1.0); }
-            100% { transform: translate(100px, 80px) scale(1.2); }
-        }
+    .auth-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: #f1f5f9; border-radius: 20px;
+        padding: 5px 12px; font-size: 12px; font-weight: 600;
+        color: #475569; margin-bottom: 18px;
+    }
+    .auth-card h2 { font-size: 26px; font-weight: 800; color: #0f172a; margin-bottom: 6px; }
+    .auth-card .auth-sub { font-size: 13px; color: #64748b; margin-bottom: 28px; }
 
-        .glass-container {
-            position: relative;
-            z-index: 1;
-            width: 100%;
-            max-width: 1000px;
-            display: flex;
-            border-radius: 28px;
-            background: var(--glass-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--glass-border);
-            box-shadow: var(--glass-shadow);
-            overflow: hidden;
-            animation: fadeIn 0.8s ease-out;
-            margin: 20px;
-        }
+    /* Form fields */
+    .field-label {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 11.5px; font-weight: 700; color: #475569;
+        text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px;
+    }
+    .field-label .required { color: #ef4444; }
+    .field-wrap { position: relative; margin-bottom: 18px; }
+    .field-wrap .field-icon {
+        position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+        color: #94a3b8; font-size: 15px; pointer-events: none;
+    }
+    .field-input {
+        width: 100%; padding: 11px 13px 11px 40px;
+        border: 1.5px solid #e2e8f0; border-radius: 9px;
+        font-size: 14px; color: #0f172a; background: #fff;
+        transition: border-color .2s, box-shadow .2s; outline: none;
+        box-sizing: border-box;
+    }
+    .field-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,.1); }
+    .field-input::placeholder { color: #cbd5e1; }
+    .toggle-pw {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        color: #94a3b8; cursor: pointer; font-size: 15px; background: none; border: none;
+    }
+    .toggle-pw:hover { color: #4f46e5; }
+    select.field-input { cursor: pointer; padding-right: 32px; appearance: none; }
+    .select-arrow {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        color: #94a3b8; pointer-events: none; font-size: 12px;
+    }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+    /* Options row */
+    .auth-options { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; font-size: 13px; }
+    .remember-wrap { display: flex; align-items: center; gap: 7px; cursor: pointer; color: #475569; }
+    .remember-wrap input { accent-color: #4f46e5; width: 15px; height: 15px; }
+    .forgot-link { color: #4f46e5; text-decoration: none; font-weight: 500; }
+    .forgot-link:hover { text-decoration: underline; }
 
-        .glass-branding {
-            flex: 1;
-            padding: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            background: rgba(0, 0, 0, 0.25);
-            border-right: 1px solid var(--glass-border);
-        }
+    /* Submit button */
+    .auth-btn {
+        width: 100%; padding: 13px; border-radius: 9px;
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        color: #fff; font-size: 15px; font-weight: 700;
+        border: none; cursor: pointer; display: flex;
+        align-items: center; justify-content: center; gap: 8px;
+        transition: opacity .2s, transform .15s; margin-bottom: 20px;
+    }
+    .auth-btn:hover { opacity: .92; transform: translateY(-1px); }
+    .auth-btn:active { transform: scale(.98); }
 
-        .logo-wrapper {
-            width: 70px;
-            height: 70px;
-            border-radius: 18px;
-            background: linear-gradient(135deg, #4f46e5, #06b6d4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 32px;
-            margin-bottom: 30px;
-            box-shadow: 0 12px 24px rgba(0,0,0,0.4);
-        }
+    /* Divider */
+    .auth-divider-line { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; color: #94a3b8; font-size: 13px; }
+    .auth-divider-line::before, .auth-divider-line::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
 
-        .glass-branding h1 {
-            font-size: 44px;
-            font-weight: 700;
-            margin-bottom: 15px;
-            letter-spacing: -0.5px;
-            background: linear-gradient(to right, #fff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+    /* Secondary button */
+    .auth-btn-secondary {
+        width: 100%; padding: 12px; border-radius: 9px;
+        background: #fff; color: #4f46e5; font-size: 14px;
+        font-weight: 700; border: 1.5px solid #4f46e5;
+        cursor: pointer; display: flex; align-items: center;
+        justify-content: center; gap: 8px; transition: all .2s;
+        margin-bottom: 14px;
+    }
+    .auth-btn-secondary:hover { background: #f5f3ff; }
 
-        .glass-branding p {
-            font-size: 18px;
-            color: #94a3b8;
-            margin-bottom: 40px;
-            line-height: 1.6;
-        }
+    /* Message alert */
+    .auth-alert { display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-top: 14px; }
+    .auth-alert.error   { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .auth-alert.success { display: block; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
 
-        .glass-features .feature {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 22px;
-            font-size: 15px;
-            color: #e2e8f0;
-        }
+    /* Help link */
+    .auth-help { text-align: center; font-size: 12px; color: #94a3b8; margin-top: 10px; }
+    .auth-help a { color: #4f46e5; text-decoration: none; font-weight: 600; }
 
-        .feature i {
-            width: 40px;
-            height: 40px;
-            border-radius: 12px;
-            background: rgba(255,255,255,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #06b6d4;
-            font-size: 18px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
+    /* Hidden field */
+    .field-hidden { display: none; }
 
-        .glass-form-side {
-            flex: 1;
-            padding: 60px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        @media (max-width: 991px) {
-            .glass-container { flex-direction: column; max-width: 500px; height: auto; }
-            .glass-branding { display: none; }
-            .glass-form-side { padding: 40px; }
-        }
+    /* Responsive */
+    @media(max-width:768px){
+        .auth-page { grid-template-columns: 1fr; }
+        .auth-brand { display: none; }
+        .auth-form-panel { padding: 20px; }
+        .auth-card { padding: 28px 20px; }
+    }
     </style>
-    
     {% block extra_css %}{% endblock %}
 </head>
-<body class="glass-auth-body">
-    <div class="bg-shapes">
-        <div class="shape-blob blob-1"></div>
-        <div class="shape-blob blob-2"></div>
-        <div class="shape-blob blob-3"></div>
-    </div>
-
-    <div class="glass-container">
-        <div class="glass-branding">
-            <div class="logo-wrapper">
-                <i class="fas fa-microchip"></i>
+<body>
+<div class="auth-page">
+    <!-- Left branding panel -->
+    <div class="auth-brand">
+        <div class="auth-brand-inner">
+            <div class="brand-icon-wrap">
+                <i class="fas fa-graduation-cap"></i>
             </div>
-            <h1>Smart Campus</h1>
-            <p>Empowering the next generation of academic intelligence with AI-driven insights and seamless operations.</p>
-            
-            <div class="glass-features">
-                <div class="feature"><i class="fas fa-brain"></i> <span>AI-Powered Recommendations</span></div>
-                <div class="feature"><i class="fas fa-chart-line"></i> <span>Real-time Progress Tracking</span></div>
-                <div class="feature"><i class="fas fa-lock"></i> <span>Secure Enterprise Infrastructure</span></div>
+            <div class="brand-name">Smart Campus</div>
+            <div class="brand-tag">Intelligence System</div>
+            <div class="brand-features">
+                {% block brand_features %}
+                <div class="brand-feature">
+                    <div class="brand-feature-icon"><i class="fas fa-chart-line"></i></div>
+                    <div class="brand-feature-text">
+                        <strong>Advanced Analytics</strong>
+                        <span>Data-driven insights for success</span>
+                    </div>
+                </div>
+                <div class="brand-feature">
+                    <div class="brand-feature-icon"><i class="fas fa-users"></i></div>
+                    <div class="brand-feature-text">
+                        <strong>Connected Community</strong>
+                        <span>Real-time collaboration tools</span>
+                    </div>
+                </div>
+                <div class="brand-feature">
+                    <div class="brand-feature-icon"><i class="fas fa-shield-alt"></i></div>
+                    <div class="brand-feature-text">
+                        <strong>Bank-Grade Security</strong>
+                        <span>ISO certified protection</span>
+                    </div>
+                </div>
+                {% endblock %}
             </div>
         </div>
+    </div>
 
-        <div class="glass-form-side">
+    <!-- Right form panel -->
+    <div class="auth-form-panel">
+        <div class="auth-card">
             {% block content %}{% endblock %}
         </div>
     </div>
-
-    <script src="{{ url_for('static', filename='shared.js') }}"></script>
-    {% block extra_js %}{% endblock %}
+</div>
+<script src="{{ url_for('static', filename='shared.js') }}"></script>
+{% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, jsonify, request
 from services.student_dashboard_service import get_student_dashboard_data
 from services.student_service import fetch_all_students, get_student_record_by_user_id, get_student_profile
@@ -17,7 +19,7 @@ def get_students():
         students = fetch_all_students()
         return jsonify(students), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @student_bp.route("/student/dashboard", methods=["GET"])
@@ -33,7 +35,7 @@ def student_dashboard_api():
         return jsonify(get_student_dashboard_data(student["id"])), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @student_bp.route("/student/profile", methods=["GET"])
@@ -80,4 +82,4 @@ def student_profile_api():
         }), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

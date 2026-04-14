@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.skills_service import get_student_skills
 
@@ -45,7 +47,7 @@ def add_skill():
         }), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @student_skill_bp.route("/student/skills/<int:student_id>", methods=["GET"])
@@ -61,4 +63,4 @@ def get_skills(student_id):
         return jsonify(skills), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

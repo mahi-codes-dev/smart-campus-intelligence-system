@@ -10,7 +10,6 @@ from database import get_db_connection
 SECRET_KEY = settings.jwt_secret
 JWT_ALGORITHM = settings.jwt_algorithm
 
-
 ROLE_MAP = {
     1: "Admin",
     2: "Faculty",
@@ -24,6 +23,7 @@ def _build_current_user(payload):
         **payload,
         "id": payload.get("user_id"),
         "user_id": payload.get("user_id"),
+        "name": payload.get("name", ""),
         "role": role_name,
         "role_name": role_name,
     }
@@ -36,7 +36,6 @@ def _get_request_token():
         token = parts[1].strip()
         if token:
             return token
-
     cookie_token = request.cookies.get(settings.auth_cookie_name, "")
     return cookie_token.strip() or None
 
@@ -54,7 +53,7 @@ def token_required(f):
 
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[JWT_ALGORITHM])
-            
+
             jti = payload.get("jti")
             if jti:
                 conn = get_db_connection()
@@ -74,6 +73,8 @@ def token_required(f):
             g.user = current_user
             g.user_id = current_user.get("user_id")
             g.user_role = current_user.get("role")
+            g.user_name = current_user.get("name", "")  # FIX: was missing, caused AttributeError in ai_routes
+
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401
         except jwt.InvalidTokenError:

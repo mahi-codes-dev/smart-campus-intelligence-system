@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, Response, jsonify, request
 
 from auth.auth_middleware import token_required, role_required
@@ -24,7 +26,7 @@ def fetch_admin_stats():
         return jsonify(data), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/users", methods=["GET"])
@@ -36,7 +38,7 @@ def fetch_admin_users():
         return jsonify(users), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/data-quality", methods=["GET"])
@@ -47,7 +49,7 @@ def fetch_admin_data_quality():
         return jsonify(get_data_quality_snapshot()), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/operations", methods=["GET"])
@@ -58,7 +60,7 @@ def fetch_admin_operations():
         return jsonify(get_operations_snapshot()), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/exports/<string:export_name>", methods=["GET"])
@@ -79,7 +81,7 @@ def download_admin_export(export_name):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/subject", methods=["POST"])
@@ -101,7 +103,7 @@ def create_admin_subject():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/subjects", methods=["GET"])
@@ -112,7 +114,7 @@ def fetch_admin_subjects():
         return jsonify(get_all_subjects()), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/departments", methods=["GET"])
@@ -123,7 +125,7 @@ def fetch_admin_departments():
         return jsonify(get_department_catalog()), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/department", methods=["POST"])
@@ -141,7 +143,7 @@ def create_admin_department():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/department/<int:department_id>", methods=["DELETE"])
@@ -158,7 +160,7 @@ def remove_admin_department(department_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/subject/<int:subject_id>", methods=["DELETE"])
@@ -175,7 +177,7 @@ def remove_admin_subject(subject_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @admin_bp.route("/admin/user/<int:user_id>", methods=["DELETE"])
@@ -192,4 +194,4 @@ def remove_user(user_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

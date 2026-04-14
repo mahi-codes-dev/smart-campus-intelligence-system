@@ -9,7 +9,7 @@ from auth.auth_routes import auth_bp
 from config import settings
 from core.logging_config import configure_logging
 from core.security_headers import apply_security_headers
-from database import get_db_connection
+from database import get_db_connection, db_cursor
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.admin_routes import admin_bp
 from routes.attendance_routes import attendance_bp
@@ -59,7 +59,7 @@ app.config["SESSION_COOKIE_SECURE"] = settings.auth_cookie_secure
 app.config["SESSION_COOKIE_SAMESITE"] = settings.auth_cookie_samesite
 
 if settings.trust_proxy_count > 0:
-    app.wsgi_app = ProxyFix(  # type: ignore[assignment]
+    app.wsgi_app = ProxyFix(
         app.wsgi_app,
         x_for=settings.trust_proxy_count,
         x_proto=settings.trust_proxy_count,
@@ -97,6 +97,7 @@ except Exception as schema_error:
     if settings.strict_startup_validation:
         raise
 
+# Blueprint registration
 app.register_blueprint(student_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(subject_bp)
@@ -120,6 +121,52 @@ app.register_blueprint(ai_bp)
 app.register_blueprint(notice_bp)
 app.register_blueprint(resource_bp)
 
+
+# --- Global error handlers ---
+
+@app.errorhandler(400)
+def bad_request(e):
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"error": "Bad request", "message": str(e)}), 400
+    return render_template("errors/400.html"), 400
+
+
+@app.errorhandler(401)
+def unauthorized(e):
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"error": "Unauthorized"}), 401
+    return render_template("login.html"), 401
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"error": "Forbidden"}), 403
+    return render_template("errors/403.html"), 403
+
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"error": "Not found"}), 404
+    return render_template("errors/404.html"), 404
+
+
+@app.errorhandler(429)
+def too_many_requests(e):
+    return jsonify({"error": "Too many requests", "message": "Rate limit exceeded. Please try again shortly."}), 429
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    logger.exception("Unhandled server error")
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"error": "Internal server error"}), 500
+    return render_template("errors/500.html"), 500
+
+
+# --- Health endpoints ---
+
 @app.route("/")
 def home():
     return render_template("login.html")
@@ -134,11 +181,11 @@ def offline_page():
 def live_check():
     return jsonify({"status": "alive", "app": settings.app_name}), 200
 
+
 @app.route("/health/ready")
 @app.route("/health")
 def health_check():
     status = dict(startup_status)
-
     try:
         conn = get_db_connection()
         conn.close()
@@ -147,9 +194,11 @@ def health_check():
         status["database"] = "disconnected"
         status["ready"] = False
         status["bootstrap_error"] = status.get("bootstrap_error") or str(e)
-
     status["status"] = "healthy" if status.get("ready") else "unhealthy"
     return jsonify(status), 200 if status["status"] == "healthy" else 503
+
+
+# --- Admin student CRUD (fixed connection leaks & status codes) ---
 
 @app.route("/create-table")
 @token_required
@@ -157,26 +206,25 @@ def health_check():
 def create_table():
     try:
         ensure_student_table_consistency()
-
-        return "Students table created successfully 🎯"
-
+        return jsonify({"message": "Students table verified"}), 200
     except Exception as e:
-        return f"Error: {e}"
-    
+        logger.exception("create_table failed")
+        return jsonify({"error": str(e)}), 500
+
 
 @app.route("/add-student", methods=["POST"])
 @token_required
 @role_required("Admin")
 def add_student():
-    conn = None
-    cur = None
-
     try:
         data = request.get_json() or {}
         v = RequestValidator(data)
-        v.required("name", "email", "department", "roll_number").sanitize("name", 100).email("email").sanitize("department", 100).roll_number("roll_number")
+        v.required("name", "email", "department", "roll_number") \
+         .sanitize("name", 100).email("email") \
+         .sanitize("department", 100).roll_number("roll_number")
         if v.has_errors():
             return jsonify({"error": v.first_error()}), 400
+
         name = v.validated_data["name"]
         email = v.validated_data["email"]
         department = v.validated_data["department"]
@@ -184,56 +232,44 @@ def add_student():
 
         conn = get_db_connection()
         cur = conn.cursor()
-        ensure_roll_number_available(roll_number, connection=conn)
+        try:
+            ensure_roll_number_available(roll_number, connection=conn)
+            cur.execute(
+                "INSERT INTO students (name, email, department, roll_number) VALUES (%s, %s, %s, %s)",
+                (name, email, department, roll_number),
+            )
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cur.close()
+            conn.close()
 
-        cur.execute("""
-            INSERT INTO students (name, email, department, roll_number)
-            VALUES (%s, %s, %s, %s);
-        """, (name, email, department, roll_number))
-
-        conn.commit()
-
-        return jsonify({"message": "Student added successfully 🎓"}), 201
+        return jsonify({"message": "Student added successfully"}), 201
 
     except ValueError as e:
-        if conn:
-            conn.rollback()
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
         return jsonify({"error": str(e)}), 400
     except psycopg2.errors.UniqueViolation:
-        if conn:
-            conn.rollback()
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-        return jsonify({"error": "Email already exists"}), 400
+        return jsonify({"error": "Email already exists"}), 409
     except Exception as e:
-        if conn:
-            conn.rollback()
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-        return jsonify({"error": str(e)}), 500
-    
+        logger.exception("add_student failed")
+        return jsonify({"error": "Failed to add student"}), 500
+
 
 @app.route("/update-student/<int:id>", methods=["PUT"])
 @token_required
 @role_required("Admin")
 def update_student(id):
-    conn = None
-    cur = None
-
     try:
         data = request.get_json() or {}
         v = RequestValidator(data)
-        v.required("name", "email", "department", "roll_number").sanitize("name", 100).email("email").sanitize("department", 100).roll_number("roll_number")
+        v.required("name", "email", "department", "roll_number") \
+         .sanitize("name", 100).email("email") \
+         .sanitize("department", 100).roll_number("roll_number")
         if v.has_errors():
             return jsonify({"error": v.first_error()}), 400
+
         name = v.validated_data["name"]
         email = v.validated_data["email"]
         department = v.validated_data["department"]
@@ -241,101 +277,105 @@ def update_student(id):
 
         conn = get_db_connection()
         cur = conn.cursor()
-        ensure_roll_number_available(roll_number, connection=conn, exclude_student_id=id)
+        try:
+            ensure_roll_number_available(roll_number, connection=conn, exclude_student_id=id)
+            cur.execute(
+                "UPDATE students SET name=%s, email=%s, department=%s, roll_number=%s WHERE id=%s",
+                (name, email, department, roll_number, id),
+            )
+            if cur.rowcount == 0:
+                conn.rollback()
+                cur.close()
+                conn.close()
+                return jsonify({"error": "Student not found"}), 404
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            cur.close()
+            conn.close()
 
-        cur.execute("""
-            UPDATE students
-            SET name = %s,
-                email = %s,
-                department = %s,
-                roll_number = %s
-            WHERE id = %s;
-        """, (name, email, department, roll_number, id))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        return jsonify({"message": "Student updated successfully 🔄"})
+        return jsonify({"message": "Student updated successfully"}), 200
 
     except ValueError as e:
-        if conn:
-            conn.rollback()
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        if conn:
-            conn.rollback()
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-        return jsonify({"error": str(e)})
-    
+        logger.exception("update_student failed")
+        return jsonify({"error": "Failed to update student"}), 500
+
 
 @app.route("/delete-student/<int:id>", methods=["DELETE"])
 @token_required
 @role_required("Admin")
 def delete_student(id):
+    conn = get_db_connection()
+    cur = conn.cursor()
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute("""
-            DELETE FROM students
-            WHERE id = %s;
-        """, (id,))
-
+        cur.execute("DELETE FROM students WHERE id = %s", (id,))
+        if cur.rowcount == 0:
+            conn.rollback()
+            cur.close()
+            conn.close()
+            return jsonify({"error": "Student not found"}), 404
         conn.commit()
+        return jsonify({"message": "Student deleted successfully"}), 200
+    except Exception as e:
+        conn.rollback()
+        logger.exception("delete_student failed")
+        return jsonify({"error": "Failed to delete student"}), 500
+    finally:
         cur.close()
         conn.close()
 
-        return jsonify({"message": "Student deleted successfully 🗑️"})
 
-    except Exception as e:
-        return jsonify({"error": str(e)})
-    
+# --- Frontend page routes ---
 
 @app.route("/register")
 def register_page():
     return render_template("register.html")
 
 
-@app.route('/student-dashboard')
+@app.route("/student-dashboard")
 def student_dashboard():
-    return render_template('dashboard_student.html')
+    return render_template("dashboard_student.html")
 
-@app.route('/faculty-dashboard')
+
+@app.route("/faculty-dashboard")
 def faculty_dashboard():
-    return render_template('dashboard_faculty.html')
+    return render_template("dashboard_faculty.html")
 
-@app.route('/student-progress')
+
+@app.route("/student-progress")
 def student_progress():
-    return render_template('student_progress.html')
+    return render_template("student_progress.html")
 
-@app.route('/student-skills')
+
+@app.route("/student-skills")
 def student_skills():
-    return render_template('student_skills.html')
+    return render_template("student_skills.html")
 
-@app.route('/student-profile')
+
+@app.route("/student-profile")
 def student_profile():
-    return render_template('student_profile.html')
+    return render_template("student_profile.html")
 
-@app.route('/goals')
+
+@app.route("/goals")
 def goals_page():
-    return render_template('goals.html')
+    return render_template("goals.html")
 
-@app.route('/notifications')
+
+@app.route("/notifications")
 def notifications_page():
-    return render_template('notifications.html')
+    return render_template("notifications.html")
 
-@app.route('/admin-dashboard')
-@app.route('/dashboard')
+
+@app.route("/admin-dashboard")
+@app.route("/dashboard")
 def admin_dashboard_page():
-    return render_template('dashboard_admin.html')
+    return render_template("dashboard_admin.html")
+
 
 if __name__ == "__main__":
     app.run(debug=settings.flask_debug)

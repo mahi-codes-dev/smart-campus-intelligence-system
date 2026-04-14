@@ -1,4 +1,5 @@
 import bcrypt
+import hmac
 import jwt
 import datetime
 import logging
@@ -19,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 JWT_EXP_HOURS = settings.jwt_exp_hours
 
+# Dummy hash used when user is not found — prevents timing-based user enumeration
+_DUMMY_HASH = bcrypt.hashpw(b"dummy-prevent-timing-attack", bcrypt.gensalt()).decode("utf-8")
+
 
 def _get_dashboard_path(role_name):
     role_to_path = {
@@ -26,7 +30,6 @@ def _get_dashboard_path(role_name):
         "faculty": "/faculty-dashboard",
         "admin": "/admin-dashboard",
     }
-
     return role_to_path.get((role_name or "").lower(), "/")
 
 
@@ -56,25 +59,14 @@ def _clear_auth_cookie(response):
 def _get_roles():
     conn = get_db_connection()
     cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT id, role_name
-        FROM roles
-        ORDER BY id ASC
-        """
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
-
+    try:
+        cur.execute("SELECT id, role_name FROM roles ORDER BY id ASC")
+        rows = cur.fetchall()
+    finally:
+        cur.close()
+        conn.close()
     return [
-        {
-            "id": row[0],
-            "name": row[1],
-            "dashboard_path": _get_dashboard_path(row[1]),
-        }
+        {"id": row[0], "name": row[1], "dashboard_path": _get_dashboard_path(row[1])}
         for row in rows
     ]
 
@@ -83,18 +75,18 @@ def _get_roles():
 def get_roles():
     try:
         return jsonify(_get_roles()), 200
-
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("get_roles failed")
+        return jsonify({"error": "Failed to fetch roles"}), 500
 
 
 @auth_bp.route("/auth/departments", methods=["GET"])
 def get_departments():
     try:
         return jsonify(get_all_departments()), 200
-
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.exception("get_departments failed")
+        return jsonify({"error": "Failed to fetch departments"}), 500
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -103,7 +95,6 @@ def get_departments():
 def register():
     conn = None
     cur = None
-
     try:
         data = request.get_json() or {}
 
@@ -126,6 +117,7 @@ def register():
 
         if role_id == 3 and not roll_number:
             return jsonify({"error": "Roll number is required for student registration"}), 400
+
         if role_id == 3:
             roll_number = validate_roll_number(roll_number)
 
@@ -141,41 +133,31 @@ def register():
             return jsonify({"error": "Email already registered"}), 400
 
         hashed_password = bcrypt.hashpw(
-            password.encode("utf-8"),
-            bcrypt.gensalt(),
+            password.encode("utf-8"), bcrypt.gensalt()
         ).decode("utf-8")
 
-        cur.execute("""
-            INSERT INTO users (name, email, password, role_id)
-            VALUES (%s, %s, %s, %s)
-            RETURNING id;
-        """, (name, email, hashed_password, role_id))
-
+        cur.execute(
+            "INSERT INTO users (name, email, password, role_id) VALUES (%s, %s, %s, %s) RETURNING id",
+            (name, email, hashed_password, role_id),
+        )
         result = cur.fetchone()
         if result is None:
             cur.close()
             conn.close()
             return jsonify({"error": "Failed to create user"}), 500
-        
-        user_id = result[0]
 
+        user_id = result[0]
         student_record = None
 
         if role_id == 3:
             student_record = sync_student_record(
-                user_id,
-                name,
-                email,
-                department,
-                roll_number=roll_number,
-                connection=conn,
+                user_id, name, email, department,
+                roll_number=roll_number, connection=conn,
             )
 
         conn.commit()
-        cur.close()
-        conn.close()
 
-        response = jsonify({
+        return jsonify({
             "message": "User registered successfully",
             "user": {
                 "id": user_id,
@@ -184,27 +166,23 @@ def register():
                 "role_id": role_id,
                 "roll_number": student_record["roll_number"] if student_record else None,
                 "department": department or None,
-            }
-        })
-        return response, 201
+            },
+        }), 201
 
     except ValueError as e:
         if conn:
             conn.rollback()
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         if conn:
             conn.rollback()
+        logger.exception("User registration failed")
+        return jsonify({"error": "Registration failed. Please try again."}), 500
+    finally:
         if cur:
             cur.close()
         if conn:
             conn.close()
-        logger.exception("User registration failed")
-        return jsonify({"error": str(e)}), 500
 
 
 @auth_bp.route("/auth/login", methods=["POST"])
@@ -212,7 +190,6 @@ def register():
 def login():
     conn = None
     cur = None
-
     try:
         data = request.get_json() or {}
 
@@ -222,9 +199,14 @@ def login():
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
 
+        # Cap password length to prevent DoS via bcrypt with very long inputs
+        if len(password) > 128:
+            # Still run dummy check to avoid timing leak
+            bcrypt.checkpw(b"x", _DUMMY_HASH.encode("utf-8"))
+            return jsonify({"error": "Invalid credentials"}), 401
+
         conn = get_db_connection()
         cur = conn.cursor()
-
         cur.execute(
             """
             SELECT u.id, u.name, u.email, u.password, u.role_id, r.role_name
@@ -236,22 +218,28 @@ def login():
         )
         user = cur.fetchone()
 
-        if user is None:
-            return jsonify({"error": "User not found"}), 404
+        # Always run bcrypt to prevent timing-based user enumeration
+        stored_hash = user[3] if user else _DUMMY_HASH
+        password_matches = bcrypt.checkpw(
+            password.encode("utf-8"), stored_hash.encode("utf-8")
+        )
 
+        if not user or not password_matches:
+            return jsonify({"error": "Invalid credentials"}), 401
 
-        stored_password = user[3]
-
-        if not bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8')):
-            return jsonify({"error": "Invalid password"}), 401
-
-        token = jwt.encode({
-            "jti": str(uuid.uuid4()),
-            "user_id": user[0],
-            "email": user[2],
-            "role_id": user[4],
-            "exp": datetime.datetime.now(datetime.UTC) + datetime.timedelta(hours=JWT_EXP_HOURS)
-        }, SECRET_KEY, algorithm=JWT_ALGORITHM)
+        token = jwt.encode(
+            {
+                "jti": str(uuid.uuid4()),
+                "user_id": user[0],
+                "name": user[1],
+                "email": user[2],
+                "role_id": user[4],
+                "exp": datetime.datetime.now(datetime.UTC)
+                + datetime.timedelta(hours=JWT_EXP_HOURS),
+            },
+            SECRET_KEY,
+            algorithm=JWT_ALGORITHM,
+        )
 
         role_name = user[5] or ""
         dashboard_path = _get_dashboard_path(role_name)
@@ -266,14 +254,16 @@ def login():
                 "role_id": user[4],
                 "role_name": role_name,
                 "dashboard_path": dashboard_path,
-            }
+            },
         })
         _set_auth_cookie(response, token)
         return response, 200
 
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.exception("Login failed")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Login failed. Please try again."}), 500
     finally:
         if cur:
             cur.close()
@@ -289,10 +279,10 @@ def logout():
         conn = get_db_connection()
         cur = conn.cursor()
         try:
-            cur.execute("""
-                INSERT INTO jwt_blacklist (jti) VALUES (%s)
-                ON CONFLICT (jti) DO NOTHING
-            """, (jti,))
+            cur.execute(
+                "INSERT INTO jwt_blacklist (jti) VALUES (%s) ON CONFLICT (jti) DO NOTHING",
+                (jti,),
+            )
             conn.commit()
         except Exception as e:
             logger.error(f"Failed to blacklist token: {e}")
@@ -304,6 +294,7 @@ def logout():
     _clear_auth_cookie(response)
     return response, 200
 
+
 @auth_bp.route("/auth/forgot-password", methods=["POST"])
 @rate_limit(max_requests=5, window_seconds=300)
 def forgot_password():
@@ -313,7 +304,6 @@ def forgot_password():
         otp = create_and_store_otp(email)
         if otp:
             send_otp_email(email, otp)
-        
         # Always return success to prevent email enumeration
         return jsonify({"message": "If the email is valid, an OTP has been sent."}), 200
     except ValueError as e:
@@ -322,33 +312,43 @@ def forgot_password():
         logger.error(str(e))
         return jsonify({"error": "Failed to process request."}), 500
 
+
 @auth_bp.route("/auth/reset-password", methods=["POST"])
 @rate_limit(max_requests=10, window_seconds=300)
 def reset_password():
     data = request.get_json() or {}
+    conn = None
+    cur = None
     try:
         email = validate_email(data.get("email"))
         otp = data.get("otp")
         new_password = validate_password(data.get("new_password"))
-        
+
         if not otp:
             return jsonify({"error": "OTP is required"}), 400
-            
+
         if not verify_and_use_otp(email, otp):
             return jsonify({"error": "Invalid or expired OTP"}), 400
-            
-        hashed_password = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-        
+
+        hashed_password = bcrypt.hashpw(
+            new_password.encode("utf-8"), bcrypt.gensalt()
+        ).decode("utf-8")
+
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("UPDATE users SET password = %s WHERE LOWER(email) = LOWER(%s)", (hashed_password, email))
+        cur.execute(
+            "UPDATE users SET password = %s WHERE LOWER(email) = LOWER(%s)",
+            (hashed_password, email),
+        )
         conn.commit()
-        cur.close()
-        conn.close()
-        
         return jsonify({"message": "Password has been reset successfully."}), 200
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         logger.error(str(e))
         return jsonify({"error": "Failed to reset password."}), 500
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()

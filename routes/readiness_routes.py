@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, jsonify, request
 from services.readiness_service import calculate_readiness
 from auth.auth_middleware import token_required
@@ -20,7 +22,7 @@ def get_readiness(student_id):
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
     
 
 @readiness_bp.route("/top-students", methods=["GET"])
@@ -30,4 +32,4 @@ def top_students():
         data = get_top_students()
         return jsonify(data), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

@@ -627,7 +627,7 @@ async function loadFacultyDashboard() {
         return;
     }
 
-    setUser();
+    syncTopbarUser();
     initializeFacultyControls();
 
     try {

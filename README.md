@@ -1,407 +1,146 @@
-# Smart Campus Intelligence System
+# 🎓 Smart Campus Intelligence System
 
-A full-stack student performance analytics platform built with Flask, PostgreSQL, and vanilla HTML/CSS/JavaScript.
+A full-stack campus management platform built with **Flask + PostgreSQL**, featuring role-based access control, AI-powered academic advising, placement readiness prediction, and real-time notifications.
 
-The system helps institutions monitor student readiness using a weighted scoring model based on:
+> **Built for MAANG-level resume impact** — demonstrates backend architecture, security practices, AI integration, and production deployment on Render.
 
-- Attendance
-- Academic marks
-- Skills
-- Mock test performance
+---
 
-It includes role-based workflows for Admin, Faculty, and Student users, along with dashboard pages and protected JSON APIs.
+## ✨ Feature Highlights
 
-## Features
+| Area | What's included |
+|------|----------------|
+| **Auth** | JWT (cookie + Bearer), bcrypt hashing, OTP password reset, token blacklist, rate limiting |
+| **Roles** | Admin · Faculty · Student — fully separated dashboards and APIs |
+| **Student** | Readiness score, placement prediction, attendance, marks, skills, goals, peer learning, wellbeing |
+| **Faculty** | Class analytics, at-risk alerts, intervention tracking, notice board, resource uploads |
+| **Admin** | User management, department management, system health |
+| **AI** | Gemini-powered personal advisor for students and class insights for faculty |
+| **Security** | CSP headers, HSTS, X-Frame-Options, no user enumeration, timing-attack-safe login |
+| **Ops** | Migration runner, `/health/live` + `/health/ready` endpoints, structured logging |
 
-- JWT-based authentication
-- Role-based access control for Admin, Faculty, and Student users
-- Student dashboard with readiness score, risk level, alerts, insights, and placement outlook
-- Faculty dashboard for attendance, marks, mock tests, student filtering, and detail views
-- Admin dashboard for user management, subject management, and department-level analytics
-- Department and subject management
-- Skill assignment and self-added student skills
-- Placement prediction based on readiness score
-- Top-student and low-performer analytics
+---
 
-## Tech Stack
+## 🚀 Deploy on Render (one-click)
 
-- Backend: Flask
-- Database: PostgreSQL
-- Authentication: JWT + bcrypt
-- Frontend: HTML, CSS, JavaScript
-- Database driver: psycopg2
+1. Fork / push this repo to GitHub.
+2. Go to [render.com](https://render.com) → **New Blueprint**.
+3. Connect your GitHub repo — Render picks up `render.yaml` automatically.
+4. It provisions a **free PostgreSQL** database and a **free web service**.
+5. After deploy, set the optional secrets in the Render dashboard:
+   - `GEMINI_API_KEY` — for AI assistant (free key at [aistudio.google.com](https://aistudio.google.com/app/apikey))
+   - `SMTP_USERNAME` / `SMTP_PASSWORD` — for OTP email (Gmail App Password)
 
-## Project Structure
+> The first deploy runs all SQL migrations automatically. No manual DB setup needed.
 
-smart-campus-intelligence-system/
-│
-├── auth/           # Authentication logic
-├── routes/         # API endpoints
-├── services/       # Business logic
-├── templates/      # HTML pages
-├── static/         # JS & CSS
-├── utils/          # Helpers
-│
-├── app.py
-├── database.py
-├── requirements.txt
-├── api-test.http
-└── .env.example
-## How It Works
+---
 
-The platform calculates a readiness score from four academic indicators:
+## 🛠 Local Development
 
-- Attendance: 30%
-- Marks: 40%
-- Skills: 20%
-- Mock Tests: 10%
+### Prerequisites
+- Python 3.11+
+- PostgreSQL 14+
 
-Current readiness formula:
-
-```text
-final_score =
-  (attendance * 0.3) +
-  (marks * 0.4) +
-  (skills_score * 0.2) +
-  (mock_score * 0.1)
-```
-
-Status bands used by the scoring service:
-
-- `>= 80`: Placement Ready
-- `>= 60`: Moderate
-- `< 60`: Needs Improvement
-
-The student dashboard also derives:
-
-- Risk level
-- Placement outlook
-- Alerts
-- Insights
-- Strongest and weakest metric
-- Subject-wise performance summary
-
-## User Roles
-
-### Admin
-
-- View overall system analytics
-- View and delete users
-- Add and delete subjects
-- Monitor top students by department
-- Monitor low-performing students
-
-### Faculty
-
-- View students and filter by department/search
-- Save attendance percentage
-- Save marks and exam type
-- Save mock test scores
-- View student-level performance details
-
-### Student
-
-- Register and log in
-- View personal dashboard
-- Track progress and readiness
-- View profile and subject performance
-- Add personal skills
-
-## Prerequisites
-
-- Python 3.10+ recommended
-- PostgreSQL
-- A database created for the project
-
-## Installation
-
-### 1. Clone the repository
+### Setup
 
 ```bash
-git clone <your-repo-url>
+# 1. Clone
+git clone https://github.com/your-username/smart-campus-intelligence-system.git
 cd smart-campus-intelligence-system
-```
 
-### 2. Create and activate a virtual environment
-
-Windows PowerShell:
-
-```powershell
+# 2. Virtual environment
 python -m venv venv
-.\venv\Scripts\Activate.ps1
-```
+source venv/bin/activate        # Windows: venv\Scripts\activate
 
-### 3. Install dependencies
-
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
-```
 
-## Environment Variables
+# 4. Configure environment
+cp .env.example .env
+# Edit .env — fill in DB credentials and JWT_SECRET / SECRET_KEY
 
-Create a `.env` file in the project root.
+# 5. Create the database
+createdb smart_campus_db       # or use pgAdmin / psql
 
-Example:
-
-```env
-DB_HOST=localhost
-DB_NAME=smart_campus
-DB_USER=postgres
-DB_PASSWORD=your_password
-DB_PORT=5432
-
-JWT_SECRET=replace_with_a_strong_secret
-JWT_ALGORITHM=HS256
-JWT_EXP_HOURS=24
-```
-
-## Database Setup
-
-The application now bootstraps its own schema on startup through SQL migrations plus the active consistency checks. That includes:
-
-- `roles`
-- `users`
-- `departments`
-- `students`
-- `subjects`
-- `attendance`
-- `marks`
-- `skills`
-- `student_skills`
-- `mock_tests`
-- `student_goals`
-- `goal_milestones`
-- `student_badges`
-- `notifications`
-- `notification_preferences`
-- `theme_preferences`
-- `student_interventions`
-
-### Tables managed by the application
-
-On startup, the project ensures the following tables and relationships exist:
-
-- `departments`
-- `students`
-- `subjects`
-- `attendance`
-- `marks`
-- `skills`
-- `student_skills`
-- `mock_tests`
-
-## Running the Project
-
-Start the Flask development server:
-
-```bash
+# 6. Run (migrations run automatically on startup)
 python app.py
 ```
 
-Default local URL:
+Open [http://localhost:5000](http://localhost:5000)
 
-```text
-http://127.0.0.1:5000
-```
-
-Production entrypoint:
+### Seed demo data
 
 ```bash
-gunicorn wsgi:application
+python scripts/seed_data.py
 ```
 
-Frontend pages:
+---
 
-- `/` -> Login page
-- `/register` -> Registration page
-- `/student-dashboard`
-- `/student-progress`
-- `/student-skills`
-- `/student-profile`
-- `/faculty-dashboard`
-- `/admin-dashboard`
+## 🏗 Architecture
 
-## Main API Endpoints
-
-### Authentication
-
-- `GET /auth/roles`
-- `POST /auth/register`
-- `POST /auth/login`
-
-### Student
-
-- `GET /students` -> Admin only
-- `GET /student/dashboard` -> Student only
-- `GET /student/attendance` -> Student only
-- `GET /student/skills` -> Student only
-- `POST /student/skills` -> Student only
-- `GET /student/skills/<student_id>` -> Student/Faculty/Admin access depending on role rules
-- `GET /readiness/<student_id>`
-- `GET /predict/<student_id>`
-- `GET /mock-tests/<student_id>`
-- `GET /top-students`
-
-### Faculty
-
-- `GET /faculty/dashboard`
-- `GET /faculty/summary`
-- `GET /faculty/student/<student_id>`
-- `POST /faculty/attendance`
-- `POST /marks`
-- `PUT /marks`
-- `POST /mock-tests`
-- `PUT /mock-tests`
-- `POST /faculty/student-skills`
-
-### Admin
-
-- `GET /admin/stats`
-- `GET /admin/users`
-- `DELETE /admin/user/<user_id>`
-- `POST /admin/subject`
-- `GET /admin/subjects`
-- `DELETE /admin/subject/<subject_id>`
-
-### Subject and Legacy Student APIs
-
-- `POST /subjects`
-- `GET /subjects`
-- `GET /create-table`
-- `POST /add-student`
-- `PUT /update-student/<id>`
-- `DELETE /delete-student/<id>`
-
-## Example Request Flow
-
-### 1. Register a user
-
-```http
-POST /auth/register
-Content-Type: application/json
-
-{
-  "name": "Mahesh",
-  "email": "mahesh@test.com",
-  "password": "123456",
-  "role_id": 1
-}
+```
+smart-campus-intelligence-system/
+├── app.py                  # Flask app factory, error handlers, root routes
+├── wsgi.py                 # Gunicorn entry point
+├── config.py               # Typed settings from environment variables
+├── database.py             # Connection pool (psycopg2 ThreadedConnectionPool)
+├── auth/
+│   ├── auth_middleware.py  # JWT token_required / role_required decorators
+│   └── auth_routes.py      # /auth/login, /auth/register, /auth/logout, OTP reset
+├── core/
+│   ├── logging_config.py   # Structured logging
+│   ├── rate_limiter.py     # Sliding-window per-IP rate limiter
+│   └── security_headers.py # CSP, HSTS, X-Frame-Options, etc.
+├── routes/                 # One Blueprint per feature domain
+├── services/               # Business logic layer (no Flask imports)
+├── migrations/             # Ordered SQL migrations (auto-applied on startup)
+├── templates/              # Jinja2 HTML templates
+│   └── errors/             # 400, 403, 404, 500 error pages
+├── static/                 # CSS, JS, PWA manifest + service worker
+├── utils/
+│   ├── validators.py       # Input sanitisation + validation helpers
+│   └── response.py         # Standardised JSON response helpers
+└── render.yaml             # Render Blueprint (IaC)
 ```
 
-### 2. Log in
+---
 
-```http
-POST /auth/login
-Content-Type: application/json
+## 🔐 Security Notes
 
-{
-  "email": "mahesh@test.com",
-  "password": "123456"
-}
+- Passwords hashed with **bcrypt** (cost factor 12)
+- Login uses **constant-time comparison** to prevent timing-based user enumeration
+- All logins and registrations are **rate-limited**
+- JWT tokens carry a **`jti`** claim; logout adds it to a **blacklist table**
+- HTTP responses include **Content-Security-Policy**, **X-Frame-Options**, **HSTS** (on HTTPS), and other OWASP-recommended headers
+- Passwords capped at 128 chars to prevent DoS via bcrypt's O(n) cost
+
+---
+
+## 📡 Key API Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/login` | — | Login, returns JWT |
+| POST | `/auth/register` | — | Register new user |
+| POST | `/auth/logout` | ✓ | Revoke token |
+| POST | `/auth/forgot-password` | — | Request OTP |
+| POST | `/auth/reset-password` | — | Reset via OTP |
+| GET  | `/health/live` | — | Liveness probe |
+| GET  | `/health/ready` | — | Readiness probe (checks DB) |
+| POST | `/ai/chat/student` | Student | AI academic advisor |
+| POST | `/ai/chat/faculty` | Faculty | AI class insights |
+
+---
+
+## 🧪 Health Checks
+
+```bash
+curl http://localhost:5000/health/live   # {"status":"alive"}
+curl http://localhost:5000/health/ready  # {"status":"healthy","database":"connected"}
 ```
 
-Use the returned JWT in:
+---
 
-```http
-Authorization: Bearer <token>
-```
+## 📜 License
 
-### 3. Create a subject
-
-```http
-POST /subjects
-Content-Type: application/json
-Authorization: Bearer <token>
-
-{
-  "name": "Data Structures",
-  "code": "DS101",
-  "department": "CSE"
-}
-```
-
-### 4. Save marks
-
-```http
-PUT /marks
-Content-Type: application/json
-Authorization: Bearer <faculty-token>
-
-{
-  "student_id": 1,
-  "subject_id": 1,
-  "marks": 84,
-  "exam_type": "Midterm"
-}
-```
-
-## Manual API Testing
-
-The repository includes an `api-test.http` file for quick local API testing in editors that support HTTP request files.
-
-## Health Check
-
-Use the health endpoints to verify runtime status:
-
-```text
-GET /health
-GET /health/ready
-GET /health/live
-```
-
-Expected response:
-
-```json
-{
-  "status": "healthy",
-  "database": "connected"
-}
-```
-
-## Development Notes
-
-- JWT auth is accepted through the `Authorization` header and an HttpOnly auth cookie.
-- The frontend is server-rendered with Flask templates and enhanced with vanilla JavaScript.
-- Chart rendering is powered by Chart.js from a CDN.
-- Database connections are pooled through `ThreadedConnectionPool`.
-- Login and registration endpoints are rate-limited in-process.
-
-## Known Gaps / Future Improvements
-
-- Add automated tests
-- Move auth token storage away from `localStorage`
-- Add API documentation with request/response schemas
-
-## Troubleshooting
-
-### `JWT_SECRET is not configured`
-
-Make sure `.env` contains:
-
-```env
-JWT_SECRET=your_secret
-JWT_ALGORITHM=HS256
-JWT_EXP_HOURS=24
-```
-
-### Startup bootstrap fails
-
-Check `/health/ready` for the bootstrap error message and confirm:
-
-- PostgreSQL is reachable from the app
-- the configured database user can create or alter tables
-- required secrets such as `JWT_SECRET` and `SECRET_KEY` are present
-
-### Database connection errors
-
-Check:
-
-- PostgreSQL is running
-- Database name is correct
-- Username and password are correct
-- Port is correct
-- `.env` exists in the project root
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+MIT — see `LICENSE` for details.

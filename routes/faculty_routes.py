@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, jsonify
 from database import get_db_connection
 from auth.auth_middleware import token_required, role_required
@@ -41,7 +43,7 @@ def get_all_students_performance():
         return jsonify(result), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
     
     
 @faculty_bp.route("/faculty/marks", methods=["POST"])
@@ -73,4 +75,4 @@ def add_marks():
         return jsonify({"message": "Marks added successfully"}), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

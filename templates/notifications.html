@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Notifications - Smart Campus Intelligence{% endblock %}
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='ai_assistant.css') }}">
 <style>
     .notifications-container-sub {
         max-width: 900px;
@@ -266,7 +267,7 @@
             renderNotifications();
         } catch (error) {
             console.error('Error loading notifications:', error);
-            showToast('Failed to load notifications', 'danger');
+            showToast('Failed to load notifications', 'error');
         }
     }
 
@@ -377,10 +378,10 @@
             sourceNotifications.forEach(n => n.is_read = true);
             filteredNotifications.forEach(n => n.is_read = true);
             renderNotifications();
-            showToast('All notifications marked as read');
+            showToast('All notifications marked as read', 'success');
         } catch (error) {
             console.error('Error marking all as read:', error);
-            showToast('Failed to mark all as read', 'danger');
+            showToast('Failed to mark all as read', 'error');
         }
     }
 
@@ -418,10 +419,10 @@
                 method: 'PUT',
                 body: JSON.stringify(prefs)
             });
-            showToast('Preferences saved successfully');
+            showToast('Preferences saved successfully', 'success');
         } catch (error) {
             console.error('Error saving preferences:', error);
-            showToast('Failed to save preferences', 'danger');
+            showToast('Failed to save preferences', 'error');
         }
     }
 
@@ -430,4 +431,5 @@
         loadPreferences();
     });
 </script>
-{% endblock %}
+<script src="{{ url_for('static', filename='ai_assistant.js') }}"></script>
+{% endblock %}

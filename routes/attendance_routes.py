@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.attendance_service import (
     mark_attendance,
@@ -52,7 +54,7 @@ def add_attendance():
         return jsonify({"message": "Attendance marked successfully"}), 201
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 # ✅ VIEW ATTENDANCE (STUDENT ONLY)
@@ -70,5 +72,5 @@ def view_attendance():
         return jsonify(attendance), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 

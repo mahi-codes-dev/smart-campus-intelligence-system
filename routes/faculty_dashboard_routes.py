@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 from flask import Blueprint, jsonify, request
 from services.faculty_dashboard_service import (
     create_student_intervention,
@@ -34,7 +36,7 @@ def faculty_dashboard():
         return jsonify(data), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/summary", methods=["GET"])
@@ -57,7 +59,7 @@ def faculty_summary():
         ), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/student/<int:student_id>", methods=["GET"])
@@ -68,7 +70,7 @@ def faculty_student_detail(student_id):
         return jsonify(get_student_detail(student_id)), 200
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/student/<int:student_id>/interventions", methods=["POST"])
@@ -90,7 +92,7 @@ def faculty_student_intervention(student_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/intervention/<int:intervention_id>", methods=["PATCH"])
@@ -112,7 +114,7 @@ def faculty_update_intervention(intervention_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/classroom", methods=["GET"])
@@ -135,7 +137,7 @@ def faculty_classroom():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/classroom/attendance", methods=["POST"])
@@ -157,7 +159,7 @@ def faculty_classroom_attendance():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500
 
 
 @faculty_dashboard_bp.route("/faculty/classroom/marks", methods=["POST"])
@@ -183,4 +185,4 @@ def faculty_classroom_marks():
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "An internal error occurred"}), 500

@@ -1,158 +1,283 @@
 /**
- * Gemini AI Assistant Component
- * Handles the chat interface and communication with the /ai/chat endpoints.
+ * Campus AI Assistant
+ * ───────────────────
+ * Reads user role from localStorage (set at login by auth.js).
+ * Routes to the correct endpoint:
+ *   Student  → POST /ai/chat/student   {message}
+ *   Faculty  → POST /ai/chat/faculty   {query}
+ *   Admin    → shows a "not available" message
+ *
+ * Initialised automatically when this script loads.
  */
-class AIAssistant {
-    constructor() {
-        this.container = null;
-        this.chatWindow = null;
-        this.messagesContainer = null;
-        this.inputField = null;
-        this.isOpen = false;
-        this.role = document.body.dataset.role || 'student'; // Set in template
-        
-        this.init();
-    }
+(function () {
+  "use strict";
 
-    init() {
-        this.createElements();
-        this.addEventListeners();
-    }
+  const ROLE = (localStorage.getItem("role_name") || "").toLowerCase();
+  const NAME = localStorage.getItem("user_name") || "there";
 
-    createElements() {
-        this.container = document.createElement('div');
-        this.container.className = 'ai-assistant-container';
-        
-        this.container.innerHTML = `
-            <button class="ai-toggle-btn" title="AI Assistant">
-                <i class="fas fa-comment-dots"></i>
-            </button>
-            <div class="ai-chat-window">
-                <div class="ai-chat-header">
-                    <div class="ai-chat-header-info">
-                        <div class="ai-status-dot"></div>
-                        <h3>Campus AI</h3>
-                    </div>
-                    <i class="fas fa-robot" style="opacity: 0.5;"></i>
-                </div>
-                <div class="ai-chat-messages" id="ai-chat-messages">
-                    <div class="message ai">
-                        Hello! I'm your Smart Campus AI. How can I help you today?
-                    </div>
-                </div>
-                <div class="ai-chat-input">
-                    <input type="text" placeholder="Type your message..." id="ai-chat-input">
-                    <button id="ai-send-btn">
-                        <i class="fas fa-arrow-up"></i>
-                    </button>
-                </div>
+  // Admins don't have an AI advisor — don't render the widget
+  if (ROLE === "admin") return;
+
+  const GREETING =
+    ROLE === "faculty"
+      ? `Hi ${NAME}! I'm your Campus AI. Ask me about class performance, at-risk students, or teaching strategies.`
+      : `Hi ${NAME}! I'm your Campus AI advisor. Ask me about your studies, grades, skills, or placement readiness.`;
+
+  // ── DOM construction ──────────────────────────────────────────────────────
+
+  function buildWidget() {
+    const container = document.createElement("div");
+    container.id = "campus-ai-widget";
+    container.innerHTML = `
+      <button class="ai-toggle-btn" id="ai-toggle-btn" aria-label="Open AI Assistant" title="Campus AI Assistant">
+        <i class="fas fa-robot"></i>
+      </button>
+
+      <div class="ai-chat-window" id="ai-chat-window" role="dialog" aria-label="Campus AI Assistant" aria-hidden="true">
+        <div class="ai-chat-header">
+          <div class="ai-chat-header-info">
+            <span class="ai-status-dot"></span>
+            <div>
+              <div class="ai-header-title">Campus AI</div>
+              <div class="ai-header-sub">${ROLE === "faculty" ? "Faculty Advisor" : "Student Advisor"}</div>
             </div>
-        `;
+          </div>
+          <button class="ai-close-btn" id="ai-close-btn" aria-label="Close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
 
-        document.body.appendChild(this.container);
-        
-        this.chatWindow = this.container.querySelector('.ai-chat-window');
-        this.messagesContainer = this.container.querySelector('.ai-chat-messages');
-        this.inputField = this.container.querySelector('#ai-chat-input');
+        <div class="ai-chat-messages" id="ai-chat-messages"></div>
+
+        <div class="ai-suggestions" id="ai-suggestions"></div>
+
+        <div class="ai-chat-input-area">
+          <textarea
+            id="ai-chat-input"
+            class="ai-chat-textarea"
+            placeholder="Ask me anything…"
+            rows="1"
+            maxlength="1000"
+            aria-label="Message input"
+          ></textarea>
+          <button id="ai-send-btn" class="ai-send-btn" aria-label="Send message" title="Send">
+            <i class="fas fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(container);
+  }
+
+  // ── State ─────────────────────────────────────────────────────────────────
+
+  let isOpen = false;
+  let isThinking = false;
+  let chatInitialised = false;
+
+  const SUGGESTIONS = {
+    student: [
+      "How can I improve my readiness score?",
+      "What skills should I focus on?",
+      "Give me a study plan for this week",
+    ],
+    faculty: [
+      "Which students need attention?",
+      "How can I improve class average?",
+      "Suggest an intervention strategy",
+    ],
+  };
+
+  // ── Core functions ────────────────────────────────────────────────────────
+
+  function getEl(id) { return document.getElementById(id); }
+
+  function addMessage(text, side) {
+    const messages = getEl("ai-chat-messages");
+    const div = document.createElement("div");
+    div.className = `ai-message ai-message-${side}`;
+
+    if (side === "ai") {
+      div.innerHTML = `
+        <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+        <div class="ai-bubble">${formatAIText(text)}</div>`;
+    } else {
+      div.innerHTML = `<div class="ai-bubble">${escapeHtml(text)}</div>`;
     }
 
-    addEventListeners() {
-        const toggleBtn = this.container.querySelector('.ai-toggle-btn');
-        const sendBtn = this.container.querySelector('#ai-send-btn');
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+  }
 
-        toggleBtn.addEventListener('click', () => this.toggleChat());
-        
-        sendBtn.addEventListener('click', () => this.handleSendMessage());
-        
-        this.inputField.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleSendMessage();
-        });
+  function showTyping() {
+    const messages = getEl("ai-chat-messages");
+    const div = document.createElement("div");
+    div.className = "ai-message ai-message-ai ai-typing-row";
+    div.innerHTML = `
+      <div class="ai-avatar"><i class="fas fa-robot"></i></div>
+      <div class="ai-bubble ai-typing">
+        <span></span><span></span><span></span>
+      </div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+  }
+
+  function formatAIText(text) {
+    // Convert newlines to <br>, escape HTML first
+    return escapeHtml(text).replace(/\n/g, "<br>");
+  }
+
+  function escapeHtml(str) {
+    return String(str || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function buildSuggestions() {
+    const container = getEl("ai-suggestions");
+    const list = SUGGESTIONS[ROLE] || SUGGESTIONS.student;
+    container.innerHTML = list
+      .map(
+        (s) =>
+          `<button class="ai-suggestion-chip" onclick="window._aiSendSuggestion('${escapeHtml(s)}')">${escapeHtml(s)}</button>`
+      )
+      .join("");
+  }
+
+  window._aiSendSuggestion = function (text) {
+    const input = getEl("ai-chat-input");
+    if (input) input.value = text;
+    sendMessage();
+  };
+
+  function initChat() {
+    if (chatInitialised) return;
+    chatInitialised = true;
+    addMessage(GREETING, "ai");
+    buildSuggestions();
+  }
+
+  // ── Send logic ────────────────────────────────────────────────────────────
+
+  async function sendMessage() {
+    const input = getEl("ai-chat-input");
+    const sendBtn = getEl("ai-send-btn");
+    const message = (input.value || "").trim();
+
+    if (!message || isThinking) return;
+
+    isThinking = true;
+    input.value = "";
+    input.style.height = "auto";
+    if (sendBtn) sendBtn.disabled = true;
+
+    // Hide suggestions after first message
+    const suggestions = getEl("ai-suggestions");
+    if (suggestions) suggestions.style.display = "none";
+
+    addMessage(message, "user");
+    const typingEl = showTyping();
+
+    const endpoint = ROLE === "faculty" ? "/ai/chat/faculty" : "/ai/chat/student";
+    const body = ROLE === "faculty" ? { query: message } : { message };
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(endpoint, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: "Bearer " + token } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      typingEl.remove();
+
+      if (!res.ok) {
+        addMessage(data.error || "Something went wrong. Please try again.", "ai");
+      } else {
+        addMessage(data.response || "No response from AI.", "ai");
+      }
+    } catch (_) {
+      typingEl.remove();
+      addMessage(
+        "I'm having trouble connecting right now. Please check your internet connection and try again.",
+        "ai"
+      );
+    } finally {
+      isThinking = false;
+      if (sendBtn) sendBtn.disabled = false;
+      input.focus();
     }
+  }
 
-    toggleChat() {
-        this.isOpen = !this.isOpen;
-        this.chatWindow.classList.toggle('active', this.isOpen);
-        if (this.isOpen) {
-            this.inputField.focus();
-            const icon = this.container.querySelector('.ai-toggle-btn i');
-            icon.className = this.isOpen ? 'fas fa-times' : 'fas fa-comment-dots';
-        } else {
-            const icon = this.container.querySelector('.ai-toggle-btn i');
-            icon.className = 'fas fa-comment-dots';
-        }
-    }
+  // ── Toggle ────────────────────────────────────────────────────────────────
 
-    async handleSendMessage() {
-        const message = this.inputField.value.trim();
-        if (!message || this.isThinking) return;
+  function openChat() {
+    isOpen = true;
+    const win = getEl("ai-chat-window");
+    const btn = getEl("ai-toggle-btn");
+    win.classList.add("active");
+    win.setAttribute("aria-hidden", "false");
+    btn.classList.add("open");
+    initChat();
+    setTimeout(() => getEl("ai-chat-input")?.focus(), 300);
+  }
 
-        this.isThinking = true;
-        this.addMessage(message, 'user');
-        this.inputField.value = '';
-        this.inputField.disabled = true;
-        
-        const loadingMsg = this.showTypingIndicator();
-        
-        try {
-            const endpoint = this.role === 'faculty' ? '/ai/chat/faculty' : '/ai/chat/student';
-            const body = this.role === 'faculty' ? { query: message } : { message: message };
+  function closeChat() {
+    isOpen = false;
+    const win = getEl("ai-chat-window");
+    const btn = getEl("ai-toggle-btn");
+    win.classList.remove("active");
+    win.setAttribute("aria-hidden", "true");
+    btn.classList.remove("open");
+  }
 
-            const data = await fetchAuth(endpoint, {
-                method: 'POST',
-                body: JSON.stringify(body)
-            });
-            
-            loadingMsg.remove();
-            
-            if (data.error) {
-                this.addMessage(`Error: ${data.error}`, 'ai');
-            } else {
-                this.addMessage(data.response, 'ai');
-            }
-        } catch (error) {
-            loadingMsg.remove();
-            this.addMessage("Sorry, I'm having trouble connecting right now.", 'ai');
-            console.error("AI Chat Error:", error);
-        } finally {
-            this.isThinking = false;
-            this.inputField.disabled = false;
-            this.inputField.focus();
-        }
-        
-        this.scrollToBottom();
-    }
+  // ── Auto-resize textarea ──────────────────────────────────────────────────
 
-    showTypingIndicator() {
-        const div = document.createElement('div');
-        div.className = 'message ai';
-        div.innerHTML = `
-            <div class="typing-indicator">
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-        `;
-        this.messagesContainer.appendChild(div);
-        this.scrollToBottom();
-        return div;
-    }
+  function autoResize(el) {
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
+  }
 
-    addMessage(text, side) {
-        const div = document.createElement('div');
-        div.className = `message ${side}`;
-        // Support simple multiline
-        div.innerHTML = text.replace(/\n/g, '<br>');
-        this.messagesContainer.appendChild(div);
-        this.scrollToBottom();
-        return div;
-    }
+  // ── Init ──────────────────────────────────────────────────────────────────
 
-    scrollToBottom() {
-        this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
-    }
-}
+  function init() {
+    buildWidget();
 
-// Initialize when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.aiAssistant = new AIAssistant();
-});
+    getEl("ai-toggle-btn").addEventListener("click", () =>
+      isOpen ? closeChat() : openChat()
+    );
+    getEl("ai-close-btn").addEventListener("click", closeChat);
+
+    const input = getEl("ai-chat-input");
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    input.addEventListener("input", () => autoResize(input));
+
+    getEl("ai-send-btn").addEventListener("click", sendMessage);
+
+    // Close on outside click
+    document.addEventListener("click", (e) => {
+      const widget = document.getElementById("campus-ai-widget");
+      if (isOpen && widget && !widget.contains(e.target)) closeChat();
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
