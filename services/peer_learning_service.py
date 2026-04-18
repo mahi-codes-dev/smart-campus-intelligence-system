@@ -6,28 +6,25 @@ def get_subject_mentors(subject_id, limit=5):
     Find students who excel in a specific subject.
     Criteria: Marks > 85
     """
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT 
-            s.id as student_id,
-            s.name,
-            s.roll_number,
-            s.department,
-            m.marks
-        FROM students s
-        JOIN marks m ON s.id = m.student_id
-        WHERE m.subject_id = %s AND m.marks >= 85
-        ORDER BY m.marks DESC, s.name ASC
-        LIMIT %s
-        """,
-        (subject_id, limit)
-    )
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    s.id as student_id,
+                    s.name,
+                    s.roll_number,
+                    s.department,
+                    m.marks
+                FROM students s
+                JOIN marks m ON s.id = m.student_id
+                WHERE m.subject_id = %s AND m.marks >= 85
+                ORDER BY m.marks DESC, s.name ASC
+                LIMIT %s
+                """,
+                (subject_id, limit)
+            )
+            rows = cur.fetchall()
 
     return [
         {
@@ -44,24 +41,23 @@ def get_peer_mentorship_suggestions(student_id):
     """
     Identify subjects where the student is struggling and suggest mentors.
     """
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    # 1. Find subjects where student marks < 60
-    cur.execute(
-        """
-        SELECT 
-            m.subject_id,
-            sbj.name as subject_name,
-            m.marks
-        FROM marks m
-        JOIN subjects sbj ON m.subject_id = sbj.id
-        WHERE m.student_id = %s AND m.marks < 60
-        ORDER BY m.marks ASC
-        """,
-        (student_id,)
-    )
-    struggling_subjects = cur.fetchall()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            # 1. Find subjects where student marks < 60
+            cur.execute(
+                """
+                SELECT
+                    m.subject_id,
+                    sbj.name as subject_name,
+                    m.marks
+                FROM marks m
+                JOIN subjects sbj ON m.subject_id = sbj.id
+                WHERE m.student_id = %s AND m.marks < 60
+                ORDER BY m.marks ASC
+                """,
+                (student_id,)
+            )
+            struggling_subjects = cur.fetchall()
 
     suggestions = []
     for sub_id, sub_name, marks in struggling_subjects:
@@ -74,34 +70,29 @@ def get_peer_mentorship_suggestions(student_id):
                 "suggested_mentors": mentors
             })
 
-    cur.close()
-    conn.close()
     return suggestions
 
 def get_mentor_dashboard_stats(student_id):
     """
     Check if the student themselves is a mentor for any subjects.
     """
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT 
-            sbj.id as subject_id,
-            sbj.name as subject_name,
-            MAX(m.marks) as best_marks
-        FROM marks m
-        JOIN subjects sbj ON m.subject_id = sbj.id
-        WHERE m.student_id = %s
-        GROUP BY sbj.id, sbj.name
-        HAVING MAX(m.marks) >= 85
-        """,
-        (student_id,)
-    )
-    subjects = cur.fetchall()
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    sbj.id as subject_id,
+                    sbj.name as subject_name,
+                    MAX(m.marks) as best_marks
+                FROM marks m
+                JOIN subjects sbj ON m.subject_id = sbj.id
+                WHERE m.student_id = %s
+                GROUP BY sbj.id, sbj.name
+                HAVING MAX(m.marks) >= 85
+                """,
+                (student_id,)
+            )
+            subjects = cur.fetchall()
 
     return [
         {

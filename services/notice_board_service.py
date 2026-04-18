@@ -8,21 +8,18 @@ class NoticeBoardService:
     @staticmethod
     def ensure_notices_table():
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS notices (
-                    id SERIAL PRIMARY KEY,
-                    title VARCHAR(255) NOT NULL,
-                    content TEXT NOT NULL,
-                    target_role VARCHAR(50) NOT NULL,
-                    author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-            conn.commit()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS notices (
+                            id SERIAL PRIMARY KEY,
+                            title VARCHAR(255) NOT NULL,
+                            content TEXT NOT NULL,
+                            target_role VARCHAR(50) NOT NULL,
+                            author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
             logger.info("Notices table ensured")
         except Exception as e:
             logger.error(f"Error ensuring notices table: {e}")
@@ -31,17 +28,14 @@ class NoticeBoardService:
     @staticmethod
     def create_notice(title: str, content: str, target_role: str, author_id: int):
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO notices (title, content, target_role, author_id)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id
-            """, (title, content, target_role, author_id))
-            notice_id = cur.fetchone()[0]
-            conn.commit()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO notices (title, content, target_role, author_id)
+                        VALUES (%s, %s, %s, %s)
+                        RETURNING id
+                    """, (title, content, target_role, author_id))
+                    notice_id = cur.fetchone()[0]
             return notice_id
         except Exception as e:
             logger.error(f"Error creating notice: {e}")
@@ -50,9 +44,6 @@ class NoticeBoardService:
     @staticmethod
     def get_notices(target_roles=None, author_id=None):
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            
             query = """
                 SELECT n.id, n.title, n.content, n.target_role, n.created_at, u.name, u.role
                 FROM notices n
@@ -75,10 +66,10 @@ class NoticeBoardService:
                 
             query += " ORDER BY n.created_at DESC"
             
-            cur.execute(query, params)
-            rows = cur.fetchall()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
+                    rows = cur.fetchall()
             
             notices = []
             for row in rows:
@@ -99,12 +90,9 @@ class NoticeBoardService:
     @staticmethod
     def delete_notice(notice_id: int):
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM notices WHERE id = %s", (notice_id,))
-            conn.commit()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM notices WHERE id = %s", (notice_id,))
             return True
         except Exception as e:
             logger.error(f"Error deleting notice: {e}")

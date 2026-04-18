@@ -1,3 +1,4 @@
+from contextlib import nullcontext
 from datetime import date, datetime, timedelta
 
 from database import get_db_connection
@@ -26,60 +27,56 @@ from services.subject_service import get_subject_by_id
 _INTERVENTION_SCHEMA_READY = False
 
 
+def _connection_scope(connection=None):
+    return nullcontext(connection) if connection is not None else get_db_connection()
+
+
 def ensure_intervention_table_consistency(connection=None):
     global _INTERVENTION_SCHEMA_READY
 
     if _INTERVENTION_SCHEMA_READY:
         return
 
-    conn = connection or get_db_connection()
-    cur = conn.cursor()
+    with _connection_scope(connection) as conn:
+        ensure_student_table_consistency(conn)
 
-    ensure_student_table_consistency(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS student_interventions (
+                    id SERIAL PRIMARY KEY,
+                    student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                    faculty_user_id INTEGER,
+                    intervention_type VARCHAR(50) NOT NULL DEFAULT 'academic',
+                    priority VARCHAR(20) NOT NULL DEFAULT 'medium',
+                    status VARCHAR(20) NOT NULL DEFAULT 'open',
+                    summary TEXT NOT NULL,
+                    action_plan TEXT,
+                    due_date DATE,
+                    notified_student BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    resolved_at TIMESTAMP
+                )
+                """
+            )
 
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS student_interventions (
-            id SERIAL PRIMARY KEY,
-            student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-            faculty_user_id INTEGER,
-            intervention_type VARCHAR(50) NOT NULL DEFAULT 'academic',
-            priority VARCHAR(20) NOT NULL DEFAULT 'medium',
-            status VARCHAR(20) NOT NULL DEFAULT 'open',
-            summary TEXT NOT NULL,
-            action_plan TEXT,
-            due_date DATE,
-            notified_student BOOLEAN NOT NULL DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            resolved_at TIMESTAMP
-        )
-        """
-    )
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS faculty_user_id INTEGER")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS intervention_type VARCHAR(50) NOT NULL DEFAULT 'academic'")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'medium'")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'open'")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS summary TEXT")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS action_plan TEXT")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS due_date DATE")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS notified_student BOOLEAN NOT NULL DEFAULT FALSE")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP")
 
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS faculty_user_id INTEGER")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS intervention_type VARCHAR(50) NOT NULL DEFAULT 'academic'")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS priority VARCHAR(20) NOT NULL DEFAULT 'medium'")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'open'")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS summary TEXT")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS action_plan TEXT")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS due_date DATE")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS notified_student BOOLEAN NOT NULL DEFAULT FALSE")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-    cur.execute("ALTER TABLE student_interventions ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP")
-
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_student_id ON student_interventions(student_id)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_status ON student_interventions(status)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_due_date ON student_interventions(due_date)")
-    cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_created_at ON student_interventions(created_at DESC)")
-
-    if connection is None:
-        conn.commit()
-        cur.close()
-        conn.close()
-    else:
-        cur.close()
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_student_id ON student_interventions(student_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_status ON student_interventions(status)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_due_date ON student_interventions(due_date)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_student_interventions_created_at ON student_interventions(created_at DESC)")
 
     _INTERVENTION_SCHEMA_READY = True
 
@@ -128,61 +125,58 @@ def _get_intervention_maps(student_ids):
     if not student_ids:
         return {}, {}
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    ensure_intervention_table_consistency(conn)
+    with get_db_connection() as conn:
+        ensure_intervention_table_consistency(conn)
 
-    cur.execute(
-        """
-        SELECT DISTINCT ON (si.student_id)
-            si.id,
-            si.student_id,
-            si.faculty_user_id,
-            COALESCE(u.name, u.email, 'Faculty') AS faculty_name,
-            si.intervention_type,
-            si.priority,
-            si.status,
-            si.summary,
-            si.action_plan,
-            si.due_date,
-            si.notified_student,
-            si.created_at,
-            si.updated_at,
-            si.resolved_at
-        FROM student_interventions si
-        LEFT JOIN users u ON si.faculty_user_id = u.id
-        WHERE si.student_id = ANY(%s)
-        ORDER BY si.student_id, si.created_at DESC, si.id DESC
-        """,
-        (student_ids,),
-    )
-    latest_map = {
-        row[1]: _serialize_intervention_row(row)
-        for row in cur.fetchall()
-    }
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT ON (si.student_id)
+                    si.id,
+                    si.student_id,
+                    si.faculty_user_id,
+                    COALESCE(u.name, u.email, 'Faculty') AS faculty_name,
+                    si.intervention_type,
+                    si.priority,
+                    si.status,
+                    si.summary,
+                    si.action_plan,
+                    si.due_date,
+                    si.notified_student,
+                    si.created_at,
+                    si.updated_at,
+                    si.resolved_at
+                FROM student_interventions si
+                LEFT JOIN users u ON si.faculty_user_id = u.id
+                WHERE si.student_id = ANY(%s)
+                ORDER BY si.student_id, si.created_at DESC, si.id DESC
+                """,
+                (student_ids,),
+            )
+            latest_map = {
+                row[1]: _serialize_intervention_row(row)
+                for row in cur.fetchall()
+            }
 
-    cur.execute(
-        """
-        SELECT
-            student_id,
-            COUNT(*) AS total_cases,
-            COUNT(*) FILTER (WHERE status <> 'closed') AS open_case_count
-        FROM student_interventions
-        WHERE student_id = ANY(%s)
-        GROUP BY student_id
-        """,
-        (student_ids,),
-    )
-    count_map = {
-        row[0]: {
-            "total_cases": int(row[1] or 0),
-            "open_case_count": int(row[2] or 0),
-        }
-        for row in cur.fetchall()
-    }
-
-    cur.close()
-    conn.close()
+            cur.execute(
+                """
+                SELECT
+                    student_id,
+                    COUNT(*) AS total_cases,
+                    COUNT(*) FILTER (WHERE status <> 'closed') AS open_case_count
+                FROM student_interventions
+                WHERE student_id = ANY(%s)
+                GROUP BY student_id
+                """,
+                (student_ids,),
+            )
+            count_map = {
+                row[0]: {
+                    "total_cases": int(row[1] or 0),
+                    "open_case_count": int(row[2] or 0),
+                }
+                for row in cur.fetchall()
+            }
     return latest_map, count_map
 
 
@@ -220,39 +214,36 @@ def _hydrate_student_intervention_fields(students):
 
 
 def get_student_interventions(student_id, limit=10):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    ensure_intervention_table_consistency(conn)
+    with get_db_connection() as conn:
+        ensure_intervention_table_consistency(conn)
 
-    cur.execute(
-        """
-        SELECT
-            si.id,
-            si.student_id,
-            si.faculty_user_id,
-            COALESCE(u.name, u.email, 'Faculty') AS faculty_name,
-            si.intervention_type,
-            si.priority,
-            si.status,
-            si.summary,
-            si.action_plan,
-            si.due_date,
-            si.notified_student,
-            si.created_at,
-            si.updated_at,
-            si.resolved_at
-        FROM student_interventions si
-        LEFT JOIN users u ON si.faculty_user_id = u.id
-        WHERE si.student_id = %s
-        ORDER BY si.created_at DESC, si.id DESC
-        LIMIT %s
-        """,
-        (student_id, limit),
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    si.id,
+                    si.student_id,
+                    si.faculty_user_id,
+                    COALESCE(u.name, u.email, 'Faculty') AS faculty_name,
+                    si.intervention_type,
+                    si.priority,
+                    si.status,
+                    si.summary,
+                    si.action_plan,
+                    si.due_date,
+                    si.notified_student,
+                    si.created_at,
+                    si.updated_at,
+                    si.resolved_at
+                FROM student_interventions si
+                LEFT JOIN users u ON si.faculty_user_id = u.id
+                WHERE si.student_id = %s
+                ORDER BY si.created_at DESC, si.id DESC
+                LIMIT %s
+                """,
+                (student_id, limit),
+            )
+            rows = cur.fetchall()
 
     return [_serialize_intervention_row(row) for row in rows]
 
@@ -280,47 +271,43 @@ def create_student_intervention(student_id, faculty_user_id, payload):
         except ValueError as exc:
             raise ValueError("due_date must use YYYY-MM-DD format") from exc
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    ensure_intervention_table_consistency(conn)
+    with get_db_connection() as conn:
+        ensure_intervention_table_consistency(conn)
 
-    cur.execute(
-        """
-        INSERT INTO student_interventions (
-            student_id,
-            faculty_user_id,
-            intervention_type,
-            priority,
-            status,
-            summary,
-            action_plan,
-            due_date,
-            notified_student,
-            resolved_at,
-            created_at,
-            updated_at
-        )
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        RETURNING id
-        """,
-        (
-            int(student_id),
-            int(faculty_user_id),
-            intervention_type,
-            priority,
-            status,
-            summary,
-            action_plan or None,
-            parsed_due_date,
-            notify_student and bool(profile.get("user_id")),
-            datetime.now() if status == "closed" else None,
-        ),
-    )
-    intervention_id = cur.fetchone()[0]
-
-    conn.commit()
-    cur.close()
-    conn.close()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO student_interventions (
+                    student_id,
+                    faculty_user_id,
+                    intervention_type,
+                    priority,
+                    status,
+                    summary,
+                    action_plan,
+                    due_date,
+                    notified_student,
+                    resolved_at,
+                    created_at,
+                    updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                RETURNING id
+                """,
+                (
+                    int(student_id),
+                    int(faculty_user_id),
+                    intervention_type,
+                    priority,
+                    status,
+                    summary,
+                    action_plan or None,
+                    parsed_due_date,
+                    notify_student and bool(profile.get("user_id")),
+                    datetime.now() if status == "closed" else None,
+                ),
+            )
+            intervention_id = cur.fetchone()[0]
 
     if notify_student and profile.get("user_id"):
         due_copy = f" Follow-up due on {parsed_due_date.isoformat()}." if parsed_due_date else ""
@@ -346,44 +333,38 @@ def create_student_intervention(student_id, faculty_user_id, payload):
 def update_student_intervention_status(intervention_id, status, faculty_user_id=None):
     normalized_status = _normalize_intervention_status(status)
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    ensure_intervention_table_consistency(conn)
+    with get_db_connection() as conn:
+        ensure_intervention_table_consistency(conn)
 
-    cur.execute(
-        """
-        SELECT student_id
-        FROM student_interventions
-        WHERE id = %s
-        """,
-        (intervention_id,),
-    )
-    row = cur.fetchone()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT student_id
+                FROM student_interventions
+                WHERE id = %s
+                """,
+                (intervention_id,),
+            )
+            row = cur.fetchone()
 
-    if not row:
-        cur.close()
-        conn.close()
-        raise ValueError("Intervention not found")
+            if not row:
+                raise ValueError("Intervention not found")
 
-    cur.execute(
-        """
-        UPDATE student_interventions
-        SET
-            status = %s,
-            faculty_user_id = COALESCE(%s, faculty_user_id),
-            updated_at = CURRENT_TIMESTAMP,
-            resolved_at = CASE
-                WHEN %s = 'closed' THEN CURRENT_TIMESTAMP
-                ELSE NULL
-            END
-        WHERE id = %s
-        """,
-        (normalized_status, faculty_user_id, normalized_status, intervention_id),
-    )
-
-    conn.commit()
-    cur.close()
-    conn.close()
+            cur.execute(
+                """
+                UPDATE student_interventions
+                SET
+                    status = %s,
+                    faculty_user_id = COALESCE(%s, faculty_user_id),
+                    updated_at = CURRENT_TIMESTAMP,
+                    resolved_at = CASE
+                        WHEN %s = 'closed' THEN CURRENT_TIMESTAMP
+                        ELSE NULL
+                    END
+                WHERE id = %s
+                """,
+                (normalized_status, faculty_user_id, normalized_status, intervention_id),
+            )
 
     updated = get_student_interventions(row[0], limit=10)
     return next((item for item in updated if item["id"] == intervention_id), None)
@@ -632,49 +613,46 @@ def get_classroom_roster(subject_id, department=None, search=None):
         sort_order="desc",
     )
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    ensure_attendance_table_consistency(conn)
-    ensure_marks_table_consistency(conn)
+    with get_db_connection() as conn:
+        ensure_attendance_table_consistency(conn)
+        ensure_marks_table_consistency(conn)
 
-    cur.execute(
-        """
-        SELECT
-            student_id,
-            COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0) AS attendance_percentage
-        FROM attendance
-        WHERE subject_id = %s
-        GROUP BY student_id
-        """,
-        (subject_id,),
-    )
-    attendance_map = {
-        row[0]: round(float(row[1] or 0), 2)
-        for row in cur.fetchall()
-    }
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    student_id,
+                    COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0) AS attendance_percentage
+                FROM attendance
+                WHERE subject_id = %s
+                GROUP BY student_id
+                """,
+                (subject_id,),
+            )
+            attendance_map = {
+                row[0]: round(float(row[1] or 0), 2)
+                for row in cur.fetchall()
+            }
 
-    cur.execute(
-        """
-        SELECT DISTINCT ON (student_id)
-            student_id,
-            marks,
-            exam_type
-        FROM marks
-        WHERE subject_id = %s
-        ORDER BY student_id, created_at DESC NULLS LAST, id DESC
-        """,
-        (subject_id,),
-    )
-    marks_map = {
-        row[0]: {
-            "marks": float(row[1]) if row[1] is not None else None,
-            "exam_type": row[2],
-        }
-        for row in cur.fetchall()
-    }
-
-    cur.close()
-    conn.close()
+            cur.execute(
+                """
+                SELECT DISTINCT ON (student_id)
+                    student_id,
+                    marks,
+                    exam_type
+                FROM marks
+                WHERE subject_id = %s
+                ORDER BY student_id, created_at DESC NULLS LAST, id DESC
+                """,
+                (subject_id,),
+            )
+            marks_map = {
+                row[0]: {
+                    "marks": float(row[1]) if row[1] is not None else None,
+                    "exam_type": row[2],
+                }
+                for row in cur.fetchall()
+            }
 
     roster = []
     for student in students:

@@ -49,66 +49,55 @@ def send_otp_email(to_email, otp):
         return False
 
 def create_and_store_otp(email):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
     try:
-        # Check if user exists
-        cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
-        if not cur.fetchone():
-            return None # User not found
-            
-        otp = generate_otp()
-        expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=15)
-        
-        # Invalidate old OTPs
-        cur.execute("UPDATE password_reset_otps SET is_used = TRUE WHERE LOWER(email) = LOWER(%s)", (email,))
-        
-        # Store new OTP
-        cur.execute(
-            """
-            INSERT INTO password_reset_otps (email, otp, expires_at)
-            VALUES (%s, %s, %s)
-            """,
-            (email, otp, expires_at)
-        )
-        conn.commit()
-        return otp
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                # Check if user exists
+                cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+                if not cur.fetchone():
+                    return None # User not found
+
+                otp = generate_otp()
+                expires_at = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=15)
+
+                # Invalidate old OTPs
+                cur.execute("UPDATE password_reset_otps SET is_used = TRUE WHERE LOWER(email) = LOWER(%s)", (email,))
+
+                # Store new OTP
+                cur.execute(
+                    """
+                    INSERT INTO password_reset_otps (email, otp, expires_at)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (email, otp, expires_at)
+                )
+                return otp
     except Exception as e:
-        conn.rollback()
         logger.error(f"Failed to store OTP for {email}: {str(e)}")
         return None
-    finally:
-        cur.close()
-        conn.close()
 
 def verify_and_use_otp(email, otp):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    
     try:
-        cur.execute(
-            """
-            SELECT id FROM password_reset_otps 
-            WHERE LOWER(email) = LOWER(%s) 
-              AND otp = %s 
-              AND is_used = FALSE 
-              AND expires_at > %s
-            ORDER BY created_at DESC LIMIT 1
-            """,
-            (email, otp, datetime.datetime.now(datetime.UTC))
-        )
-        
-        record = cur.fetchone()
-        if record:
-            # Mark as used
-            cur.execute("UPDATE password_reset_otps SET is_used = TRUE WHERE id = %s", (record[0],))
-            conn.commit()
-            return True
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id FROM password_reset_otps
+                    WHERE LOWER(email) = LOWER(%s)
+                      AND otp = %s
+                      AND is_used = FALSE
+                      AND expires_at > %s
+                    ORDER BY created_at DESC LIMIT 1
+                    """,
+                    (email, otp, datetime.datetime.now(datetime.UTC))
+                )
+
+                record = cur.fetchone()
+                if record:
+                    # Mark as used
+                    cur.execute("UPDATE password_reset_otps SET is_used = TRUE WHERE id = %s", (record[0],))
+                    return True
         return False
     except Exception as e:
         logger.error(f"Failed to verify OTP for {email}: {str(e)}")
         return False
-    finally:
-        cur.close()
-        conn.close()

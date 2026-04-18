@@ -56,15 +56,11 @@ def token_required(f):
 
             jti = payload.get("jti")
             if jti:
-                conn = get_db_connection()
-                cur = conn.cursor()
-                try:
-                    cur.execute("SELECT 1 FROM jwt_blacklist WHERE jti = %s", (jti,))
-                    if cur.fetchone():
-                        return jsonify({"error": "Token has been revoked"}), 401
-                finally:
-                    cur.close()
-                    conn.close()
+                with get_db_connection() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute("SELECT 1 FROM jwt_blacklist WHERE jti = %s", (jti,))
+                        if cur.fetchone():
+                            return jsonify({"error": "Token has been revoked"}), 401
 
             current_user = _build_current_user(payload)
             request.user_id = current_user.get("user_id")

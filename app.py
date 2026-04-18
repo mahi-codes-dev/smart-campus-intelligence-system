@@ -187,8 +187,8 @@ def live_check():
 def health_check():
     status = dict(startup_status)
     try:
-        conn = get_db_connection()
-        conn.close()
+        with get_db_connection():
+            pass
         status["database"] = "connected"
     except Exception as e:
         status["database"] = "disconnected"
@@ -230,21 +230,13 @@ def add_student():
         department = v.validated_data["department"]
         roll_number = v.validated_data["roll_number"]
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-        try:
+        with get_db_connection() as conn:
             ensure_roll_number_available(roll_number, connection=conn)
-            cur.execute(
-                "INSERT INTO students (name, email, department, roll_number) VALUES (%s, %s, %s, %s)",
-                (name, email, department, roll_number),
-            )
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cur.close()
-            conn.close()
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO students (name, email, department, roll_number) VALUES (%s, %s, %s, %s)",
+                    (name, email, department, roll_number),
+                )
 
         return jsonify({"message": "Student added successfully"}), 201
 
@@ -275,26 +267,15 @@ def update_student(id):
         department = v.validated_data["department"]
         roll_number = v.validated_data["roll_number"]
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-        try:
+        with get_db_connection() as conn:
             ensure_roll_number_available(roll_number, connection=conn, exclude_student_id=id)
-            cur.execute(
-                "UPDATE students SET name=%s, email=%s, department=%s, roll_number=%s WHERE id=%s",
-                (name, email, department, roll_number, id),
-            )
-            if cur.rowcount == 0:
-                conn.rollback()
-                cur.close()
-                conn.close()
-                return jsonify({"error": "Student not found"}), 404
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            cur.close()
-            conn.close()
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE students SET name=%s, email=%s, department=%s, roll_number=%s WHERE id=%s",
+                    (name, email, department, roll_number, id),
+                )
+                if cur.rowcount == 0:
+                    return jsonify({"error": "Student not found"}), 404
 
         return jsonify({"message": "Student updated successfully"}), 200
 
@@ -309,24 +290,16 @@ def update_student(id):
 @token_required
 @role_required("Admin")
 def delete_student(id):
-    conn = get_db_connection()
-    cur = conn.cursor()
     try:
-        cur.execute("DELETE FROM students WHERE id = %s", (id,))
-        if cur.rowcount == 0:
-            conn.rollback()
-            cur.close()
-            conn.close()
-            return jsonify({"error": "Student not found"}), 404
-        conn.commit()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM students WHERE id = %s", (id,))
+                if cur.rowcount == 0:
+                    return jsonify({"error": "Student not found"}), 404
         return jsonify({"message": "Student deleted successfully"}), 200
     except Exception as e:
-        conn.rollback()
         logger.exception("delete_student failed")
         return jsonify({"error": "Failed to delete student"}), 500
-    finally:
-        cur.close()
-        conn.close()
 
 
 # --- Frontend page routes ---

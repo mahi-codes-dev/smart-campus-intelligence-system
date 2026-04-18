@@ -33,50 +33,45 @@ class RealtimeNotificationService:
     def ensure_notifications_table():
         """Create notifications table if it doesn't exist"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS notifications (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                            title VARCHAR(255) NOT NULL,
+                            message TEXT NOT NULL,
+                            type VARCHAR(50) DEFAULT 'system',
+                            priority VARCHAR(20) DEFAULT 'medium',
+                            is_read BOOLEAN DEFAULT FALSE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            read_at TIMESTAMP,
+                            expires_at TIMESTAMP,
+                            metadata JSONB DEFAULT '{}',
+                            action_url VARCHAR(500),
+                            CONSTRAINT valid_type CHECK (type IN ('academic', 'system', 'alert', 'assignment', 'result', 'attendance')),
+                            CONSTRAINT valid_priority CHECK (priority IN ('low', 'medium', 'high', 'urgent'))
+                        );
 
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS notifications (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                    title VARCHAR(255) NOT NULL,
-                    message TEXT NOT NULL,
-                    type VARCHAR(50) DEFAULT 'system',
-                    priority VARCHAR(20) DEFAULT 'medium',
-                    is_read BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    read_at TIMESTAMP,
-                    expires_at TIMESTAMP,
-                    metadata JSONB DEFAULT '{}',
-                    action_url VARCHAR(500),
-                    CONSTRAINT valid_type CHECK (type IN ('academic', 'system', 'alert', 'assignment', 'result', 'attendance')),
-                    CONSTRAINT valid_priority CHECK (priority IN ('low', 'medium', 'high', 'urgent'))
-                );
+                        CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+                        CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+                        CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+                        CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
 
-                CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
-                CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
-                CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
-                CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type);
-
-                CREATE TABLE IF NOT EXISTS notification_preferences (
-                    user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-                    digest_enabled BOOLEAN DEFAULT TRUE,
-                    digest_frequency VARCHAR(20) DEFAULT 'weekly',
-                    academic_enabled BOOLEAN DEFAULT TRUE,
-                    attendance_enabled BOOLEAN DEFAULT TRUE,
-                    result_enabled BOOLEAN DEFAULT TRUE,
-                    system_enabled BOOLEAN DEFAULT TRUE,
-                    reminder_hour INTEGER DEFAULT 18,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    CONSTRAINT valid_digest_frequency CHECK (digest_frequency IN ('daily', 'weekly', 'off')),
-                    CONSTRAINT valid_reminder_hour CHECK (reminder_hour >= 0 AND reminder_hour <= 23)
-                );
-            """)
-
-            conn.commit()
-            cur.close()
-            conn.close()
+                        CREATE TABLE IF NOT EXISTS notification_preferences (
+                            user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+                            digest_enabled BOOLEAN DEFAULT TRUE,
+                            digest_frequency VARCHAR(20) DEFAULT 'weekly',
+                            academic_enabled BOOLEAN DEFAULT TRUE,
+                            attendance_enabled BOOLEAN DEFAULT TRUE,
+                            result_enabled BOOLEAN DEFAULT TRUE,
+                            system_enabled BOOLEAN DEFAULT TRUE,
+                            reminder_hour INTEGER DEFAULT 18,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT valid_digest_frequency CHECK (digest_frequency IN ('daily', 'weekly', 'off')),
+                            CONSTRAINT valid_reminder_hour CHECK (reminder_hour >= 0 AND reminder_hour <= 23)
+                        );
+                    """)
             logger.info("Notifications table ensured")
         except Exception as e:
             logger.error(f"Error ensuring notifications table: {str(e)}")
@@ -96,38 +91,34 @@ class RealtimeNotificationService:
         }
 
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO notification_preferences (user_id)
+                        VALUES (%s)
+                        ON CONFLICT (user_id) DO NOTHING
+                        """,
+                        (user_id,),
+                    )
 
-            cur.execute(
-                """
-                INSERT INTO notification_preferences (user_id)
-                VALUES (%s)
-                ON CONFLICT (user_id) DO NOTHING
-                """,
-                (user_id,),
-            )
-
-            cur.execute(
-                """
-                SELECT
-                    digest_enabled,
-                    digest_frequency,
-                    academic_enabled,
-                    attendance_enabled,
-                    result_enabled,
-                    system_enabled,
-                    reminder_hour,
-                    updated_at
-                FROM notification_preferences
-                WHERE user_id = %s
-                """,
-                (user_id,),
-            )
-            row = cur.fetchone()
-            conn.commit()
-            cur.close()
-            conn.close()
+                    cur.execute(
+                        """
+                        SELECT
+                            digest_enabled,
+                            digest_frequency,
+                            academic_enabled,
+                            attendance_enabled,
+                            result_enabled,
+                            system_enabled,
+                            reminder_hour,
+                            updated_at
+                        FROM notification_preferences
+                        WHERE user_id = %s
+                        """,
+                        (user_id,),
+                    )
+                    row = cur.fetchone()
 
             if not row:
                 return defaults
@@ -167,56 +158,46 @@ class RealtimeNotificationService:
             "reminder_hour": reminder_hour,
         }
 
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        try:
-            cur.execute(
-                """
-                INSERT INTO notification_preferences (
-                    user_id,
-                    digest_enabled,
-                    digest_frequency,
-                    academic_enabled,
-                    attendance_enabled,
-                    result_enabled,
-                    system_enabled,
-                    reminder_hour,
-                    updated_at
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO notification_preferences (
+                        user_id,
+                        digest_enabled,
+                        digest_frequency,
+                        academic_enabled,
+                        attendance_enabled,
+                        result_enabled,
+                        system_enabled,
+                        reminder_hour,
+                        updated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (user_id) DO UPDATE
+                    SET
+                        digest_enabled = EXCLUDED.digest_enabled,
+                        digest_frequency = EXCLUDED.digest_frequency,
+                        academic_enabled = EXCLUDED.academic_enabled,
+                        attendance_enabled = EXCLUDED.attendance_enabled,
+                        result_enabled = EXCLUDED.result_enabled,
+                        system_enabled = EXCLUDED.system_enabled,
+                        reminder_hour = EXCLUDED.reminder_hour,
+                        updated_at = CURRENT_TIMESTAMP
+                    """,
+                    (
+                        user_id,
+                        payload["digest_enabled"],
+                        payload["digest_frequency"],
+                        payload["academic_enabled"],
+                        payload["attendance_enabled"],
+                        payload["result_enabled"],
+                        payload["system_enabled"],
+                        payload["reminder_hour"],
+                    ),
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (user_id) DO UPDATE
-                SET
-                    digest_enabled = EXCLUDED.digest_enabled,
-                    digest_frequency = EXCLUDED.digest_frequency,
-                    academic_enabled = EXCLUDED.academic_enabled,
-                    attendance_enabled = EXCLUDED.attendance_enabled,
-                    result_enabled = EXCLUDED.result_enabled,
-                    system_enabled = EXCLUDED.system_enabled,
-                    reminder_hour = EXCLUDED.reminder_hour,
-                    updated_at = CURRENT_TIMESTAMP
-                """,
-                (
-                    user_id,
-                    payload["digest_enabled"],
-                    payload["digest_frequency"],
-                    payload["academic_enabled"],
-                    payload["attendance_enabled"],
-                    payload["result_enabled"],
-                    payload["system_enabled"],
-                    payload["reminder_hour"],
-                ),
-            )
 
-            conn.commit()
-            cur.close()
-            conn.close()
-            return RealtimeNotificationService.get_user_preferences(user_id)
-        except Exception:
-            conn.rollback()
-            cur.close()
-            conn.close()
-            raise
+        return RealtimeNotificationService.get_user_preferences(user_id)
 
     @staticmethod
     def create_notification(
@@ -246,23 +227,19 @@ class RealtimeNotificationService:
             Created notification dict or None if failed
         """
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-
             expires_at = datetime.now() + timedelta(days=expires_in_days)
             metadata = metadata or {}
 
-            cur.execute("""
-                INSERT INTO notifications 
-                (user_id, title, message, type, priority, action_url, metadata, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING id, user_id, title, message, type, priority, is_read, created_at, action_url
-            """, (user_id, title, message, notification_type, priority, action_url, json.dumps(metadata), expires_at))
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO notifications
+                        (user_id, title, message, type, priority, action_url, metadata, expires_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        RETURNING id, user_id, title, message, type, priority, is_read, created_at, action_url
+                    """, (user_id, title, message, notification_type, priority, action_url, json.dumps(metadata), expires_at))
 
-            notification = cur.fetchone()
-            conn.commit()
-            cur.close()
-            conn.close()
+                    notification = cur.fetchone()
 
             if notification:
                 return {
@@ -308,9 +285,6 @@ class RealtimeNotificationService:
             Number of notifications created
         """
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-
             expires_at = datetime.now() + timedelta(days=30)
             metadata = metadata or {}
             rows = [
@@ -327,20 +301,18 @@ class RealtimeNotificationService:
                 for uid in user_ids
             ]
 
-            cur.executemany(
-                """
-                INSERT INTO notifications
-                (user_id, title, message, type, priority, action_url, metadata, expires_at)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                rows,
-            )
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        """
+                        INSERT INTO notifications
+                        (user_id, title, message, type, priority, action_url, metadata, expires_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        rows,
+                    )
 
             count = len(rows)
-            conn.commit()
-            cur.close()
-            conn.close()
-
             logger.info(f"Created {count} notifications for {len(user_ids)} users")
             return count
 
@@ -370,9 +342,6 @@ class RealtimeNotificationService:
             List of notifications
         """
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-
             query = """
                 SELECT id, user_id, title, message, type, priority, is_read, created_at, 
                        read_at, action_url
@@ -391,10 +360,10 @@ class RealtimeNotificationService:
             query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
             params.extend([limit, offset])
 
-            cur.execute(query, params)
-            notifications = cur.fetchall()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
+                    notifications = cur.fetchall()
 
             return [{
                 "id": n[0],
@@ -417,17 +386,14 @@ class RealtimeNotificationService:
     def get_unread_count(user_id: int) -> int:
         """Get count of unread notifications for user"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-
-            cur.execute(
-                "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE",
-                (user_id,)
-            )
-            result = cur.fetchone()
-            count = result[0] if result else 0
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    count = result[0] if result else 0
 
             return count
 
@@ -439,19 +405,15 @@ class RealtimeNotificationService:
     def mark_as_read(notification_id: int, user_id: int) -> bool:
         """Mark notification as read"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE notifications
+                        SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
+                        WHERE id = %s AND user_id = %s
+                    """, (notification_id, user_id))
 
-            cur.execute("""
-                UPDATE notifications
-                SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
-                WHERE id = %s AND user_id = %s
-            """, (notification_id, user_id))
-
-            result = cur.rowcount > 0
-            conn.commit()
-            cur.close()
-            conn.close()
+                    result = cur.rowcount > 0
 
             return result
 
@@ -463,19 +425,15 @@ class RealtimeNotificationService:
     def mark_all_as_read(user_id: int) -> int:
         """Mark all user notifications as read"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        UPDATE notifications
+                        SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
+                        WHERE user_id = %s AND is_read = FALSE
+                    """, (user_id,))
 
-            cur.execute("""
-                UPDATE notifications
-                SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
-                WHERE user_id = %s AND is_read = FALSE
-            """, (user_id,))
-
-            count = cur.rowcount
-            conn.commit()
-            cur.close()
-            conn.close()
+                    count = cur.rowcount
 
             return count
 
@@ -487,18 +445,14 @@ class RealtimeNotificationService:
     def delete_notification(notification_id: int, user_id: int) -> bool:
         """Delete a notification"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "DELETE FROM notifications WHERE id = %s AND user_id = %s",
+                        (notification_id, user_id)
+                    )
 
-            cur.execute(
-                "DELETE FROM notifications WHERE id = %s AND user_id = %s",
-                (notification_id, user_id)
-            )
-
-            result = cur.rowcount > 0
-            conn.commit()
-            cur.close()
-            conn.close()
+                    result = cur.rowcount > 0
 
             return result
 
@@ -510,18 +464,14 @@ class RealtimeNotificationService:
     def clear_expired_notifications() -> int:
         """Clear expired notifications (older than expiry date)"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        DELETE FROM notifications
+                        WHERE expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP
+                    """)
 
-            cur.execute("""
-                DELETE FROM notifications
-                WHERE expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP
-            """)
-
-            count = cur.rowcount
-            conn.commit()
-            cur.close()
-            conn.close()
+                    count = cur.rowcount
 
             logger.info(f"Cleared {count} expired notifications")
             return count
@@ -534,53 +484,49 @@ class RealtimeNotificationService:
     def get_notification_statistics(user_id: int) -> Dict[str, Any]:
         """Get notification statistics for user"""
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # Total notifications
+                    cur.execute(
+                        "SELECT COUNT(*) FROM notifications WHERE user_id = %s",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    total = result[0] if result else 0
 
-            # Total notifications
-            cur.execute(
-                "SELECT COUNT(*) FROM notifications WHERE user_id = %s",
-                (user_id,)
-            )
-            result = cur.fetchone()
-            total = result[0] if result else 0
+                    # Unread count
+                    cur.execute(
+                        "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    unread = result[0] if result else 0
 
-            # Unread count
-            cur.execute(
-                "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE",
-                (user_id,)
-            )
-            result = cur.fetchone()
-            unread = result[0] if result else 0
+                    # By type
+                    cur.execute("""
+                        SELECT type, COUNT(*) as count
+                        FROM notifications
+                        WHERE user_id = %s
+                        GROUP BY type
+                    """, (user_id,))
+                    by_type = {row[0]: row[1] for row in cur.fetchall()}
 
-            # By type
-            cur.execute("""
-                SELECT type, COUNT(*) as count
-                FROM notifications
-                WHERE user_id = %s
-                GROUP BY type
-            """, (user_id,))
-            by_type = {row[0]: row[1] for row in cur.fetchall()}
+                    # By priority
+                    cur.execute("""
+                        SELECT priority, COUNT(*) as count
+                        FROM notifications
+                        WHERE user_id = %s
+                        GROUP BY priority
+                    """, (user_id,))
+                    by_priority = {row[0]: row[1] for row in cur.fetchall()}
 
-            # By priority
-            cur.execute("""
-                SELECT priority, COUNT(*) as count
-                FROM notifications
-                WHERE user_id = %s
-                GROUP BY priority
-            """, (user_id,))
-            by_priority = {row[0]: row[1] for row in cur.fetchall()}
-
-            # Urgent unread
-            cur.execute(
-                "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE AND priority = 'urgent'",
-                (user_id,)
-            )
-            result = cur.fetchone()
-            urgent_unread = result[0] if result else 0
-
-            cur.close()
-            conn.close()
+                    # Urgent unread
+                    cur.execute(
+                        "SELECT COUNT(*) FROM notifications WHERE user_id = %s AND is_read = FALSE AND priority = 'urgent'",
+                        (user_id,)
+                    )
+                    result = cur.fetchone()
+                    urgent_unread = result[0] if result else 0
 
             return {
                 "total": total,

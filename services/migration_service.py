@@ -32,53 +32,44 @@ def run_migrations():
     if not MIGRATIONS_DIR.exists():
         return []
 
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_migrations_table(cur)
+            cur.execute("SELECT filename, checksum FROM schema_migrations")
+            applied = {row[0]: row[1] for row in cur.fetchall()}
+            executed = []
 
-    try:
-        _ensure_migrations_table(cur)
-        cur.execute("SELECT filename, checksum FROM schema_migrations")
-        applied = {row[0]: row[1] for row in cur.fetchall()}
-        executed = []
+            for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
+                filename = path.name
+                migration_sql, checksum, legacy_checksum = _load_migration(path)
 
-        for path in sorted(MIGRATIONS_DIR.glob("*.sql")):
-            filename = path.name
-            migration_sql, checksum, legacy_checksum = _load_migration(path)
+                if filename in applied:
+                    if applied[filename] == legacy_checksum and applied[filename] != checksum:
+                        cur.execute(
+                            """
+                            UPDATE schema_migrations
+                            SET checksum = %s
+                            WHERE filename = %s
+                            """,
+                            (checksum, filename),
+                        )
+                        continue
 
-            if filename in applied:
-                if applied[filename] == legacy_checksum and applied[filename] != checksum:
-                    cur.execute(
-                        """
-                        UPDATE schema_migrations
-                        SET checksum = %s
-                        WHERE filename = %s
-                        """,
-                        (checksum, filename),
-                    )
+                    if applied[filename] != checksum:
+                        raise RuntimeError(
+                            f"Migration {filename} has changed after being applied. "
+                            "Create a new migration instead of editing the old one."
+                        )
                     continue
 
-                if applied[filename] != checksum:
-                    raise RuntimeError(
-                        f"Migration {filename} has changed after being applied. "
-                        "Create a new migration instead of editing the old one."
-                    )
-                continue
+                cur.execute(migration_sql)
+                cur.execute(
+                    """
+                    INSERT INTO schema_migrations (filename, checksum)
+                    VALUES (%s, %s)
+                    """,
+                    (filename, checksum),
+                )
+                executed.append(filename)
 
-            cur.execute(migration_sql)
-            cur.execute(
-                """
-                INSERT INTO schema_migrations (filename, checksum)
-                VALUES (%s, %s)
-                """,
-                (filename, checksum),
-            )
-            executed.append(filename)
-
-        conn.commit()
-        return executed
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        cur.close()
-        conn.close()
+            return executed

@@ -8,22 +8,19 @@ class ResourcesService:
     @staticmethod
     def ensure_resources_table():
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS study_resources (
-                    id SERIAL PRIMARY KEY,
-                    title VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    resource_link VARCHAR(1000) NOT NULL,
-                    subject_id INTEGER REFERENCES subjects(id) ON DELETE CASCADE,
-                    uploaded_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-            conn.commit()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS study_resources (
+                            id SERIAL PRIMARY KEY,
+                            title VARCHAR(255) NOT NULL,
+                            description TEXT,
+                            resource_link VARCHAR(1000) NOT NULL,
+                            subject_id INTEGER REFERENCES subjects(id) ON DELETE CASCADE,
+                            uploaded_by INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        );
+                    """)
             logger.info("Resources table ensured")
         except Exception as e:
             logger.error(f"Error ensuring resources table: {e}")
@@ -32,17 +29,14 @@ class ResourcesService:
     @staticmethod
     def add_resource(title: str, description: str, resource_link: str, subject_id: int, uploaded_by: int):
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO study_resources (title, description, resource_link, subject_id, uploaded_by)
-                VALUES (%s, %s, %s, %s, %s)
-                RETURNING id
-            """, (title, description, resource_link, subject_id, uploaded_by))
-            resource_id = cur.fetchone()[0]
-            conn.commit()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO study_resources (title, description, resource_link, subject_id, uploaded_by)
+                        VALUES (%s, %s, %s, %s, %s)
+                        RETURNING id
+                    """, (title, description, resource_link, subject_id, uploaded_by))
+                    resource_id = cur.fetchone()[0]
             return resource_id
         except Exception as e:
             logger.error(f"Error adding resource: {e}")
@@ -51,9 +45,6 @@ class ResourcesService:
     @staticmethod
     def get_resources(subject_id=None):
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            
             query = """
                 SELECT r.id, r.title, r.description, r.resource_link, r.created_at, 
                        s.name as subject_name, u.name as uploader_name
@@ -69,10 +60,10 @@ class ResourcesService:
                 
             query += " ORDER BY r.created_at DESC"
             
-            cur.execute(query, params)
-            rows = cur.fetchall()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
+                    rows = cur.fetchall()
             
             resources = []
             for row in rows:
@@ -93,12 +84,9 @@ class ResourcesService:
     @staticmethod
     def delete_resource(resource_id: int):
         try:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute("DELETE FROM study_resources WHERE id = %s", (resource_id,))
-            conn.commit()
-            cur.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("DELETE FROM study_resources WHERE id = %s", (resource_id,))
             return True
         except Exception as e:
             logger.error(f"Error deleting resource: {e}")

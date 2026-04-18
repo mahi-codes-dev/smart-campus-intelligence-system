@@ -24,55 +24,53 @@ def ensure_subject_table_consistency(connection=None):
     if _SUBJECT_SCHEMA_READY:
         return
 
-    conn = connection or get_db_connection()
-    cur = conn.cursor()
+    def apply_schema(conn):
+        ensure_department_table_consistency(conn)
 
-    ensure_department_table_consistency(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS subjects (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(150) NOT NULL,
+                    code VARCHAR(50) UNIQUE NOT NULL,
+                    department VARCHAR(100) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
 
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS subjects (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(150) NOT NULL,
-            code VARCHAR(50) UNIQUE NOT NULL,
-            department VARCHAR(100) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
+            cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS name VARCHAR(150)")
+            cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS code VARCHAR(50)")
+            cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS department VARCHAR(100)")
+            cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
-    cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS name VARCHAR(150)")
-    cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS code VARCHAR(50)")
-    cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS department VARCHAR(100)")
-    cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute(
+                """
+                INSERT INTO departments (name)
+                SELECT DISTINCT TRIM(department)
+                FROM subjects
+                WHERE department IS NOT NULL AND TRIM(department) <> ''
+                ON CONFLICT (name) DO NOTHING
+                """
+            )
 
-    cur.execute(
-        """
-        INSERT INTO departments (name)
-        SELECT DISTINCT TRIM(department)
-        FROM subjects
-        WHERE department IS NOT NULL AND TRIM(department) <> ''
-        ON CONFLICT (name) DO NOTHING
-        """
-    )
+            cur.execute("ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_department_fkey")
+            cur.execute(
+                """
+                ALTER TABLE subjects
+                ADD CONSTRAINT subjects_department_fkey
+                FOREIGN KEY (department) REFERENCES departments(name)
+                ON UPDATE CASCADE
+                ON DELETE RESTRICT
+                """
+            )
 
-    cur.execute("ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_department_fkey")
-    cur.execute(
-        """
-        ALTER TABLE subjects
-        ADD CONSTRAINT subjects_department_fkey
-        FOREIGN KEY (department) REFERENCES departments(name)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT
-        """
-    )
-
-    if connection is None:
-        conn.commit()
-        cur.close()
-        conn.close()
+    if connection is not None:
+        apply_schema(connection)
     else:
-        cur.close()
+        with get_db_connection() as conn:
+            apply_schema(conn)
 
     _SUBJECT_SCHEMA_READY = True
 
@@ -80,57 +78,47 @@ def ensure_subject_table_consistency(connection=None):
 def create_subject(name, code, department):
     cleaned_name = normalize_subject_name(name)
     cleaned_code = normalize_subject_code(code)
-    conn = get_db_connection()
-    cur = conn.cursor()
 
-    ensure_subject_table_consistency(conn)
-    department_record = require_department_exists(department, conn)
+    with get_db_connection() as conn:
+        ensure_subject_table_consistency(conn)
+        department_record = require_department_exists(department, conn)
 
-    cur.execute(
-        """
-        SELECT id
-        FROM subjects
-        WHERE UPPER(code) = %s
-        """,
-        (cleaned_code,),
-    )
-    existing = cur.fetchone()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id
+                FROM subjects
+                WHERE UPPER(code) = %s
+                """,
+                (cleaned_code,),
+            )
+            existing = cur.fetchone()
 
-    if existing:
-        cur.close()
-        conn.close()
-        raise ValueError(f"Subject code {cleaned_code} already exists")
+            if existing:
+                raise ValueError(f"Subject code {cleaned_code} already exists")
 
-    cur.execute(
-        """
-        INSERT INTO subjects (name, code, department)
-        VALUES (%s, %s, %s)
-        """,
-        (cleaned_name, cleaned_code, department_record["name"]),
-    )
-
-    conn.commit()
-    cur.close()
-    conn.close()
+            cur.execute(
+                """
+                INSERT INTO subjects (name, code, department)
+                VALUES (%s, %s, %s)
+                """,
+                (cleaned_name, cleaned_code, department_record["name"]),
+            )
 
 
 def get_all_subjects():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        ensure_subject_table_consistency(conn)
 
-    ensure_subject_table_consistency(conn)
-
-    cur.execute(
-        """
-        SELECT id, name, code, department
-        FROM subjects
-        ORDER BY department ASC, name ASC, id ASC
-        """
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, code, department
+                FROM subjects
+                ORDER BY department ASC, name ASC, id ASC
+                """
+            )
+            rows = cur.fetchall()
 
     return [
         {
@@ -144,22 +132,19 @@ def get_all_subjects():
 
 
 def get_subject_by_id(subject_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        ensure_subject_table_consistency(conn)
 
-    ensure_subject_table_consistency(conn)
-    cur.execute(
-        """
-        SELECT id, name, code, department
-        FROM subjects
-        WHERE id = %s
-        """,
-        (subject_id,),
-    )
-    row = cur.fetchone()
-
-    cur.close()
-    conn.close()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, code, department
+                FROM subjects
+                WHERE id = %s
+                """,
+                (subject_id,),
+            )
+            row = cur.fetchone()
 
     if not row:
         return None
@@ -173,33 +158,26 @@ def get_subject_by_id(subject_id):
 
 
 def delete_subject(subject_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        ensure_subject_table_consistency(conn)
 
-    ensure_subject_table_consistency(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, code
+                FROM subjects
+                WHERE id = %s
+                """,
+                (subject_id,),
+            )
+            subject = cur.fetchone()
 
-    cur.execute(
-        """
-        SELECT id, name, code
-        FROM subjects
-        WHERE id = %s
-        """,
-        (subject_id,),
-    )
-    subject = cur.fetchone()
+            if not subject:
+                raise ValueError("Subject not found")
 
-    if not subject:
-        cur.close()
-        conn.close()
-        raise ValueError("Subject not found")
-
-    cur.execute("DELETE FROM attendance WHERE subject_id = %s", (subject_id,))
-    cur.execute("DELETE FROM marks WHERE subject_id = %s", (subject_id,))
-    cur.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
-
-    conn.commit()
-    cur.close()
-    conn.close()
+            cur.execute("DELETE FROM attendance WHERE subject_id = %s", (subject_id,))
+            cur.execute("DELETE FROM marks WHERE subject_id = %s", (subject_id,))
+            cur.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
 
     return {
         "id": subject[0],

@@ -34,27 +34,23 @@ def _build_csv_content(headers, rows):
 
 
 def get_admin_stats():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM students")
+            total_students = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM students")
-    total_students = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM users u
+                JOIN roles r ON u.role_id = r.id
+                WHERE LOWER(r.role_name) = 'faculty'
+                """
+            )
+            total_faculty = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM users u
-        JOIN roles r ON u.role_id = r.id
-        WHERE LOWER(r.role_name) = 'faculty'
-        """
-    )
-    total_faculty = cur.fetchone()[0]
-
-    cur.execute("SELECT COUNT(*) FROM users")
-    total_users = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
+            cur.execute("SELECT COUNT(*) FROM users")
+            total_users = cur.fetchone()[0]
 
     department_average_scores = get_department_average_scores()
 
@@ -71,25 +67,21 @@ def get_admin_stats():
 
 
 def get_all_users():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        """
-        SELECT
-            u.id,
-            u.name,
-            u.email,
-            r.role_name
-        FROM users u
-        LEFT JOIN roles r ON u.role_id = r.id
-        ORDER BY u.id ASC
-        """
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    u.id,
+                    u.name,
+                    u.email,
+                    r.role_name
+                FROM users u
+                LEFT JOIN roles r ON u.role_id = r.id
+                ORDER BY u.id ASC
+                """
+            )
+            rows = cur.fetchall()
 
     return [
         {
@@ -103,82 +95,78 @@ def get_all_users():
 
 
 def get_operations_snapshot():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        _ensure_admin_reporting_tables(conn)
 
-    _ensure_admin_reporting_tables(conn)
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM departments")
+            total_departments = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM departments")
-    total_departments = cur.fetchone()[0]
+            cur.execute("SELECT COUNT(*) FROM subjects")
+            total_subjects = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM subjects")
-    total_subjects = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM departments d
+                LEFT JOIN subjects sub ON sub.department = d.name
+                WHERE sub.id IS NULL
+                """
+            )
+            departments_without_subjects = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM departments d
-        LEFT JOIN subjects sub ON sub.department = d.name
-        WHERE sub.id IS NULL
-        """
-    )
-    departments_without_subjects = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM subjects sub
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM marks m
+                    WHERE m.subject_id = sub.id
+                )
+                """
+            )
+            subjects_without_marks = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM subjects sub
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM marks m
-            WHERE m.subject_id = sub.id
-        )
-        """
-    )
-    subjects_without_marks = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM subjects sub
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM attendance a
+                    WHERE a.subject_id = sub.id
+                )
+                """
+            )
+            subjects_without_attendance = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM subjects sub
-        WHERE NOT EXISTS (
-            SELECT 1
-            FROM attendance a
-            WHERE a.subject_id = sub.id
-        )
-        """
-    )
-    subjects_without_attendance = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM marks
+                WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+                """
+            )
+            marks_updates_last_7_days = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM marks
-        WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
-        """
-    )
-    marks_updates_last_7_days = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM attendance
+                WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+                """
+            )
+            attendance_updates_last_7_days = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM attendance
-        WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
-        """
-    )
-    attendance_updates_last_7_days = cur.fetchone()[0]
-
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM students
-        WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
-        """
-    )
-    new_students_last_30_days = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM students
+                WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+                """
+            )
+            new_students_last_30_days = cur.fetchone()[0]
 
     low_performers = get_low_performing_students()
     critical_interventions = sum(
@@ -217,82 +205,78 @@ def get_operations_snapshot():
 
 
 def get_data_quality_snapshot():
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM students")
+            total_students = cur.fetchone()[0]
 
-    cur.execute("SELECT COUNT(*) FROM students")
-    total_students = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM students
+                WHERE roll_number IS NULL OR TRIM(roll_number) = ''
+                """
+            )
+            missing_roll_numbers = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM students
-        WHERE roll_number IS NULL OR TRIM(roll_number) = ''
-        """
-    )
-    missing_roll_numbers = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM students
+                WHERE department IS NULL OR TRIM(department) = ''
+                """
+            )
+            missing_departments = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM students
-        WHERE department IS NULL OR TRIM(department) = ''
-        """
-    )
-    missing_departments = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM (
+                    SELECT UPPER(TRIM(roll_number))
+                    FROM students
+                    WHERE roll_number IS NOT NULL AND TRIM(roll_number) <> ''
+                    GROUP BY UPPER(TRIM(roll_number))
+                    HAVING COUNT(*) > 1
+                ) duplicate_roll_numbers
+                """
+            )
+            duplicate_roll_number_groups = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM (
-            SELECT UPPER(TRIM(roll_number))
-            FROM students
-            WHERE roll_number IS NOT NULL AND TRIM(roll_number) <> ''
-            GROUP BY UPPER(TRIM(roll_number))
-            HAVING COUNT(*) > 1
-        ) duplicate_roll_numbers
-        """
-    )
-    duplicate_roll_number_groups = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM (
+                    SELECT LOWER(email)
+                    FROM users
+                    WHERE email IS NOT NULL AND TRIM(email) <> ''
+                    GROUP BY LOWER(email)
+                    HAVING COUNT(*) > 1
+                ) duplicate_user_emails
+                """
+            )
+            duplicate_user_email_groups = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM (
-            SELECT LOWER(email)
-            FROM users
-            WHERE email IS NOT NULL AND TRIM(email) <> ''
-            GROUP BY LOWER(email)
-            HAVING COUNT(*) > 1
-        ) duplicate_user_emails
-        """
-    )
-    duplicate_user_email_groups = cur.fetchone()[0]
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM students s
+                LEFT JOIN users u ON s.user_id = u.id
+                WHERE s.user_id IS NOT NULL AND u.id IS NULL
+                """
+            )
+            orphan_student_links = cur.fetchone()[0]
 
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM students s
-        LEFT JOIN users u ON s.user_id = u.id
-        WHERE s.user_id IS NOT NULL AND u.id IS NULL
-        """
-    )
-    orphan_student_links = cur.fetchone()[0]
-
-    cur.execute(
-        """
-        SELECT COUNT(*)
-        FROM students s
-        WHERE NOT EXISTS (SELECT 1 FROM attendance a WHERE a.student_id = s.id)
-          AND NOT EXISTS (SELECT 1 FROM marks m WHERE m.student_id = s.id)
-          AND NOT EXISTS (SELECT 1 FROM mock_tests mt WHERE mt.student_id = s.id)
-          AND NOT EXISTS (SELECT 1 FROM student_skills sk WHERE sk.student_id = s.id)
-        """
-    )
-    students_without_activity = cur.fetchone()[0]
-
-    cur.close()
-    conn.close()
+            cur.execute(
+                """
+                SELECT COUNT(*)
+                FROM students s
+                WHERE NOT EXISTS (SELECT 1 FROM attendance a WHERE a.student_id = s.id)
+                  AND NOT EXISTS (SELECT 1 FROM marks m WHERE m.student_id = s.id)
+                  AND NOT EXISTS (SELECT 1 FROM mock_tests mt WHERE mt.student_id = s.id)
+                  AND NOT EXISTS (SELECT 1 FROM student_skills sk WHERE sk.student_id = s.id)
+                """
+            )
+            students_without_activity = cur.fetchone()[0]
 
     issue_total = (
         missing_roll_numbers
@@ -327,31 +311,30 @@ def build_admin_export(export_name):
     export_key = (export_name or "").strip().lower()
 
     if export_key == "students":
-        conn = get_db_connection()
-        cur = conn.cursor()
-        _ensure_admin_reporting_tables(conn)
-        cur.execute(
-            """
-            SELECT
-                s.id,
-                s.user_id,
-                COALESCE(NULLIF(s.name, ''), u.name, '') AS name,
-                COALESCE(NULLIF(s.email, ''), u.email, '') AS email,
-                COALESCE(s.roll_number, '') AS roll_number,
-                COALESCE(s.department, '') AS department,
-                s.created_at,
-                s.updated_at
-            FROM students s
-            LEFT JOIN users u ON s.user_id = u.id
-            ORDER BY
-                COALESCE(NULLIF(s.department, ''), 'ZZZ') ASC,
-                COALESCE(NULLIF(s.name, ''), u.name, '') ASC,
-                s.id ASC
-            """
-        )
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
+        with get_db_connection() as conn:
+            _ensure_admin_reporting_tables(conn)
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        s.id,
+                        s.user_id,
+                        COALESCE(NULLIF(s.name, ''), u.name, '') AS name,
+                        COALESCE(NULLIF(s.email, ''), u.email, '') AS email,
+                        COALESCE(s.roll_number, '') AS roll_number,
+                        COALESCE(s.department, '') AS department,
+                        s.created_at,
+                        s.updated_at
+                    FROM students s
+                    LEFT JOIN users u ON s.user_id = u.id
+                    ORDER BY
+                        COALESCE(NULLIF(s.department, ''), 'ZZZ') ASC,
+                        COALESCE(NULLIF(s.name, ''), u.name, '') ASC,
+                        s.id ASC
+                    """
+                )
+                rows = cur.fetchall()
 
         return {
             "filename": f"students-master-{date.today().isoformat()}.csv",
@@ -371,23 +354,21 @@ def build_admin_export(export_name):
         }
 
     if export_key == "users":
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            SELECT
-                u.id,
-                u.name,
-                u.email,
-                COALESCE(r.role_name, 'Unknown') AS role
-            FROM users u
-            LEFT JOIN roles r ON u.role_id = r.id
-            ORDER BY role ASC, u.name ASC, u.id ASC
-            """
-        )
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        u.id,
+                        u.name,
+                        u.email,
+                        COALESCE(r.role_name, 'Unknown') AS role
+                    FROM users u
+                    LEFT JOIN roles r ON u.role_id = r.id
+                    ORDER BY role ASC, u.name ASC, u.id ASC
+                    """
+                )
+                rows = cur.fetchall()
 
         return {
             "filename": f"users-and-roles-{date.today().isoformat()}.csv",
@@ -398,24 +379,23 @@ def build_admin_export(export_name):
         }
 
     if export_key == "subjects":
-        conn = get_db_connection()
-        cur = conn.cursor()
-        _ensure_admin_reporting_tables(conn)
-        cur.execute(
-            """
-            SELECT
-                id,
-                name,
-                code,
-                department,
-                created_at
-            FROM subjects
-            ORDER BY department ASC, name ASC, id ASC
-            """
-        )
-        rows = cur.fetchall()
-        cur.close()
-        conn.close()
+        with get_db_connection() as conn:
+            _ensure_admin_reporting_tables(conn)
+
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT
+                        id,
+                        name,
+                        code,
+                        department,
+                        created_at
+                    FROM subjects
+                    ORDER BY department ASC, name ASC, id ASC
+                    """
+                )
+                rows = cur.fetchall()
 
         return {
             "filename": f"subject-catalog-{date.today().isoformat()}.csv",
@@ -472,80 +452,69 @@ def build_admin_export(export_name):
 
 
 def delete_user(user_id, current_user_id=None):
-    conn = get_db_connection()
-    cur = conn.cursor()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT u.id, u.email, COALESCE(r.role_name, '')
+                FROM users u
+                LEFT JOIN roles r ON u.role_id = r.id
+                WHERE u.id = %s
+                """,
+                (user_id,),
+            )
+            user = cur.fetchone()
 
-    cur.execute(
-        """
-        SELECT u.id, u.email, COALESCE(r.role_name, '')
-        FROM users u
-        LEFT JOIN roles r ON u.role_id = r.id
-        WHERE u.id = %s
-        """,
-        (user_id,),
-    )
-    user = cur.fetchone()
+            if not user:
+                raise ValueError("User not found")
 
-    if not user:
-        cur.close()
-        conn.close()
-        raise ValueError("User not found")
+            if current_user_id is not None and int(user_id) == int(current_user_id):
+                raise ValueError("You cannot delete your own account")
 
-    if current_user_id is not None and int(user_id) == int(current_user_id):
-        cur.close()
-        conn.close()
-        raise ValueError("You cannot delete your own account")
+            role_name = (user[2] or "").strip().lower()
 
-    role_name = (user[2] or "").strip().lower()
+            if role_name == "admin":
+                cur.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM users u
+                    JOIN roles r ON u.role_id = r.id
+                    WHERE LOWER(r.role_name) = 'admin'
+                    """
+                )
+                admin_count = cur.fetchone()[0]
 
-    if role_name == "admin":
-        cur.execute(
-            """
-            SELECT COUNT(*)
-            FROM users u
-            JOIN roles r ON u.role_id = r.id
-            WHERE LOWER(r.role_name) = 'admin'
-            """
-        )
-        admin_count = cur.fetchone()[0]
+                if admin_count <= 1:
+                    raise ValueError("At least one admin account must remain in the system")
 
-        if admin_count <= 1:
-            cur.close()
-            conn.close()
-            raise ValueError("At least one admin account must remain in the system")
+            cur.execute(
+                """
+                SELECT id
+                FROM students
+                WHERE user_id = %s OR LOWER(email) = LOWER(%s)
+                ORDER BY id ASC
+                """,
+                (user_id, user[1]),
+            )
+            student_ids = [row[0] for row in cur.fetchall()]
 
-    cur.execute(
-        """
-        SELECT id
-        FROM students
-        WHERE user_id = %s OR LOWER(email) = LOWER(%s)
-        ORDER BY id ASC
-        """,
-        (user_id, user[1]),
-    )
-    student_ids = [row[0] for row in cur.fetchall()]
+            for student_id in student_ids:
+                cur.execute("DELETE FROM attendance WHERE student_id = %s", (student_id,))
+                cur.execute("DELETE FROM marks WHERE student_id = %s", (student_id,))
+                cur.execute("DELETE FROM mock_tests WHERE student_id = %s", (student_id,))
+                cur.execute("DELETE FROM student_skills WHERE student_id = %s", (student_id,))
 
-    for student_id in student_ids:
-        cur.execute("DELETE FROM attendance WHERE student_id = %s", (student_id,))
-        cur.execute("DELETE FROM marks WHERE student_id = %s", (student_id,))
-        cur.execute("DELETE FROM mock_tests WHERE student_id = %s", (student_id,))
-        cur.execute("DELETE FROM student_skills WHERE student_id = %s", (student_id,))
+            if student_ids:
+                cur.execute(
+                    """
+                    DELETE FROM students
+                    WHERE user_id = %s OR LOWER(email) = LOWER(%s)
+                    """,
+                    (user_id, user[1]),
+                )
 
-    if student_ids:
-        cur.execute(
-            """
-            DELETE FROM students
-            WHERE user_id = %s OR LOWER(email) = LOWER(%s)
-            """,
-            (user_id, user[1]),
-        )
-
-    cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
-    deleted = cur.rowcount
-
-    conn.commit()
-    cur.close()
-    conn.close()
+            cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            deleted = cur.rowcount
 
     if not deleted:
         raise ValueError("User could not be deleted")

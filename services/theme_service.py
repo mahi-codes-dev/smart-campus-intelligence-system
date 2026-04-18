@@ -22,30 +22,25 @@ class ThemeService:
     def ensure_theme_table():
         """Create theme_preferences table if it doesn't exist"""
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS theme_preferences (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER UNIQUE NOT NULL,
-                    theme VARCHAR(20) NOT NULL DEFAULT 'light',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    CONSTRAINT fk_user_id FOREIGN KEY (user_id) 
-                        REFERENCES users(id) ON DELETE CASCADE
-                )
-            """)
-            
-            # Create index on user_id for faster lookups
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_theme_user_id 
-                ON theme_preferences(user_id)
-            """)
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        CREATE TABLE IF NOT EXISTS theme_preferences (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER UNIQUE NOT NULL,
+                            theme VARCHAR(20) NOT NULL DEFAULT 'light',
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT fk_user_id FOREIGN KEY (user_id)
+                                REFERENCES users(id) ON DELETE CASCADE
+                        )
+                    """)
+
+                    # Create index on user_id for faster lookups
+                    cursor.execute("""
+                        CREATE INDEX IF NOT EXISTS idx_theme_user_id
+                        ON theme_preferences(user_id)
+                    """)
             return True
         except Exception as e:
             logger.exception("Theme table creation error")
@@ -63,16 +58,13 @@ class ThemeService:
             Theme name ('light' or 'dark')
         """
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute(
-                "SELECT theme FROM theme_preferences WHERE user_id = %s",
-                (user_id,)
-            )
-            result = cursor.fetchone()
-            cursor.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT theme FROM theme_preferences WHERE user_id = %s",
+                        (user_id,)
+                    )
+                    result = cursor.fetchone()
             
             if result:
                 return result[0]
@@ -97,21 +89,16 @@ class ThemeService:
             return False
         
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # Use INSERT ... ON CONFLICT approach (PostgreSQL specific)
-            # If user exists, update; if not, insert
-            cursor.execute("""
-                INSERT INTO theme_preferences (user_id, theme, updated_at)
-                VALUES (%s, %s, CURRENT_TIMESTAMP)
-                ON CONFLICT (user_id) DO UPDATE
-                SET theme = %s, updated_at = CURRENT_TIMESTAMP
-            """, (user_id, theme, theme))
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    # Use INSERT ... ON CONFLICT approach (PostgreSQL specific)
+                    # If user exists, update; if not, insert
+                    cursor.execute("""
+                        INSERT INTO theme_preferences (user_id, theme, updated_at)
+                        VALUES (%s, %s, CURRENT_TIMESTAMP)
+                        ON CONFLICT (user_id) DO UPDATE
+                        SET theme = %s, updated_at = CURRENT_TIMESTAMP
+                    """, (user_id, theme, theme))
             return True
         except Exception as e:
             logger.exception("Error setting user theme")
@@ -152,18 +139,13 @@ class ThemeService:
             Success status
         """
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                INSERT INTO theme_preferences (user_id, theme)
-                VALUES (%s, %s)
-                ON CONFLICT (user_id) DO NOTHING
-            """, (user_id, theme))
-            
-            conn.commit()
-            cursor.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO theme_preferences (user_id, theme)
+                        VALUES (%s, %s)
+                        ON CONFLICT (user_id) DO NOTHING
+                    """, (user_id, theme))
             return True
         except Exception as e:
             logger.exception("Error initializing user theme")
@@ -178,18 +160,15 @@ class ThemeService:
             Dict with counts of light/dark theme users
         """
         try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("""
-                SELECT theme, COUNT(*) as count
-                FROM theme_preferences
-                GROUP BY theme
-            """)
-            
-            results = cursor.fetchall()
-            cursor.close()
-            conn.close()
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT theme, COUNT(*) as count
+                        FROM theme_preferences
+                        GROUP BY theme
+                    """)
+
+                    results = cursor.fetchall()
             
             stats = {'light': 0, 'dark': 0}
             for theme, count in results:

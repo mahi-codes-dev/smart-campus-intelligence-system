@@ -12,53 +12,50 @@ def get_admin_dashboard():
     """
     stats = get_admin_stats()
 
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM subjects")
-    result = cur.fetchone()
-    total_subjects = result[0] if result else 0
-    
-    # Get all students with scores for department-wise breakdown
-    cur.execute("""
-        WITH student_scores AS (
-            SELECT
-                s.id,
-                s.department,
-                COALESCE(
-                    (
-                        SELECT AVG(m.marks) FROM marks m WHERE m.student_id = s.id
-                    ), 0
-                ) AS marks_avg,
-                COALESCE(
-                    (
-                        SELECT COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0)
-                        FROM attendance a WHERE a.student_id = s.id
-                    ), 0
-                ) AS attendance_score
-            FROM students s
-        )
-        SELECT 
-            department,
-            COUNT(*) as total,
-            ROUND(AVG(marks_avg), 2) as dept_avg_marks,
-            ROUND(AVG(attendance_score), 2) as dept_avg_attendance
-        FROM student_scores
-        WHERE department IS NOT NULL
-        GROUP BY department
-        ORDER BY dept_avg_marks DESC
-    """)
-    
-    department_analytics = []
-    for row in cur.fetchall():
-        department_analytics.append({
-            "department": row[0],
-            "student_count": row[1],
-            "avg_marks": row[2] or 0,
-            "avg_attendance": row[3] or 0,
-        })
-    
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM subjects")
+            result = cur.fetchone()
+            total_subjects = result[0] if result else 0
+
+            # Get all students with scores for department-wise breakdown
+            cur.execute("""
+                WITH student_scores AS (
+                    SELECT
+                        s.id,
+                        s.department,
+                        COALESCE(
+                            (
+                                SELECT AVG(m.marks) FROM marks m WHERE m.student_id = s.id
+                            ), 0
+                        ) AS marks_avg,
+                        COALESCE(
+                            (
+                                SELECT COUNT(*) FILTER (WHERE status = 'Present') * 100.0 / NULLIF(COUNT(*), 0)
+                                FROM attendance a WHERE a.student_id = s.id
+                            ), 0
+                        ) AS attendance_score
+                    FROM students s
+                )
+                SELECT
+                    department,
+                    COUNT(*) as total,
+                    ROUND(AVG(marks_avg), 2) as dept_avg_marks,
+                    ROUND(AVG(attendance_score), 2) as dept_avg_attendance
+                FROM student_scores
+                WHERE department IS NOT NULL
+                GROUP BY department
+                ORDER BY dept_avg_marks DESC
+            """)
+
+            department_analytics = []
+            for row in cur.fetchall():
+                department_analytics.append({
+                    "department": row[0],
+                    "student_count": row[1],
+                    "avg_marks": row[2] or 0,
+                    "avg_attendance": row[3] or 0,
+                })
 
     average_score = 0
     if stats["department_average_scores"]:

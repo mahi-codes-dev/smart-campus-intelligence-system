@@ -10,20 +10,6 @@ from config import settings
 _DB_POOL = None
 
 
-class PooledConnectionProxy:
-    def __init__(self, conn):
-        self._conn = conn
-        self._released = False
-
-    def close(self):
-        if not self._released:
-            release_db_connection(self._conn)
-            self._released = True
-
-    def __getattr__(self, item):
-        return getattr(self._conn, item)
-
-
 def _build_connect_kwargs():
     if settings.database_url:
         return {"dsn": settings.database_url}
@@ -61,50 +47,38 @@ def close_db_pool():
 atexit.register(close_db_pool)
 
 
+@contextmanager
 def get_db_connection():
-    return PooledConnectionProxy(get_db_pool().getconn())
+    conn = get_db_pool().getconn()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        get_db_pool().putconn(conn)
 
 
 def release_db_connection(conn, *, close=False):
     if conn is None:
         return
 
-    raw_conn = getattr(conn, "_conn", conn)
-
     if close:
-        raw_conn.close()
+        conn.close()
         return
 
-    get_db_pool().putconn(raw_conn)
+    get_db_pool().putconn(conn)
 
 
 @contextmanager
 def db_connection(commit=False):
-    conn = get_db_connection()
-
-    try:
+    with get_db_connection() as conn:
         yield conn
-        if commit:
-            conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 @contextmanager
 def db_cursor(commit=True):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    try:
-        yield cur
-        if commit:
-            conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        cur.close()
-        conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            yield cur

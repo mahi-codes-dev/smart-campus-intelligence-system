@@ -1,4 +1,14 @@
+from typing import Any
+
 from database import get_db_connection
+
+
+READINESS_WEIGHTS = {
+    "attendance": 0.30,
+    "marks": 0.40,
+    "skills": 0.20,
+    "mock_tests": 0.10,
+}
 
 
 STUDENT_SCORE_CTE = """
@@ -60,7 +70,7 @@ student_scores AS (
 """
 
 
-def _status_from_score(score):
+def _status_from_score(score: float) -> str:
     if score >= 80:
         return "Placement Ready"
     if score >= 60:
@@ -68,7 +78,7 @@ def _status_from_score(score):
     return "Needs Improvement"
 
 
-def _risk_from_metrics(attendance, marks):
+def _risk_from_metrics(attendance: float, marks: float) -> str:
     if attendance < 60 or marks < 50:
         return "At Risk"
     if attendance < 75 or marks < 60:
@@ -76,13 +86,43 @@ def _risk_from_metrics(attendance, marks):
     return "Safe"
 
 
-def _row_to_score_payload(row):
-    attendance = round(float(row[5] or 0), 2)
-    marks = round(float(row[6] or 0), 2)
-    skills_count = int(row[7] or 0)
-    skills_score = round(float(row[8] or 0), 2)
-    mock_score = round(float(row[9] or 0), 2)
-    final_score = round(float(row[10] or 0), 2)
+def _clamp_score_value(value: Any) -> float:
+    """Normalize one score component into the supported 0-100 range."""
+    try:
+        numeric_value = float(value or 0)
+    except (TypeError, ValueError):
+        numeric_value = 0
+    return min(max(numeric_value, 0), 100)
+
+
+def calculate_weighted_score(
+    attendance: Any = 0,
+    marks: Any = 0,
+    skills_score: Any = 0,
+    mock_score: Any = 0,
+    weights: dict[str, float] | None = None,
+) -> float:
+    """Calculate the weighted readiness score from normalized inputs."""
+    active_weights = weights or READINESS_WEIGHTS
+    if round(sum(active_weights.values()), 10) != 1.0:
+        raise ValueError("Readiness weights must sum to 1.0")
+
+    weighted_score = (
+        _clamp_score_value(attendance) * active_weights["attendance"]
+        + _clamp_score_value(marks) * active_weights["marks"]
+        + _clamp_score_value(skills_score) * active_weights["skills"]
+        + _clamp_score_value(mock_score) * active_weights["mock_tests"]
+    )
+    return round(weighted_score, 2)
+
+
+def _row_to_score_payload(row: tuple[Any, ...]) -> dict[str, Any]:
+    attendance = round(_clamp_score_value(row[5]), 2)
+    marks = round(_clamp_score_value(row[6]), 2)
+    skills_count = max(int(row[7] or 0), 0)
+    skills_score = round(_clamp_score_value(row[8]), 2)
+    mock_score = round(_clamp_score_value(row[9]), 2)
+    final_score = calculate_weighted_score(attendance, marks, skills_score, mock_score)
 
     return {
         "student_id": row[0],
@@ -102,9 +142,6 @@ def _row_to_score_payload(row):
 
 
 def _fetch_student_score_rows(search=None, department=None, sort_order="desc", connection=None):
-    conn = connection or get_db_connection()
-    cur = conn.cursor()
-
     conditions = []
     params = []
 
@@ -118,8 +155,7 @@ def _fetch_student_score_rows(search=None, department=None, sort_order="desc", c
 
     where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
     order_direction = "DESC" if (sort_order or "desc").lower() != "asc" else "ASC"
-
-    cur.execute(
+    query = (
         STUDENT_SCORE_CTE
         + f"""
         SELECT
@@ -137,46 +173,44 @@ def _fetch_student_score_rows(search=None, department=None, sort_order="desc", c
         FROM student_scores
         {where_clause}
         ORDER BY final_score {order_direction}, name ASC, student_id ASC
-        """,
-        tuple(params),
+        """
     )
-    rows = cur.fetchall()
-    cur.close()
 
-    if connection is None:
-        conn.close()
+    if connection is not None:
+        with connection.cursor() as cur:
+            cur.execute(query, tuple(params))
+            return cur.fetchall()
 
-    return rows
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, tuple(params))
+            return cur.fetchall()
 
 
 def calculate_readiness(student_id):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        STUDENT_SCORE_CTE
-        + """
-        SELECT
-            student_id,
-            name,
-            email,
-            roll_number,
-            department,
-            attendance,
-            marks,
-            skills_count,
-            skills_score,
-            mock_score,
-            final_score
-        FROM student_scores
-        WHERE student_id = %s
-        """,
-        (student_id,),
-    )
-    row = cur.fetchone()
-
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                STUDENT_SCORE_CTE
+                + """
+                SELECT
+                    student_id,
+                    name,
+                    email,
+                    roll_number,
+                    department,
+                    attendance,
+                    marks,
+                    skills_count,
+                    skills_score,
+                    mock_score,
+                    final_score
+                FROM student_scores
+                WHERE student_id = %s
+                """,
+                (student_id,),
+            )
+            row = cur.fetchone()
 
     if not row:
         return {
@@ -224,42 +258,38 @@ def get_top_students(limit=5):
 
 
 def get_top_students_by_department(limit_per_department=3):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        STUDENT_SCORE_CTE
-        + """
-        SELECT
-            department,
-            student_id,
-            name,
-            email,
-            roll_number,
-            attendance,
-            marks,
-            skills_count,
-            skills_score,
-            mock_score,
-            final_score
-        FROM (
-            SELECT
-                student_scores.*,
-                ROW_NUMBER() OVER (
-                    PARTITION BY department
-                    ORDER BY final_score DESC, name ASC, student_id ASC
-                ) AS department_rank
-            FROM student_scores
-        ) ranked_scores
-        WHERE department_rank <= %s
-        ORDER BY department ASC, final_score DESC, name ASC, student_id ASC
-        """,
-        (limit_per_department,),
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                STUDENT_SCORE_CTE
+                + """
+                SELECT
+                    department,
+                    student_id,
+                    name,
+                    email,
+                    roll_number,
+                    attendance,
+                    marks,
+                    skills_count,
+                    skills_score,
+                    mock_score,
+                    final_score
+                FROM (
+                    SELECT
+                        student_scores.*,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY department
+                            ORDER BY final_score DESC, name ASC, student_id ASC
+                        ) AS department_rank
+                    FROM student_scores
+                ) ranked_scores
+                WHERE department_rank <= %s
+                ORDER BY department ASC, final_score DESC, name ASC, student_id ASC
+                """,
+                (limit_per_department,),
+            )
+            rows = cur.fetchall()
 
     grouped = []
     current_department = None
@@ -291,34 +321,30 @@ def get_top_students_by_department(limit_per_department=3):
 
 
 def get_low_performing_students(threshold=60):
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        STUDENT_SCORE_CTE
-        + """
-        SELECT
-            student_id,
-            name,
-            email,
-            roll_number,
-            department,
-            attendance,
-            marks,
-            skills_count,
-            skills_score,
-            mock_score,
-            final_score
-        FROM student_scores
-        WHERE final_score < %s
-        ORDER BY final_score ASC, name ASC, student_id ASC
-        """,
-        (threshold,),
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                STUDENT_SCORE_CTE
+                + """
+                SELECT
+                    student_id,
+                    name,
+                    email,
+                    roll_number,
+                    department,
+                    attendance,
+                    marks,
+                    skills_count,
+                    skills_score,
+                    mock_score,
+                    final_score
+                FROM student_scores
+                WHERE final_score < %s
+                ORDER BY final_score ASC, name ASC, student_id ASC
+                """,
+                (threshold,),
+            )
+            rows = cur.fetchall()
 
     return [
         {
@@ -341,25 +367,21 @@ def get_low_performing_students(threshold=60):
 
 
 def get_department_average_scores():
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        STUDENT_SCORE_CTE
-        + """
-        SELECT
-            department,
-            ROUND(AVG(final_score), 2) AS average_score,
-            COUNT(*) AS student_count
-        FROM student_scores
-        GROUP BY department
-        ORDER BY average_score DESC, department ASC
-        """
-    )
-    rows = cur.fetchall()
-
-    cur.close()
-    conn.close()
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                STUDENT_SCORE_CTE
+                + """
+                SELECT
+                    department,
+                    ROUND(AVG(final_score), 2) AS average_score,
+                    COUNT(*) AS student_count
+                FROM student_scores
+                GROUP BY department
+                ORDER BY average_score DESC, department ASC
+                """
+            )
+            rows = cur.fetchall()
 
     return [
         {
