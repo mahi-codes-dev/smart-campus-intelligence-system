@@ -6,6 +6,14 @@ _DEPARTMENT_SCHEMA_READY = False
 _STUDENT_SCHEMA_READY = False
 
 
+class DuplicateStudentError(ValueError):
+    pass
+
+
+class StudentNotFoundError(ValueError):
+    pass
+
+
 def _connection_scope(connection=None):
     return nullcontext(connection) if connection is not None else get_db_connection()
 
@@ -417,6 +425,127 @@ def get_all_departments():
             rows = cur.fetchall()
 
     return [row[0] for row in rows]
+
+
+def _student_email_exists(email, connection, exclude_student_id=None):
+    query = """
+        SELECT id
+        FROM students
+        WHERE LOWER(COALESCE(email, '')) = LOWER(%s)
+    """
+    params = [email]
+
+    if exclude_student_id is not None:
+        query += " AND id <> %s"
+        params.append(exclude_student_id)
+
+    with connection.cursor() as cur:
+        cur.execute(query, tuple(params))
+        return cur.fetchone() is not None
+
+
+def _ensure_unique_student_fields(email, roll_number, connection, exclude_student_id=None):
+    if _student_email_exists(email, connection, exclude_student_id=exclude_student_id):
+        raise DuplicateStudentError("Email already exists")
+
+    try:
+        ensure_roll_number_available(
+            roll_number,
+            connection=connection,
+            exclude_student_id=exclude_student_id,
+        )
+    except ValueError as exc:
+        raise DuplicateStudentError(str(exc)) from exc
+
+
+def create_student_record(name, email, department, roll_number):
+    with get_db_connection() as conn:
+        ensure_student_table_consistency(conn)
+        department_record = ensure_department_exists(department, connection=conn)
+        _ensure_unique_student_fields(email, roll_number, conn)
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO students (name, email, department, roll_number)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+                """,
+                (name, email, department_record["name"], roll_number),
+            )
+            row = cur.fetchone()
+
+    return {
+        "id": row[0] if row else None,
+        "name": name,
+        "email": email,
+        "department": department_record["name"],
+        "roll_number": roll_number,
+    }
+
+
+def update_student_record(student_id, name, email, department, roll_number):
+    with get_db_connection() as conn:
+        ensure_student_table_consistency(conn)
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM students WHERE id = %s", (student_id,))
+            if not cur.fetchone():
+                raise StudentNotFoundError("Student not found")
+
+        department_record = ensure_department_exists(department, connection=conn)
+        _ensure_unique_student_fields(email, roll_number, conn, exclude_student_id=student_id)
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE students
+                SET name = %s,
+                    email = %s,
+                    department = %s,
+                    roll_number = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+                RETURNING id
+                """,
+                (name, email, department_record["name"], roll_number, student_id),
+            )
+            row = cur.fetchone()
+
+    return {
+        "id": row[0] if row else student_id,
+        "name": name,
+        "email": email,
+        "department": department_record["name"],
+        "roll_number": roll_number,
+    }
+
+
+def delete_student_record(student_id):
+    with get_db_connection() as conn:
+        ensure_student_table_consistency(conn)
+
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM students
+                WHERE id = %s
+                RETURNING id, name, email, roll_number, department
+                """,
+                (student_id,),
+            )
+            row = cur.fetchone()
+
+    if not row:
+        raise StudentNotFoundError("Student not found")
+
+    return {
+        "id": row[0],
+        "name": row[1],
+        "email": row[2],
+        "roll_number": row[3],
+        "department": row[4],
+    }
 
 
 def fetch_all_students():

@@ -1,15 +1,13 @@
 import logging
 from pathlib import Path
-import psycopg2
 from flask import Flask, jsonify, render_template, request
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from auth.auth_middleware import token_required, role_required
 from auth.auth_routes import auth_bp
 from config import settings
 from core.logging_config import configure_logging
 from core.security_headers import apply_security_headers
-from database import get_db_connection, db_cursor
+from database import get_db_connection
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.admin_routes import admin_bp
 from routes.attendance_routes import attendance_bp
@@ -39,12 +37,11 @@ from services.migration_service import run_migrations
 from services.mock_service import ensure_mock_tests_table_consistency
 from services.realtime_notification_service import RealtimeNotificationService
 from services.skills_service import ensure_skills_table_consistency
-from services.student_service import ensure_student_table_consistency, ensure_roll_number_available
+from services.student_service import ensure_student_table_consistency
 from services.subject_service import ensure_subject_table_consistency
 from services.theme_service import ThemeService
 from services.notice_board_service import NoticeBoardService
 from services.resources_service import ResourcesService
-from utils.validators import RequestValidator
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -196,110 +193,6 @@ def health_check():
         status["bootstrap_error"] = status.get("bootstrap_error") or str(e)
     status["status"] = "healthy" if status.get("ready") else "unhealthy"
     return jsonify(status), 200 if status["status"] == "healthy" else 503
-
-
-# --- Admin student CRUD (fixed connection leaks & status codes) ---
-
-@app.route("/create-table")
-@token_required
-@role_required("Admin")
-def create_table():
-    try:
-        ensure_student_table_consistency()
-        return jsonify({"message": "Students table verified"}), 200
-    except Exception as e:
-        logger.exception("create_table failed")
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/add-student", methods=["POST"])
-@token_required
-@role_required("Admin")
-def add_student():
-    try:
-        data = request.get_json() or {}
-        v = RequestValidator(data)
-        v.required("name", "email", "department", "roll_number") \
-         .sanitize("name", 100).email("email") \
-         .sanitize("department", 100).roll_number("roll_number")
-        if v.has_errors():
-            return jsonify({"error": v.first_error()}), 400
-
-        name = v.validated_data["name"]
-        email = v.validated_data["email"]
-        department = v.validated_data["department"]
-        roll_number = v.validated_data["roll_number"]
-
-        with get_db_connection() as conn:
-            ensure_roll_number_available(roll_number, connection=conn)
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO students (name, email, department, roll_number) VALUES (%s, %s, %s, %s)",
-                    (name, email, department, roll_number),
-                )
-
-        return jsonify({"message": "Student added successfully"}), 201
-
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except psycopg2.errors.UniqueViolation:
-        return jsonify({"error": "Email already exists"}), 409
-    except Exception as e:
-        logger.exception("add_student failed")
-        return jsonify({"error": "Failed to add student"}), 500
-
-
-@app.route("/update-student/<int:id>", methods=["PUT"])
-@token_required
-@role_required("Admin")
-def update_student(id):
-    try:
-        data = request.get_json() or {}
-        v = RequestValidator(data)
-        v.required("name", "email", "department", "roll_number") \
-         .sanitize("name", 100).email("email") \
-         .sanitize("department", 100).roll_number("roll_number")
-        if v.has_errors():
-            return jsonify({"error": v.first_error()}), 400
-
-        name = v.validated_data["name"]
-        email = v.validated_data["email"]
-        department = v.validated_data["department"]
-        roll_number = v.validated_data["roll_number"]
-
-        with get_db_connection() as conn:
-            ensure_roll_number_available(roll_number, connection=conn, exclude_student_id=id)
-            with conn.cursor() as cur:
-                cur.execute(
-                    "UPDATE students SET name=%s, email=%s, department=%s, roll_number=%s WHERE id=%s",
-                    (name, email, department, roll_number, id),
-                )
-                if cur.rowcount == 0:
-                    return jsonify({"error": "Student not found"}), 404
-
-        return jsonify({"message": "Student updated successfully"}), 200
-
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        logger.exception("update_student failed")
-        return jsonify({"error": "Failed to update student"}), 500
-
-
-@app.route("/delete-student/<int:id>", methods=["DELETE"])
-@token_required
-@role_required("Admin")
-def delete_student(id):
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute("DELETE FROM students WHERE id = %s", (id,))
-                if cur.rowcount == 0:
-                    return jsonify({"error": "Student not found"}), 404
-        return jsonify({"message": "Student deleted successfully"}), 200
-    except Exception as e:
-        logger.exception("delete_student failed")
-        return jsonify({"error": "Failed to delete student"}), 500
 
 
 # --- Frontend page routes ---
