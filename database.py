@@ -30,6 +30,11 @@ def get_db_pool():
         _DB_POOL = ThreadedConnectionPool(
             minconn=settings.db_pool_minconn,
             maxconn=settings.db_pool_maxconn,
+            connect_timeout=10,
+            keepalives=1,
+            keepalives_idle=30,
+            keepalives_interval=10,
+            keepalives_count=5,
             **_build_connect_kwargs(),
         )
 

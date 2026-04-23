@@ -1,4 +1,5 @@
 import logging
+import time
 from pathlib import Path
 from flask import Flask, jsonify, render_template, request
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -42,6 +43,7 @@ from services.subject_service import ensure_subject_table_consistency
 from services.theme_service import ThemeService
 from services.notice_board_service import NoticeBoardService
 from services.resources_service import ResourcesService
+from services.ai_conversation_service import ensure_ai_tables_consistency
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -71,20 +73,40 @@ startup_status = {
     "bootstrap_error": None,
 }
 
+
+def bootstrap_with_retry(retries=5, delay=3):
+    """
+    Attempt to run all bootstrap tasks with retry logic.
+    Useful for Render cold starts where Postgres may take a few seconds to accept connections.
+    """
+    for attempt in range(retries):
+        try:
+            run_migrations()
+            ensure_student_table_consistency()
+            ensure_subject_table_consistency()
+            ensure_marks_table_consistency()
+            ensure_attendance_table_consistency()
+            ensure_mock_tests_table_consistency()
+            ensure_skills_table_consistency()
+            ensure_goals_tables()
+            ensure_intervention_table_consistency()
+            ensure_ai_tables_consistency()
+            RealtimeNotificationService.ensure_notifications_table()
+            ThemeService.ensure_theme_table()
+            NoticeBoardService.ensure_notices_table()
+            ResourcesService.ensure_resources_table()
+            return True
+        except Exception as e:
+            if attempt < retries - 1:
+                logger.warning(f"Bootstrap attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                time.sleep(delay)
+            else:
+                logger.exception("Bootstrap failed after all retries")
+                raise
+
+
 try:
-    run_migrations()
-    ensure_student_table_consistency()
-    ensure_subject_table_consistency()
-    ensure_marks_table_consistency()
-    ensure_attendance_table_consistency()
-    ensure_mock_tests_table_consistency()
-    ensure_skills_table_consistency()
-    ensure_goals_tables()
-    ensure_intervention_table_consistency()
-    RealtimeNotificationService.ensure_notifications_table()
-    ThemeService.ensure_theme_table()
-    NoticeBoardService.ensure_notices_table()
-    ResourcesService.ensure_resources_table()
+    bootstrap_with_retry()
     startup_status["ready"] = True
     startup_status["database"] = "connected"
 except Exception as schema_error:

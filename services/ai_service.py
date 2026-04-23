@@ -60,13 +60,15 @@ class AIService:
         # Import inside method to avoid circular imports
         from services.student_dashboard_service import get_student_dashboard_data
         from services.student_service import get_student_profile
+        from services.ai_conversation_service import get_conversation_history, build_context_from_history
 
         try:
             profile = get_student_profile(student_id) or {}
             data = get_student_dashboard_data(student_id)
+            history = get_conversation_history(student_id, limit=10)
         except Exception as exc:
             logger.error("Could not fetch student context for AI: %s", exc)
-            profile, data = {}, {}
+            profile, data, history = {}, {}, []
 
         # alerts is a list of dicts like {"severity": ..., "title": ..., "message": ...}
         alert_texts = [
@@ -77,6 +79,8 @@ class AIService:
             i if isinstance(i, str) else str(i)
             for i in data.get("insights", [])[:3]
         ]
+        
+        history_context = build_context_from_history(history)
 
         context = (
             f"Student name: {profile.get('name', 'Unknown')}\n"
@@ -91,6 +95,7 @@ class AIService:
             f"Placement prediction: {data.get('placement_status', 'N/A')}\n"
             f"System insights: {'; '.join(insight_texts) or 'None'}\n"
             f"Active alerts: {'; '.join(alert_texts) or 'None'}\n"
+            f"\n{history_context}\n"
         )
 
         prompt = f"Student context:\n{context}\n\nStudent asks: {user_message}"
