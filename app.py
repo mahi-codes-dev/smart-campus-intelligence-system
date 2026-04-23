@@ -30,6 +30,7 @@ from routes.wellbeing_routes import wellbeing_bp
 from routes.ai_routes import ai_bp
 from routes.notice_routes import notice_bp
 from routes.resource_routes import resource_bp
+from routes.company_routes import company_bp
 from services.attendance_service import ensure_attendance_table_consistency
 from services.faculty_dashboard_service import ensure_intervention_table_consistency
 from services.goals_service import ensure_goals_tables
@@ -44,6 +45,7 @@ from services.theme_service import ThemeService
 from services.notice_board_service import NoticeBoardService
 from services.resources_service import ResourcesService
 from services.ai_conversation_service import ensure_ai_tables_consistency
+from services.company_matching_service import ensure_companies_table_consistency
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -91,6 +93,7 @@ def bootstrap_with_retry(retries=5, delay=3):
             ensure_goals_tables()
             ensure_intervention_table_consistency()
             ensure_ai_tables_consistency()
+            ensure_companies_table_consistency()
             RealtimeNotificationService.ensure_notifications_table()
             ThemeService.ensure_theme_table()
             NoticeBoardService.ensure_notices_table()
@@ -138,6 +141,7 @@ app.register_blueprint(peer_learning_bp)
 app.register_blueprint(wellbeing_bp)
 app.register_blueprint(ai_bp)
 app.register_blueprint(notice_bp)
+app.register_blueprint(company_bp)
 app.register_blueprint(resource_bp)
 
 
