@@ -2,16 +2,15 @@ import os
 import sys
 import random
 from datetime import datetime, timedelta
-import psycopg2
-from werkzeug.security import generate_password_hash
+import bcrypt
 
 # Add the parent directory to sys.path to import from local modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from database import get_db_connection
-from config import settings
 
-def clear_data(cur):
+
+def clear_data(conn, cur):
     print("Clearing existing dynamic data...")
     tables = [
         "student_interventions", "notifications", "student_badges", "goal_milestones",
@@ -20,37 +19,66 @@ def clear_data(cur):
     ]
     for table in tables:
         cur.execute(f"DROP TABLE IF EXISTS {table} CASCADE")
+
+    cur.execute("DELETE FROM users WHERE LOWER(email) LIKE %s", ("%@example.edu",))
         
     # Re-run consistency checks to recreate tables correctly
-    from services.student_service import ensure_student_table_consistency
-    from services.subject_service import ensure_subject_table_consistency
-    from services.marks_service import ensure_marks_table_consistency
-    from services.attendance_service import ensure_attendance_table_consistency
-    from services.mock_service import ensure_mock_tests_table_consistency
-    from services.skills_service import ensure_skills_table_consistency
+    import services.attendance_service as attendance_service
+    import services.marks_service as marks_service
+    import services.mock_service as mock_service
+    import services.skills_service as skills_service
+    import services.student_service as student_service
+    import services.subject_service as subject_service
     from services.goals_service import ensure_goals_tables
     from services.notice_board_service import NoticeBoardService
     from services.resources_service import ResourcesService
-    
-    ensure_student_table_consistency()
-    ensure_subject_table_consistency()
-    ensure_marks_table_consistency()
-    ensure_attendance_table_consistency()
-    ensure_mock_tests_table_consistency()
-    ensure_skills_table_consistency()
-    ensure_goals_tables()
-    NoticeBoardService.ensure_notices_table()
-    ResourcesService.ensure_resources_table()
+
+    student_service._STUDENT_SCHEMA_READY = False
+    subject_service._SUBJECT_SCHEMA_READY = False
+    marks_service._MARKS_SCHEMA_READY = False
+    attendance_service._ATTENDANCE_SCHEMA_READY = False
+    mock_service._MOCK_SCHEMA_READY = False
+    skills_service._SKILLS_SCHEMA_READY = False
+
+    student_service.ensure_student_table_consistency(conn)
+    subject_service.ensure_subject_table_consistency(conn)
+    marks_service.ensure_marks_table_consistency(conn)
+    attendance_service.ensure_attendance_table_consistency(conn)
+    mock_service.ensure_mock_tests_table_consistency(conn)
+    skills_service.ensure_skills_table_consistency(conn)
+    ensure_goals_tables(conn)
+    NoticeBoardService.ensure_notices_table(conn)
+    ResourcesService.ensure_resources_table(conn)
+
+
+def ensure_roles(cur):
+    cur.execute("""
+        INSERT INTO roles (id, role_name)
+        VALUES (1, 'Admin'), (2, 'Faculty'), (3, 'Student')
+        ON CONFLICT (id) DO UPDATE SET role_name = EXCLUDED.role_name
+    """)
+
 
 def seed_faculty(cur):
     print("Seeding faculty user...")
-    password_hash = generate_password_hash("password123")
+    password_hash = bcrypt.hashpw("password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", ("faculty@smartcampus.edu",))
+    existing = cur.fetchone()
+
+    if existing:
+        cur.execute("""
+            UPDATE users
+            SET name = %s, password = %s, role_id = 2
+            WHERE id = %s
+            RETURNING id
+        """, ("Dr. Sarah Smith", password_hash, existing[0]))
+        return cur.fetchone()[0]
+
     cur.execute("""
-        INSERT INTO users (name, email, password_hash, role)
-        VALUES (%s, %s, %s, %s)
-        ON CONFLICT (email) DO UPDATE SET role = 'Faculty'
+        INSERT INTO users (name, email, password, role_id)
+        VALUES (%s, %s, %s, 2)
         RETURNING id
-    """, ("Dr. Sarah Smith", "faculty@smartcampus.edu", password_hash, "Faculty"))
+    """, ("Dr. Sarah Smith", "faculty@smartcampus.edu", password_hash))
     return cur.fetchone()[0]
 
 def seed_departments(cur):
@@ -93,13 +121,22 @@ def seed_students(cur, count=55):
         fname = random.choice(first_names)
         lname = random.choice(last_names)
         email = f"{fname.lower()}.{lname.lower()}.{i}@example.edu"
-        roll = f"2024{random.randint(1000, 9999)}"
+        roll = f"2024{1000 + i}"
         dept = random.choice(depts)
         
+        name = f"{fname} {lname}"
+        password_hash = bcrypt.hashpw("password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         cur.execute("""
-            INSERT INTO students (name, email, department, roll_number)
-            VALUES (%s, %s, %s, %s) RETURNING id
-        """, (f"{fname} {lname}", email, dept, roll))
+            INSERT INTO users (name, email, password, role_id)
+            VALUES (%s, %s, %s, 3)
+            RETURNING id
+        """, (name, email, password_hash))
+        user_id = cur.fetchone()[0]
+
+        cur.execute("""
+            INSERT INTO students (name, email, department, roll_number, user_id)
+            VALUES (%s, %s, %s, %s, %s) RETURNING id
+        """, (name, email, dept, roll, user_id))
         student_id = cur.fetchone()[0]
         students.append({"id": student_id, "dept": dept})
     return students
@@ -113,7 +150,7 @@ def seed_marks_and_attendance(cur, students, subject_map):
         for sub_id in picked_subjects:
             # Seed 3-5 marks per subject
             for _ in range(random.randint(3, 5)):
-                marks = random.uniform(40, 98)
+                marks = random.randint(40, 98)
                 cur.execute("INSERT INTO marks (student_id, subject_id, marks) VALUES (%s, %s, %s)", (student['id'], sub_id, marks))
             
             # Seed 20-30 attendance records per subject
@@ -151,25 +188,24 @@ def seed_notices_and_resources(cur, faculty_id):
             """, (title, desc, link, sub_id[0], faculty_id))
 
 def run_seed():
-    conn = get_db_connection()
-    cur = conn.cursor()
     try:
-        clear_data(cur)
-        faculty_id = seed_faculty(cur)
-        seed_departments(cur)
-        subject_map = seed_subjects(cur)
-        students = seed_students(cur, count=60)
-        seed_marks_and_attendance(cur, students, subject_map)
-        seed_notices_and_resources(cur, faculty_id)
-        
-        conn.commit()
+        from services.migration_service import run_migrations
+
+        run_migrations()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                clear_data(conn, cur)
+                ensure_roles(cur)
+                faculty_id = seed_faculty(cur)
+                seed_departments(cur)
+                subject_map = seed_subjects(cur)
+                students = seed_students(cur, count=60)
+                seed_marks_and_attendance(cur, students, subject_map)
+                seed_notices_and_resources(cur, faculty_id)
+
         print("Success: Database successfully enriched with production-ready data!")
     except Exception as e:
-        conn.rollback()
         print(f"Error during seeding: {e}")
-    finally:
-        cur.close()
-        conn.close()
 
 if __name__ == "__main__":
     run_seed()

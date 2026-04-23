@@ -1,14 +1,16 @@
 import logging
 from datetime import datetime
+from contextlib import nullcontext
 from database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 class ResourcesService:
     @staticmethod
-    def ensure_resources_table():
+    def ensure_resources_table(connection=None):
         try:
-            with get_db_connection() as conn:
+            context = nullcontext(connection) if connection is not None else get_db_connection()
+            with context as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
                         CREATE TABLE IF NOT EXISTS study_resources (

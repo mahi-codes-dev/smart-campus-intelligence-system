@@ -6,7 +6,9 @@ and earn badges. Faculty/Admins can view goal statistics.
 """
 import logging
 from datetime import datetime, date
+from contextlib import nullcontext
 from database import db_cursor
+from database import get_db_connection
 
 logger = logging.getLogger(__name__)
 
@@ -23,46 +25,48 @@ BADGES = [
 
 # ── Schema bootstrap ─────────────────────────────────────────────────────────
 
-def ensure_goals_tables():
+def ensure_goals_tables(connection=None):
     """Create goals-related tables if they don't exist."""
-    with db_cursor() as cur:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS student_goals (
-                id              SERIAL PRIMARY KEY,
-                student_id      INTEGER NOT NULL,
-                title           VARCHAR(200) NOT NULL,
-                description     TEXT,
-                category        VARCHAR(50) DEFAULT 'academic',
-                target_value    NUMERIC(10, 2),
-                current_value   NUMERIC(10, 2) DEFAULT 0,
-                unit            VARCHAR(50),
-                target_date     DATE,
-                status          VARCHAR(20) DEFAULT 'active'
-                                CHECK (status IN ('active', 'completed', 'paused', 'cancelled')),
-                priority        VARCHAR(10) DEFAULT 'medium'
-                                CHECK (priority IN ('low', 'medium', 'high')),
-                created_at      TIMESTAMPTZ DEFAULT NOW(),
-                updated_at      TIMESTAMPTZ DEFAULT NOW(),
-                completed_at    TIMESTAMPTZ
-            );
+    context = nullcontext(connection) if connection is not None else get_db_connection()
+    with context as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS student_goals (
+                    id              SERIAL PRIMARY KEY,
+                    student_id      INTEGER NOT NULL,
+                    title           VARCHAR(200) NOT NULL,
+                    description     TEXT,
+                    category        VARCHAR(50) DEFAULT 'academic',
+                    target_value    NUMERIC(10, 2),
+                    current_value   NUMERIC(10, 2) DEFAULT 0,
+                    unit            VARCHAR(50),
+                    target_date     DATE,
+                    status          VARCHAR(20) DEFAULT 'active'
+                                    CHECK (status IN ('active', 'completed', 'paused', 'cancelled')),
+                    priority        VARCHAR(10) DEFAULT 'medium'
+                                    CHECK (priority IN ('low', 'medium', 'high')),
+                    created_at      TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at      TIMESTAMPTZ DEFAULT NOW(),
+                    completed_at    TIMESTAMPTZ
+                );
 
-            CREATE TABLE IF NOT EXISTS goal_milestones (
-                id          SERIAL PRIMARY KEY,
-                goal_id     INTEGER NOT NULL REFERENCES student_goals(id) ON DELETE CASCADE,
-                title       VARCHAR(200) NOT NULL,
-                is_done     BOOLEAN DEFAULT FALSE,
-                done_at     TIMESTAMPTZ,
-                created_at  TIMESTAMPTZ DEFAULT NOW()
-            );
+                CREATE TABLE IF NOT EXISTS goal_milestones (
+                    id          SERIAL PRIMARY KEY,
+                    goal_id     INTEGER NOT NULL REFERENCES student_goals(id) ON DELETE CASCADE,
+                    title       VARCHAR(200) NOT NULL,
+                    is_done     BOOLEAN DEFAULT FALSE,
+                    done_at     TIMESTAMPTZ,
+                    created_at  TIMESTAMPTZ DEFAULT NOW()
+                );
 
-            CREATE TABLE IF NOT EXISTS student_badges (
-                id          SERIAL PRIMARY KEY,
-                student_id  INTEGER NOT NULL,
-                badge_id    VARCHAR(50) NOT NULL,
-                earned_at   TIMESTAMPTZ DEFAULT NOW(),
-                UNIQUE (student_id, badge_id)
-            );
-        """)
+                CREATE TABLE IF NOT EXISTS student_badges (
+                    id          SERIAL PRIMARY KEY,
+                    student_id  INTEGER NOT NULL,
+                    badge_id    VARCHAR(50) NOT NULL,
+                    earned_at   TIMESTAMPTZ DEFAULT NOW(),
+                    UNIQUE (student_id, badge_id)
+                );
+            """)
     logger.info("Goal tables ready.")
 
 
