@@ -35,7 +35,7 @@ def apply_security_headers(app: Flask) -> None:
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
             "img-src 'self' data: https:; "
-            "connect-src 'self'; "
+            "connect-src 'self' https://generativelanguage.googleapis.com; "
             "frame-ancestors 'self';"
         )
         response.headers["Content-Security-Policy"] = csp

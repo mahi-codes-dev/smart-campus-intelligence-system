@@ -28,7 +28,7 @@ function isValidEmail(email) {
  * Validate password strength
  */
 function isStrongPassword(password) {
-    return password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password);
+    return password.length >= 8 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password);
 }
 
 /**
@@ -62,14 +62,14 @@ function showMessage(message, type = 'error', targetId = null) {
     if (!messageEl) return;
 
     messageEl.textContent = message;
-    messageEl.className = `message ${type}`;
+    messageEl.className = `auth-alert ${type}`;
     messageEl.style.display = 'block';
 
     messageEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
     if (type === 'success') {
         setTimeout(() => {
-            messageEl.className = 'message';
+            messageEl.className = 'auth-alert';
             messageEl.style.display = 'none';
         }, 4000);
     }
@@ -220,7 +220,7 @@ function validateRegistration() {
         showError("passwordError", "Password is required");
         isValid = false;
     } else if (!isStrongPassword(password)) {
-        showError("passwordError", "Password must be at least 6 characters");
+        showError("passwordError", "Password must be at least 8 characters with uppercase, lowercase, and a number");
         isValid = false;
     }
 
@@ -268,7 +268,7 @@ async function register() {
     const department = departmentInput ? departmentInput.value.trim() : "";
     const rollNumberInput = document.getElementById("rollNumber");
     const rollNumber = rollNumberInput ? rollNumberInput.value.trim() : "";
-    const registerBtn = document.querySelector('#registerForm button[onclick]');
+    const registerBtn = document.getElementById('registerBtn');
 
     if (registerBtn) {
         registerBtn.disabled = true;

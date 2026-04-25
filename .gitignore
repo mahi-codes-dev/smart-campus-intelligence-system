@@ -14,5 +14,11 @@ pytest-cache-files-*/
 .vscode/
 .antigravity/
 
+# Scratch / temp files
+scratch/
+
+# Gemini AI IDE
+.gemini/
+
 # OS files
 .DS_Store
