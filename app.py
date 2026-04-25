@@ -46,6 +46,7 @@ from services.notice_board_service import NoticeBoardService
 from services.resources_service import ResourcesService
 from services.ai_conversation_service import ensure_ai_tables_consistency
 from services.company_matching_service import ensure_companies_table_consistency
+from services.peer_learning_service import ensure_peer_tables_consistency
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ def bootstrap_with_retry(retries=5, delay=3):
             ensure_intervention_table_consistency()
             ensure_ai_tables_consistency()
             ensure_companies_table_consistency()
+            ensure_peer_tables_consistency()
             RealtimeNotificationService.ensure_notifications_table()
             ThemeService.ensure_theme_table()
             NoticeBoardService.ensure_notices_table()
