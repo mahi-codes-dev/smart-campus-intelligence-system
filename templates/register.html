@@ -30,74 +30,75 @@
 <h2>Join Smart Campus</h2>
 <p class="auth-sub">Start your intelligent academic journey</p>
 
-<div class="field-label">Full Name <span class="required">*</span></div>
-<div class="field-wrap">
-    <i class="fas fa-user field-icon"></i>
-    <input type="text" id="name" class="field-input" placeholder="John Doe" autocomplete="name">
-</div>
-<span class="error-message" id="nameError"></span>
-
-<div class="field-label">Email Address <span class="required">*</span></div>
-<div class="field-wrap">
-    <i class="fas fa-envelope field-icon"></i>
-    <input type="email" id="email" class="field-input" placeholder="you@example.com" autocomplete="email">
-</div>
-<span class="error-message" id="emailError"></span>
-
-<div class="field-label">Password <span class="required">*</span></div>
-<div class="field-wrap">
-    <i class="fas fa-lock field-icon"></i>
-    <input type="password" id="password" class="field-input" placeholder="Create a strong password" autocomplete="new-password">
-    <button type="button" class="toggle-pw" onclick="toggleRegPassword(this)"><i class="fas fa-eye"></i></button>
-</div>
-<span class="error-message" id="passwordError"></span>
-
-<div class="field-label">Select Your Role <span class="required">*</span></div>
-<div class="field-wrap">
-    <i class="fas fa-graduation-cap field-icon"></i>
-    <select id="role" class="field-input" onchange="toggleDepartmentField()">
-        <option value="">Choose your role...</option>
-    </select>
-    <i class="fas fa-chevron-down select-arrow"></i>
-</div>
-<span class="error-message" id="roleError"></span>
-
-<div id="departmentField" class="field-hidden">
-    <div class="field-label">Department <span class="required">*</span></div>
+<form id="registerForm" onsubmit="event.preventDefault(); register();">
+    <div class="field-label">Full Name <span class="required">*</span></div>
     <div class="field-wrap">
-        <i class="fas fa-building field-icon"></i>
-        <select id="department" class="field-input">
-            <option value="">Select your department</option>
+        <i class="fas fa-user field-icon"></i>
+        <input type="text" id="name" class="field-input" placeholder="John Doe" autocomplete="name">
+    </div>
+    <span class="error-message" id="nameError"></span>
+    
+    <div class="field-label">Email Address <span class="required">*</span></div>
+    <div class="field-wrap">
+        <i class="fas fa-envelope field-icon"></i>
+        <input type="email" id="email" class="field-input" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <span class="error-message" id="emailError"></span>
+    
+    <div class="field-label">Password <span class="required">*</span></div>
+    <div class="field-wrap">
+        <i class="fas fa-lock field-icon"></i>
+        <input type="password" id="password" class="field-input" placeholder="Create a strong password" autocomplete="new-password">
+        <button type="button" class="toggle-pw" onclick="toggleRegPassword(this)"><i class="fas fa-eye"></i></button>
+    </div>
+    <span class="error-message" id="passwordError"></span>
+    
+    <div class="field-label">Select Your Role <span class="required">*</span></div>
+    <div class="field-wrap">
+        <i class="fas fa-graduation-cap field-icon"></i>
+        <select id="role" class="field-input" onchange="toggleDepartmentField()">
+            <option value="">Choose your role...</option>
         </select>
         <i class="fas fa-chevron-down select-arrow"></i>
     </div>
-    <span class="error-message" id="departmentError"></span>
-</div>
-
-<div id="rollNumberField" class="field-hidden">
-    <div class="field-label">Roll Number <span class="required">*</span></div>
-    <div class="field-wrap">
-        <i class="fas fa-id-card field-icon"></i>
-        <input type="text" id="rollNumber" class="field-input" placeholder="Enter your student roll number">
+    <span class="error-message" id="roleError"></span>
+    
+    <div id="departmentField" class="field-hidden">
+        <div class="field-label">Department <span class="required">*</span></div>
+        <div class="field-wrap">
+            <i class="fas fa-building field-icon"></i>
+            <select id="department" class="field-input">
+                <option value="">Select your department</option>
+            </select>
+            <i class="fas fa-chevron-down select-arrow"></i>
+        </div>
+        <span class="error-message" id="departmentError"></span>
     </div>
-    <span class="error-message" id="rollNumberError"></span>
-</div>
-
-<label class="remember-wrap" style="margin-bottom:20px;margin-top:4px">
-    <input type="checkbox" id="terms"> I agree to the
-    <a href="#" style="color:#4f46e5;font-weight:600;margin-left:3px">Terms &amp; Conditions</a>
-</label>
-<span class="error-message" id="termsError"></span>
-
-<button class="auth-btn" id="registerBtn" onclick="register()">
-    Create Account <i class="fas fa-arrow-right"></i>
-</button>
+    
+    <div id="rollNumberField" class="field-hidden">
+        <div class="field-label">Roll Number <span class="required">*</span></div>
+        <div class="field-wrap">
+            <i class="fas fa-id-card field-icon"></i>
+            <input type="text" id="rollNumber" class="field-input" placeholder="Enter your student roll number">
+        </div>
+        <span class="error-message" id="rollNumberError"></span>
+    </div>
+    
+    <label class="remember-wrap" style="margin-bottom:20px;margin-top:4px">
+        <input type="checkbox" id="terms"> I agree to the
+        <a href="#" style="color:#4f46e5;font-weight:600;margin-left:3px">Terms &amp; Conditions</a>
+    </label>
+    <span class="error-message" id="termsError"></span>
+    
+    <button type="submit" class="auth-btn" id="registerBtn">
+        Create Account <i class="fas fa-arrow-right"></i>
+    </button>
+    <div id="registerMessage" class="auth-alert"></div>
+</form>
 
 <div class="auth-help" style="margin-top:16px">
     Already have an account? <a href="/">Sign In</a>
 </div>
-
-<div id="registerMessage" class="auth-alert"></div>
 {% endblock %}
 
 {% block extra_js %}

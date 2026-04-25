@@ -21,6 +21,13 @@ def setup_ai_db():
     """Ensure AI tables exist."""
     with get_db_connection() as conn:
         ensure_ai_tables_consistency(conn)
+        with conn.cursor() as cur:
+            for i in range(1, 8):
+                cur.execute(
+                    "INSERT INTO students (id, name, department) VALUES (%s, 'Test Student', 'CS') ON CONFLICT (id) DO NOTHING",
+                    (i,)
+                )
+        conn.commit()
     yield
     # Cleanup: delete test data if needed
     with get_db_connection() as conn:

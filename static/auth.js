@@ -361,8 +361,8 @@ async function login() {
             body: JSON.stringify({ email, password })
         });
 
-        if (!data.token || !data.user) {
-            throw new Error(data.error || "Login failed. Please try again.");
+        if (!data || !data.token || !data.user) {
+            throw new Error((data && data.error) || "Login failed. Please try again.");
         }
 
         // Store credentials

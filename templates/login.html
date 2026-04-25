@@ -38,6 +38,7 @@
             <i class="fas fa-envelope field-icon"></i>
             <input type="email" id="email" class="field-input" placeholder="you@example.com" autocomplete="email">
         </div>
+        <span class="error-message" id="emailError"></span>
 
         <div class="field-label">Password <span class="required">*</span></div>
         <div class="field-wrap">
@@ -47,6 +48,7 @@
                 <i class="fas fa-eye"></i>
             </button>
         </div>
+        <span class="error-message" id="passwordError"></span>
 
         <div class="auth-options">
             <label class="remember-wrap">
@@ -58,6 +60,7 @@
         <button type="submit" class="auth-btn" id="loginBtn">
             Sign In <i class="fas fa-arrow-right"></i>
         </button>
+        <div id="loginMessage" class="auth-alert"></div>
     </form>
 
     <div class="auth-divider-line">New to Smart Campus?</div>
@@ -67,8 +70,6 @@
     </button>
 
     <div class="auth-help">Issues logging in? <a href="#">Get help</a></div>
-
-    <div id="loginMessage" class="auth-alert"></div>
 </div>
 
 <!-- Forgot Password Panel -->

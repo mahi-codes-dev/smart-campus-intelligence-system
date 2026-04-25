@@ -222,174 +222,164 @@ def get_peer_feed_for_student(
         Tuple of (feed_items, total_count)
     """
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Get viewing student's preferences
-        cur.execute("""
-            SELECT anonymous_mode FROM peer_feed_preferences WHERE student_id = %s
-        """, (student_id,))
-        
-        result = cur.fetchone()
-        viewer_anonymous_mode = result[0] if result else True
-        
-        # Build query for feed items
-        base_query = """
-            SELECT 
-                pa.id,
-                pa.student_id,
-                pa.achievement_type,
-                pa.achievement_data,
-                pa.is_anonymous,
-                pa.created_at,
-                s.department
-            FROM peer_achievements pa
-            JOIN students s ON pa.student_id = s.id
-            WHERE pa.visibility = TRUE
-            AND pa.student_id != %s
-        """
-        
-        params = [student_id]
-        
-        # Filter by achievement types if provided
-        if achievement_types:
-            placeholders = ','.join(['%s'] * len(achievement_types))
-            base_query += f" AND pa.achievement_type IN ({placeholders})"
-            params.extend(achievement_types)
-        
-        # Count total items
-        count_query = f"SELECT COUNT(*) FROM ({base_query}) AS count_subquery"
-        cur.execute(count_query, params[:1 + len(achievement_types or [])])
-        total_count = cur.fetchone()[0]
-        
-        # Get paginated results (ordered by recent)
-        query = base_query + """
-            ORDER BY pa.created_at DESC
-            LIMIT %s OFFSET %s
-        """
-        params.extend([limit, offset])
-        
-        cur.execute(query, params)
-        rows = cur.fetchall()
-        
-        # Format feed items
-        feed_items = []
-        for row in rows:
-            item_id, author_id, ach_type, ach_data, is_anonymous, created_at, dept = row
-            
-            # Anonymize if needed
-            if is_anonymous:
-                display_name = f"Student from {dept}"
-            else:
-                cur.execute("SELECT name FROM students WHERE id = %s", (author_id,))
-                name_row = cur.fetchone()
-                display_name = name_row[0] if name_row else f"Student from {dept}"
-            
-            feed_item = {
-                'id': item_id,
-                'achievement_type': ach_type,
-                'student_profile': {
-                    'display_name': display_name,
-                    'department': dept
-                },
-                'achievement_data': json.loads(ach_data),
-                'created_at': created_at.isoformat() if created_at else None,
-                'engagement': {
-                    'likes': 0,
-                    'shares': 0,
-                    'comments': 0
-                }
-            }
-            feed_items.append(feed_item)
-        
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                
+                # Get viewing student's preferences
+                cur.execute("""
+                    SELECT anonymous_mode FROM peer_feed_preferences WHERE student_id = %s
+                """, (student_id,))
+                
+                result = cur.fetchone()
+                viewer_anonymous_mode = result[0] if result else True
+                
+                # Build query for feed items
+                base_query = """
+                    SELECT 
+                        pa.id,
+                        pa.student_id,
+                        pa.achievement_type,
+                        pa.achievement_data,
+                        pa.is_anonymous,
+                        pa.created_at,
+                        s.department
+                    FROM peer_achievements pa
+                    JOIN students s ON pa.student_id = s.id
+                    WHERE pa.visibility = TRUE
+                    AND pa.student_id != %s
+                """
+                
+                params = [student_id]
+                
+                # Filter by achievement types if provided
+                if achievement_types:
+                    placeholders = ','.join(['%s'] * len(achievement_types))
+                    base_query += f" AND pa.achievement_type IN ({placeholders})"
+                    params.extend(achievement_types)
+                
+                # Count total items
+                count_query = f"SELECT COUNT(*) FROM ({base_query}) AS count_subquery"
+                cur.execute(count_query, params[:1 + len(achievement_types or [])])
+                total_count = cur.fetchone()[0]
+                
+                # Get paginated results (ordered by recent)
+                query = base_query + """
+                    ORDER BY pa.created_at DESC
+                    LIMIT %s OFFSET %s
+                """
+                params.extend([limit, offset])
+                
+                cur.execute(query, params)
+                rows = cur.fetchall()
+                
+                # Format feed items
+                feed_items = []
+                for row in rows:
+                    item_id, author_id, ach_type, ach_data, is_anonymous, created_at, dept = row
+                    
+                    # Anonymize if needed
+                    if is_anonymous:
+                        display_name = f"Student from {dept}"
+                    else:
+                        cur.execute("SELECT name FROM students WHERE id = %s", (author_id,))
+                        name_row = cur.fetchone()
+                        display_name = name_row[0] if name_row else f"Student from {dept}"
+                    
+                    feed_item = {
+                        'id': item_id,
+                        'achievement_type': ach_type,
+                        'student_profile': {
+                            'display_name': display_name,
+                            'department': dept
+                        },
+                        'achievement_data': json.loads(ach_data),
+                        'created_at': created_at.isoformat() if created_at else None,
+                        'engagement': {
+                            'likes': 0,
+                            'shares': 0,
+                            'comments': 0
+                        }
+                    }
+                    feed_items.append(feed_item)
+                
         return feed_items, total_count
         
     except Exception as e:
         logger.error(f"Error getting peer feed: {e}")
-        try:
-            conn.close()
-        except:
-            pass
         return [], 0
 
 
 def get_peer_achievements_summary(student_id: int) -> Dict[str, Any]:
     """Get summary statistics of peer achievements (for dashboard)."""
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # Total achievements
-        cur.execute("""
-            SELECT COUNT(*), achievement_type 
-            FROM peer_achievements 
-            WHERE visibility = TRUE 
-            GROUP BY achievement_type
-        """)
-        
-        achievement_counts = {row[1]: row[0] for row in cur.fetchall()}
-        
-        # Placement summary
-        placement_data = []
-        if achievement_counts.get('placement', 0) > 0:
-            cur.execute("""
-                SELECT 
-                    achievement_data->>'company' as company,
-                    COUNT(*) as count,
-                    AVG(CAST(achievement_data->>'package' AS FLOAT)) as avg_package
-                FROM peer_achievements
-                WHERE achievement_type = 'placement'
-                AND visibility = TRUE
-                GROUP BY company
-                ORDER BY count DESC
-                LIMIT 10
-            """)
-            placement_data = cur.fetchall()
-        
-        # Skills summary
-        cur.execute("""
-            SELECT skill_name, COUNT(*) as count 
-            FROM peer_skills 
-            WHERE shared = TRUE 
-            GROUP BY skill_name 
-            ORDER BY count DESC 
-            LIMIT 5
-        """)
-        trending_skills = [row[0] for row in cur.fetchall()]
-        
-        # Study groups summary
-        cur.execute("""
-            SELECT status, COUNT(*) FROM study_groups GROUP BY status
-        """)
-        group_stats = {row[0]: row[1] for row in cur.fetchall()}
-        
-        summary = {
-            'total_achievements': sum(achievement_counts.values()),
-            'placements': {
-                'count': achievement_counts.get('placement', 0),
-                'companies': [row[0] for row in placement_data],
-                'avg_package': float(placement_data[0][2]) if placement_data else 0
-            },
-            'skills': {
-                'count': achievement_counts.get('skill', 0),
-                'trending': trending_skills
-            },
-            'study_groups': {
-                'active_count': group_stats.get('active', 0),
-                'completed_count': group_stats.get('completed', 0)
-            }
-        }
-        
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                
+                # Total achievements
+                cur.execute("""
+                    SELECT COUNT(*), achievement_type 
+                    FROM peer_achievements 
+                    WHERE visibility = TRUE 
+                    GROUP BY achievement_type
+                """)
+                
+                achievement_counts = {row[1]: row[0] for row in cur.fetchall()}
+                
+                # Placement summary
+                placement_data = []
+                if achievement_counts.get('placement', 0) > 0:
+                    cur.execute("""
+                        SELECT 
+                            achievement_data->>'company' as company,
+                            COUNT(*) as count,
+                            AVG(CAST(achievement_data->>'package' AS FLOAT)) as avg_package
+                        FROM peer_achievements
+                        WHERE achievement_type = 'placement'
+                        AND visibility = TRUE
+                        GROUP BY company
+                        ORDER BY count DESC
+                        LIMIT 10
+                    """)
+                    placement_data = cur.fetchall()
+                
+                # Skills summary
+                cur.execute("""
+                    SELECT skill_name, COUNT(*) as count 
+                    FROM peer_skills 
+                    WHERE shared = TRUE 
+                    GROUP BY skill_name 
+                    ORDER BY count DESC 
+                    LIMIT 5
+                """)
+                trending_skills = [row[0] for row in cur.fetchall()]
+                
+                # Study groups summary
+                cur.execute("""
+                    SELECT status, COUNT(*) FROM study_groups GROUP BY status
+                """)
+                group_stats = {row[0]: row[1] for row in cur.fetchall()}
+                
+                summary = {
+                    'total_achievements': sum(achievement_counts.values()),
+                    'placements': {
+                        'count': achievement_counts.get('placement', 0),
+                        'companies': [row[0] for row in placement_data],
+                        'avg_package': float(placement_data[0][2]) if placement_data else 0
+                    },
+                    'skills': {
+                        'count': achievement_counts.get('skill', 0),
+                        'trending': trending_skills
+                    },
+                    'study_groups': {
+                        'active_count': group_stats.get('active', 0),
+                        'completed_count': group_stats.get('completed', 0)
+                    }
+                }
+                
         return summary
         
     except Exception as e:
         logger.error(f"Error getting achievements summary: {e}")
-        try:
-            conn.close()
-        except:
-            pass
         return {}
 
 
@@ -549,40 +539,35 @@ def add_peer_skill(
 def get_trending_skills(limit: int = 5) -> List[Dict[str, Any]]:
     """Get trending skills across all students."""
     try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        cur.execute("""
-            SELECT 
-                skill_name,
-                COUNT(DISTINCT student_id) as student_count,
-                AVG(proficiency_level) as avg_proficiency,
-                SUM(recommendation_count) as recommendation_count
-            FROM peer_skills
-            WHERE shared = TRUE
-            GROUP BY skill_name
-            ORDER BY student_count DESC
-            LIMIT %s
-        """, (limit,))
-        
-        skills = []
-        for row in cur.fetchall():
-            skills.append({
-                'skill_name': row[0],
-                'student_count': row[1],
-                'avg_proficiency': float(row[2]) if row[2] else 0,
-                'recommendation_count': row[3] or 0
-            })
-        
-        conn.close()
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                
+                cur.execute("""
+                    SELECT 
+                        skill_name,
+                        COUNT(DISTINCT student_id) as student_count,
+                        AVG(proficiency_level) as avg_proficiency,
+                        SUM(recommendation_count) as recommendation_count
+                    FROM peer_skills
+                    WHERE shared = TRUE
+                    GROUP BY skill_name
+                    ORDER BY student_count DESC
+                    LIMIT %s
+                """, (limit,))
+                
+                skills = []
+                for row in cur.fetchall():
+                    skills.append({
+                        'skill_name': row[0],
+                        'student_count': row[1],
+                        'avg_proficiency': float(row[2]) if row[2] else 0,
+                        'recommendation_count': row[3] or 0
+                    })
+                
         return skills
         
     except Exception as e:
         logger.error(f"Error getting trending skills: {e}")
-        try:
-            conn.close()
-        except:
-            pass
         return []
 
 
