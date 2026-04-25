@@ -18,31 +18,19 @@
     <i class="fas fa-home nav-icon"></i>
     <span>Dashboard</span>
 </li>
-<li class="nav-item" onclick="focusFacultySection('attendanceSection')">
-    <i class="fas fa-calendar-check nav-icon"></i>
-    <span>Attendance</span>
-</li>
-<li class="nav-item" onclick="focusFacultySection('classroomSection')">
+<li class="nav-item" onclick="focusFacultySection('classroomSection', event)">
     <i class="fas fa-people-group nav-icon"></i>
     <span>Classroom</span>
 </li>
-<li class="nav-item" onclick="focusFacultySection('interventionSection')">
+<li class="nav-item" onclick="focusFacultySection('interventionSection', event)">
     <i class="fas fa-hand-holding-heart nav-icon"></i>
     <span>Interventions</span>
 </li>
-<li class="nav-item" onclick="focusFacultySection('marksSection')">
-    <i class="fas fa-pencil-alt nav-icon"></i>
-    <span>Marks</span>
-</li>
-<li class="nav-item" onclick="focusFacultySection('mockSection')">
-    <i class="fas fa-file-invoice nav-icon"></i>
-    <span>Mock Tests</span>
-</li>
-<li class="nav-item" onclick="focusFacultySection('noticesSection')">
+<li class="nav-item" onclick="focusFacultySection('noticesSection', event)">
     <i class="fas fa-bullhorn nav-icon"></i>
     <span>Notice Board</span>
 </li>
-<li class="nav-item" onclick="focusFacultySection('resourcesSection')">
+<li class="nav-item" onclick="focusFacultySection('resourcesSection', event)">
     <i class="fas fa-folder-open nav-icon"></i>
     <span>Study Resources</span>
 </li>
@@ -235,12 +223,16 @@
     loadFacultyDashboard();
     
     // Smooth scroll and focus for faculty sections
-    function focusFacultySection(id) {
+    function focusFacultySection(id, event) {
         const elem = document.getElementById(id);
         if (elem) {
             elem.scrollIntoView({ behavior: 'smooth' });
             elem.classList.add('premium-glow-pulse');
             setTimeout(() => elem.classList.remove('premium-glow-pulse'), 2000);
+        }
+        if (event && event.currentTarget) {
+            document.querySelectorAll('.sidebar-nav .nav-item').forEach(el => el.classList.remove('active'));
+            event.currentTarget.classList.add('active');
         }
     }
 

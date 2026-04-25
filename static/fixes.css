@@ -349,3 +349,156 @@ select.form-control { cursor: pointer; }
     .grid-2col  { grid-template-columns: 1fr !important; }
     .topbar-title { font-size: 15px !important; }
 }
+
+/* ── 24. Dark Mode Overrides ────────────────────────────────────── */
+body.dark-mode {
+    --bg-main: #0f172a;
+    --bg-card: #1e293b;
+    --bg-sidebar: #020617;
+    --bg-light: #0f172a;
+    --bg-lighter: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-dark: #f8fafc;
+    --border-color: #334155;
+    --border-light: #334155;
+    --muted-light: #94a3b8;
+    background-color: var(--bg-main) !important;
+}
+
+body.dark-mode .layout, 
+body.dark-mode .main, 
+body.dark-mode .main-premium, 
+body.dark-mode .dashboard-content-wrapper {
+    background-color: var(--bg-main) !important;
+}
+
+body.dark-mode .topbar, 
+body.dark-mode .topbar-premium {
+    background-color: var(--bg-card) !important;
+    border-bottom-color: var(--border-color) !important;
+}
+
+body.dark-mode .topbar-title, 
+body.dark-mode .breadcrumb {
+    color: var(--text-primary) !important;
+}
+
+body.dark-mode .user-name,
+body.dark-mode .section-title,
+body.dark-mode .card-title,
+body.dark-mode .stat-value,
+body.dark-mode .metric-large,
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3, body.dark-mode h4,
+body.dark-mode .profile-value {
+    color: var(--text-primary) !important;
+}
+
+body.dark-mode .stat-label,
+body.dark-mode .metric-label,
+body.dark-mode .profile-label,
+body.dark-mode .section-subtitle,
+body.dark-mode .user-role,
+body.dark-mode .text-muted,
+body.dark-mode p {
+    color: var(--text-secondary) !important;
+}
+
+body.dark-mode .card, 
+body.dark-mode .card-premium,
+body.dark-mode .stat-card,
+body.dark-mode .metric-item,
+body.dark-mode .alert-item,
+body.dark-mode .insight-item,
+body.dark-mode .profile-row {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.dark-mode .form-control {
+    background-color: var(--bg-lighter) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+body.dark-mode .form-control:focus {
+    background-color: var(--bg-card) !important;
+}
+
+body.dark-mode .data-table th {
+    background-color: var(--bg-lighter) !important;
+    color: var(--text-primary) !important;
+    border-bottom-color: var(--border-color) !important;
+}
+
+body.dark-mode .data-table td {
+    border-bottom-color: var(--border-color) !important;
+    color: var(--text-secondary) !important;
+}
+
+body.dark-mode .data-table tbody tr:hover {
+    background-color: var(--bg-lighter) !important;
+}
+
+body.dark-mode .insight-item {
+    color: var(--text-secondary) !important;
+    border-bottom-color: var(--border-color) !important;
+}
+
+body.dark-mode .btn-secondary {
+    background-color: var(--bg-lighter) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.dark-mode .btn-outline {
+    border-color: var(--border-color) !important;
+    color: var(--text-secondary) !important;
+}
+
+body.dark-mode .btn-outline:hover {
+    color: var(--primary-light) !important;
+    border-color: var(--primary-light) !important;
+}
+
+body.dark-mode .goal-card,
+body.dark-mode .summary-stat,
+body.dark-mode .modal-box {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.dark-mode .badge-item {
+    background: var(--bg-lighter) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.dark-mode .ai-chat-window,
+body.dark-mode .ai-chat-messages,
+body.dark-mode .ai-chat-input-area {
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.dark-mode .ai-chat-messages {
+    background-color: var(--bg-main) !important;
+}
+
+body.dark-mode .ai-message-ai .ai-bubble {
+    background: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+body.dark-mode .ai-suggestion-chip {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+body.dark-mode .ai-chat-textarea {
+    background: var(--bg-main) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
