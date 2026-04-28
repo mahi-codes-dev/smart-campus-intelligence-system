@@ -10,14 +10,12 @@ Tests for:
 """
 
 import pytest
-from datetime import datetime, timedelta
 import json
 from database import get_db_connection
 from services.peer_learning_service import (
     ensure_peer_tables_consistency,
     record_peer_achievement,
     get_peer_feed_for_student,
-    get_peer_achievements_summary,
     update_peer_preferences,
     get_peer_preferences,
     add_peer_skill,
@@ -304,6 +302,7 @@ class TestPeerPreferences:
     
     def setup_method(self):
         """Setup test data."""
+        self.student_id = None
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("""
@@ -347,7 +346,7 @@ class TestPeerPreferences:
         """Clean up."""
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                if hasattr(self, 'student_id'):
+                if self.student_id is not None:
                     cur.execute("DELETE FROM peer_feed_preferences WHERE student_id = %s", (self.student_id,))
                     cur.execute("DELETE FROM students WHERE id = %s", (self.student_id,))
                 cur.execute("DELETE FROM users WHERE email = 'pref_test@test.com'")
@@ -355,7 +354,7 @@ class TestPeerPreferences:
     
     def test_get_preferences(self):
         """Test retrieving preferences."""
-        if not hasattr(self, 'student_id'):
+        if self.student_id is None:
             pytest.skip("Student not created")
         
         prefs = get_peer_preferences(self.student_id)
@@ -367,7 +366,7 @@ class TestPeerPreferences:
     
     def test_update_preferences(self):
         """Test updating preferences."""
-        if not hasattr(self, 'student_id'):
+        if self.student_id is None:
             pytest.skip("Student not created")
         
         success = update_peer_preferences(
@@ -380,16 +379,18 @@ class TestPeerPreferences:
         
         # Verify update
         prefs = get_peer_preferences(self.student_id)
+        assert prefs is not None
         assert prefs['anonymous_mode'] is False
         assert prefs['email_on_peer_achievement'] is True
     
     def test_partial_preference_update(self):
         """Test that partial updates don't affect other fields."""
-        if not hasattr(self, 'student_id'):
+        if self.student_id is None:
             pytest.skip("Student not created")
         
         # Get original
         original = get_peer_preferences(self.student_id)
+        assert original is not None
         original_show_skills = original['show_skills']
         
         # Update only one field
@@ -397,6 +398,7 @@ class TestPeerPreferences:
         
         # Verify other field unchanged
         updated = get_peer_preferences(self.student_id)
+        assert updated is not None
         assert updated['show_skills'] == original_show_skills
 
 
@@ -602,6 +604,7 @@ class TestStudyGroups:
             max_members=4
         )
         
+        assert group_id is not None
         success = join_study_group(group_id, self.student_ids[1])
         assert success is True
         
@@ -624,6 +627,8 @@ class TestStudyGroups:
             goal='Goal',
             max_members=2
         )
+        
+        assert group_id is not None, "Group should be created"
         
         # Add one more member (now group is full: 1 creator + 1 member = 2)
         join_study_group(group_id, self.student_ids[1])

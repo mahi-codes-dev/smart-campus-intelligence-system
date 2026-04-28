@@ -104,6 +104,9 @@ class NoticeBoardService:
             
             notices = []
             for row in rows:
+                is_pinned = row[7] if len(row) > 7 else False
+                publish_at = row[8] if len(row) > 8 else None
+                expires_at = row[9] if len(row) > 9 else None
                 notices.append({
                     "id": row[0],
                     "title": row[1],
@@ -112,9 +115,9 @@ class NoticeBoardService:
                     "created_at": row[4].strftime("%Y-%m-%d %H:%M:%S") if row[4] else "",
                     "author_name": row[5],
                     "author_role": row[6],
-                    "is_pinned": row[7],
-                    "publish_at": row[8].strftime("%Y-%m-%d %H:%M:%S") if row[8] else "",
-                    "expires_at": row[9].strftime("%Y-%m-%d %H:%M:%S") if row[9] else "",
+                    "is_pinned": is_pinned,
+                    "publish_at": publish_at.strftime("%Y-%m-%d %H:%M:%S") if publish_at else "",
+                    "expires_at": expires_at.strftime("%Y-%m-%d %H:%M:%S") if expires_at else "",
                 })
             return notices
         except Exception as e:
