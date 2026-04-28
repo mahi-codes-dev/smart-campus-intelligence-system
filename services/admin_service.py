@@ -33,10 +33,13 @@ def _build_csv_content(headers, rows):
     return buffer.getvalue()
 
 
-def get_admin_stats():
+def get_admin_stats(institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM students")
+            if institution_id is None:
+                cur.execute("SELECT COUNT(*) FROM students")
+            else:
+                cur.execute("SELECT COUNT(*) FROM students WHERE institution_id = %s", (institution_id,))
             total_students = cur.fetchone()[0]
 
             cur.execute(
@@ -45,28 +48,34 @@ def get_admin_stats():
                 FROM users u
                 JOIN roles r ON u.role_id = r.id
                 WHERE LOWER(r.role_name) = 'faculty'
+                  AND (%s IS NULL OR u.institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             total_faculty = cur.fetchone()[0]
 
-            cur.execute("SELECT COUNT(*) FROM users")
+            if institution_id is None:
+                cur.execute("SELECT COUNT(*) FROM users")
+            else:
+                cur.execute("SELECT COUNT(*) FROM users WHERE institution_id = %s", (institution_id,))
             total_users = cur.fetchone()[0]
 
-    department_average_scores = get_department_average_scores()
+    department_average_scores = get_department_average_scores(institution_id=institution_id)
 
     return {
         "total_students": total_students,
         "total_faculty": total_faculty,
         "total_users": total_users,
-        "total_departments": len(get_department_catalog()),
-        "top_students_by_department": get_top_students_by_department(),
-        "low_performers": get_low_performing_students(),
+        "total_departments": len(get_department_catalog(institution_id=institution_id)),
+        "top_students_by_department": get_top_students_by_department(institution_id=institution_id),
+        "low_performers": get_low_performing_students(institution_id=institution_id),
         "department_average_scores": department_average_scores,
-        "departments": [item["department"] for item in department_average_scores] or get_all_departments(),
+        "departments": [item["department"] for item in department_average_scores] or get_all_departments(institution_id=institution_id),
     }
 
 
-def get_all_users():
+def get_all_users(institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -75,11 +84,16 @@ def get_all_users():
                     u.id,
                     u.name,
                     u.email,
-                    r.role_name
+                    r.role_name,
+                    COALESCE(i.name, 'Default Campus') AS institution_name,
+                    COALESCE(u.is_super_admin, FALSE) AS is_super_admin
                 FROM users u
                 LEFT JOIN roles r ON u.role_id = r.id
+                LEFT JOIN institutions i ON u.institution_id = i.id
+                WHERE (%s IS NULL OR u.institution_id = %s)
                 ORDER BY u.id ASC
-                """
+                """,
+                (institution_id, institution_id),
             )
             rows = cur.fetchall()
 
@@ -89,29 +103,40 @@ def get_all_users():
             "name": row[1],
             "email": row[2],
             "role": row[3] or "Unknown",
+            "institution_name": row[4],
+            "is_super_admin": row[5],
         }
         for row in rows
     ]
 
 
-def get_operations_snapshot():
+def get_operations_snapshot(institution_id=None):
     with get_db_connection() as conn:
         _ensure_admin_reporting_tables(conn)
 
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM departments")
+            if institution_id is None:
+                cur.execute("SELECT COUNT(*) FROM departments")
+            else:
+                cur.execute("SELECT COUNT(*) FROM departments WHERE institution_id = %s", (institution_id,))
             total_departments = cur.fetchone()[0]
 
-            cur.execute("SELECT COUNT(*) FROM subjects")
+            if institution_id is None:
+                cur.execute("SELECT COUNT(*) FROM subjects")
+            else:
+                cur.execute("SELECT COUNT(*) FROM subjects WHERE institution_id = %s", (institution_id,))
             total_subjects = cur.fetchone()[0]
 
             cur.execute(
                 """
                 SELECT COUNT(*)
                 FROM departments d
-                LEFT JOIN subjects sub ON sub.department = d.name
+                LEFT JOIN subjects sub ON sub.department = d.name AND sub.institution_id = d.institution_id
                 WHERE sub.id IS NULL
+                  AND (%s IS NULL OR d.institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             departments_without_subjects = cur.fetchone()[0]
 
@@ -124,7 +149,10 @@ def get_operations_snapshot():
                     FROM marks m
                     WHERE m.subject_id = sub.id
                 )
+                  AND (%s IS NULL OR sub.institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             subjects_without_marks = cur.fetchone()[0]
 
@@ -137,7 +165,10 @@ def get_operations_snapshot():
                     FROM attendance a
                     WHERE a.subject_id = sub.id
                 )
+                  AND (%s IS NULL OR sub.institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             subjects_without_attendance = cur.fetchone()[0]
 
@@ -164,11 +195,14 @@ def get_operations_snapshot():
                 SELECT COUNT(*)
                 FROM students
                 WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+                  AND (%s IS NULL OR institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             new_students_last_30_days = cur.fetchone()[0]
 
-    low_performers = get_low_performing_students()
+    low_performers = get_low_performing_students(institution_id=institution_id)
     critical_interventions = sum(
         1 for student in low_performers if float(student.get("final_score") or student.get("score") or 0) < 45
     )
@@ -204,10 +238,13 @@ def get_operations_snapshot():
     }
 
 
-def get_data_quality_snapshot():
+def get_data_quality_snapshot(institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) FROM students")
+            if institution_id is None:
+                cur.execute("SELECT COUNT(*) FROM students")
+            else:
+                cur.execute("SELECT COUNT(*) FROM students WHERE institution_id = %s", (institution_id,))
             total_students = cur.fetchone()[0]
 
             cur.execute(
@@ -215,7 +252,10 @@ def get_data_quality_snapshot():
                 SELECT COUNT(*)
                 FROM students
                 WHERE roll_number IS NULL OR TRIM(roll_number) = ''
+                  AND (%s IS NULL OR institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             missing_roll_numbers = cur.fetchone()[0]
 
@@ -224,7 +264,10 @@ def get_data_quality_snapshot():
                 SELECT COUNT(*)
                 FROM students
                 WHERE department IS NULL OR TRIM(department) = ''
+                  AND (%s IS NULL OR institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             missing_departments = cur.fetchone()[0]
 
@@ -235,10 +278,13 @@ def get_data_quality_snapshot():
                     SELECT UPPER(TRIM(roll_number))
                     FROM students
                     WHERE roll_number IS NOT NULL AND TRIM(roll_number) <> ''
+                      AND (%s IS NULL OR institution_id = %s)
                     GROUP BY UPPER(TRIM(roll_number))
                     HAVING COUNT(*) > 1
                 ) duplicate_roll_numbers
                 """
+                ,
+                (institution_id, institution_id),
             )
             duplicate_roll_number_groups = cur.fetchone()[0]
 
@@ -249,10 +295,13 @@ def get_data_quality_snapshot():
                     SELECT LOWER(email)
                     FROM users
                     WHERE email IS NOT NULL AND TRIM(email) <> ''
+                      AND (%s IS NULL OR institution_id = %s)
                     GROUP BY LOWER(email)
                     HAVING COUNT(*) > 1
                 ) duplicate_user_emails
                 """
+                ,
+                (institution_id, institution_id),
             )
             duplicate_user_email_groups = cur.fetchone()[0]
 
@@ -262,7 +311,10 @@ def get_data_quality_snapshot():
                 FROM students s
                 LEFT JOIN users u ON s.user_id = u.id
                 WHERE s.user_id IS NOT NULL AND u.id IS NULL
+                  AND (%s IS NULL OR s.institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             orphan_student_links = cur.fetchone()[0]
 
@@ -274,7 +326,10 @@ def get_data_quality_snapshot():
                   AND NOT EXISTS (SELECT 1 FROM marks m WHERE m.student_id = s.id)
                   AND NOT EXISTS (SELECT 1 FROM mock_tests mt WHERE mt.student_id = s.id)
                   AND NOT EXISTS (SELECT 1 FROM student_skills sk WHERE sk.student_id = s.id)
+                  AND (%s IS NULL OR s.institution_id = %s)
                 """
+                ,
+                (institution_id, institution_id),
             )
             students_without_activity = cur.fetchone()[0]
 
@@ -307,7 +362,7 @@ def get_data_quality_snapshot():
     }
 
 
-def build_admin_export(export_name):
+def build_admin_export(export_name, institution_id=None):
     export_key = (export_name or "").strip().lower()
 
     if export_key == "students":
@@ -328,11 +383,13 @@ def build_admin_export(export_name):
                         s.updated_at
                     FROM students s
                     LEFT JOIN users u ON s.user_id = u.id
+                    WHERE (%s IS NULL OR s.institution_id = %s)
                     ORDER BY
                         COALESCE(NULLIF(s.department, ''), 'ZZZ') ASC,
                         COALESCE(NULLIF(s.name, ''), u.name, '') ASC,
                         s.id ASC
-                    """
+                    """,
+                    (institution_id, institution_id),
                 )
                 rows = cur.fetchall()
 
@@ -365,8 +422,10 @@ def build_admin_export(export_name):
                         COALESCE(r.role_name, 'Unknown') AS role
                     FROM users u
                     LEFT JOIN roles r ON u.role_id = r.id
+                    WHERE (%s IS NULL OR u.institution_id = %s)
                     ORDER BY role ASC, u.name ASC, u.id ASC
-                    """
+                    """,
+                    (institution_id, institution_id),
                 )
                 rows = cur.fetchall()
 
@@ -392,8 +451,10 @@ def build_admin_export(export_name):
                         department,
                         created_at
                     FROM subjects
+                    WHERE (%s IS NULL OR institution_id = %s)
                     ORDER BY department ASC, name ASC, id ASC
-                    """
+                    """,
+                    (institution_id, institution_id),
                 )
                 rows = cur.fetchall()
 
@@ -406,7 +467,7 @@ def build_admin_export(export_name):
         }
 
     if export_key == "interventions":
-        low_performers = get_low_performing_students()
+        low_performers = get_low_performing_students(institution_id=institution_id)
         rows = [
             [
                 student.get("student_id"),
@@ -451,7 +512,7 @@ def build_admin_export(export_name):
     raise ValueError("Unknown export requested")
 
 
-def delete_user(user_id, current_user_id=None):
+def delete_user(user_id, current_user_id=None, institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -460,8 +521,9 @@ def delete_user(user_id, current_user_id=None):
                 FROM users u
                 LEFT JOIN roles r ON u.role_id = r.id
                 WHERE u.id = %s
+                  AND (%s IS NULL OR u.institution_id = %s)
                 """,
-                (user_id,),
+                (user_id, institution_id, institution_id),
             )
             user = cur.fetchone()
 
@@ -480,7 +542,10 @@ def delete_user(user_id, current_user_id=None):
                     FROM users u
                     JOIN roles r ON u.role_id = r.id
                     WHERE LOWER(r.role_name) = 'admin'
+                      AND (%s IS NULL OR u.institution_id = %s)
                     """
+                    ,
+                    (institution_id, institution_id),
                 )
                 admin_count = cur.fetchone()[0]
 
@@ -491,10 +556,11 @@ def delete_user(user_id, current_user_id=None):
                 """
                 SELECT id
                 FROM students
-                WHERE user_id = %s OR LOWER(email) = LOWER(%s)
+                WHERE (user_id = %s OR LOWER(email) = LOWER(%s))
+                  AND (%s IS NULL OR institution_id = %s)
                 ORDER BY id ASC
                 """,
-                (user_id, user[1]),
+                (user_id, user[1], institution_id, institution_id),
             )
             student_ids = [row[0] for row in cur.fetchall()]
 
@@ -508,12 +574,16 @@ def delete_user(user_id, current_user_id=None):
                 cur.execute(
                     """
                     DELETE FROM students
-                    WHERE user_id = %s OR LOWER(email) = LOWER(%s)
+                    WHERE (user_id = %s OR LOWER(email) = LOWER(%s))
+                      AND (%s IS NULL OR institution_id = %s)
                     """,
-                    (user_id, user[1]),
+                    (user_id, user[1], institution_id, institution_id),
                 )
 
-            cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            if institution_id is None:
+                cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            else:
+                cur.execute("DELETE FROM users WHERE id = %s AND institution_id = %s", (user_id, institution_id))
             deleted = cur.rowcount
 
     if not deleted:

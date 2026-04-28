@@ -11,6 +11,7 @@ from auth.auth_middleware import SECRET_KEY, JWT_ALGORITHM, token_required
 from config import settings
 from core.rate_limiter import rate_limit
 from database import get_db_connection
+from services.institution_service import get_default_institution, get_institution_by_code
 from services.student_service import ensure_student_table_consistency, get_all_departments, sync_student_record
 from services.email_service import create_and_store_otp, send_otp_email, verify_and_use_otp
 from utils.validators import sanitize_string, validate_email, validate_password, validate_roll_number
@@ -67,6 +68,19 @@ def _get_roles():
     ]
 
 
+def _resolve_request_institution(connection=None):
+    institution = getattr(g, "institution", None)
+    if institution:
+        return institution
+
+    request_payload = request.get_json(silent=True) or {}
+    institution_code = request_payload.get("institution_code")
+    if institution_code:
+        return get_institution_by_code(institution_code, connection=connection)
+
+    return get_default_institution(connection=connection)
+
+
 @auth_bp.route("/auth/roles", methods=["GET"])
 def get_roles():
     try:
@@ -79,7 +93,8 @@ def get_roles():
 @auth_bp.route("/auth/departments", methods=["GET"])
 def get_departments():
     try:
-        return jsonify(get_all_departments()), 200
+        institution_id = getattr(g, "institution_id", None)
+        return jsonify(get_all_departments(institution_id=institution_id)), 200
     except Exception as e:
         logger.exception("get_departments failed")
         return jsonify({"error": "Failed to fetch departments"}), 500
@@ -118,8 +133,19 @@ def register():
         ensure_student_table_consistency()
 
         with get_db_connection() as conn:
+            institution = _resolve_request_institution(connection=conn)
+            if institution is None:
+                return jsonify({"error": "Unable to resolve institution"}), 400
+
             with conn.cursor() as cur:
-                cur.execute("SELECT 1 FROM users WHERE LOWER(email) = LOWER(%s)", (email,))
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM users
+                    WHERE institution_id = %s AND LOWER(email) = LOWER(%s)
+                    """,
+                    (institution["id"], email),
+                )
                 if cur.fetchone():
                     return jsonify({"error": "Email already registered"}), 400
 
@@ -128,8 +154,12 @@ def register():
                 ).decode("utf-8")
 
                 cur.execute(
-                    "INSERT INTO users (name, email, password, role_id) VALUES (%s, %s, %s, %s) RETURNING id",
-                    (name, email, hashed_password, role_id),
+                    """
+                    INSERT INTO users (name, email, password, role_id, institution_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (name, email, hashed_password, role_id, institution["id"]),
                 )
                 result = cur.fetchone()
                 if result is None:
@@ -142,6 +172,7 @@ def register():
                     student_record = sync_student_record(
                         user_id, name, email, department,
                         roll_number=roll_number, connection=conn,
+                        institution_id=institution["id"],
                     )
 
         return jsonify({
@@ -151,6 +182,8 @@ def register():
                 "name": name,
                 "email": email,
                 "role_id": role_id,
+                "institution_id": institution["id"],
+                "institution_code": institution["code"],
                 "roll_number": student_record["roll_number"] if student_record else None,
                 "department": department or None,
             },
@@ -182,15 +215,28 @@ def login():
             return jsonify({"error": "Invalid credentials"}), 401
 
         with get_db_connection() as conn:
+            institution = _resolve_request_institution(connection=conn)
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT u.id, u.name, u.email, u.password, u.role_id, r.role_name
+                    SELECT
+                        u.id,
+                        u.name,
+                        u.email,
+                        u.password,
+                        u.role_id,
+                        r.role_name,
+                        u.institution_id,
+                        COALESCE(i.code, 'DEFAULT') AS institution_code,
+                        COALESCE(i.name, 'Default Campus') AS institution_name,
+                        COALESCE(u.is_super_admin, FALSE) AS is_super_admin
                     FROM users u
                     LEFT JOIN roles r ON u.role_id = r.id
+                    LEFT JOIN institutions i ON u.institution_id = i.id
                     WHERE LOWER(u.email) = LOWER(%s)
+                      AND (%s IS NULL OR u.institution_id = %s OR COALESCE(u.is_super_admin, FALSE) = TRUE)
                     """,
-                    (email,),
+                    (email, institution["id"] if institution else None, institution["id"] if institution else None),
                 )
                 user = cur.fetchone()
 
@@ -210,6 +256,10 @@ def login():
                 "name": user[1],
                 "email": user[2],
                 "role_id": user[4],
+                "institution_id": user[6],
+                "institution_code": user[7],
+                "institution_name": user[8],
+                "is_super_admin": user[9],
                 "exp": datetime.datetime.now(datetime.UTC)
                 + datetime.timedelta(hours=JWT_EXP_HOURS),
             },
@@ -230,6 +280,10 @@ def login():
                 "role_id": user[4],
                 "role_name": role_name,
                 "dashboard_path": dashboard_path,
+                "institution_id": user[6],
+                "institution_code": user[7],
+                "institution_name": user[8],
+                "is_super_admin": user[9],
             },
         })
         _set_auth_cookie(response, token)

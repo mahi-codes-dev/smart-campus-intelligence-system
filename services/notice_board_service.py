@@ -19,24 +19,26 @@ class NoticeBoardService:
                             content TEXT NOT NULL,
                             target_role VARCHAR(50) NOT NULL,
                             author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                            institution_id INTEGER,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """)
+                    cur.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS institution_id INTEGER")
             logger.info("Notices table ensured")
         except Exception as e:
             logger.error(f"Error ensuring notices table: {e}")
             raise
 
     @staticmethod
-    def create_notice(title: str, content: str, target_role: str, author_id: int):
+    def create_notice(title: str, content: str, target_role: str, author_id: int, institution_id: int | None):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO notices (title, content, target_role, author_id)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO notices (title, content, target_role, author_id, institution_id)
+                        VALUES (%s, %s, %s, %s, %s)
                         RETURNING id
-                    """, (title, content, target_role, author_id))
+                    """, (title, content, target_role, author_id, institution_id))
                     notice_id = cur.fetchone()[0]
             return notice_id
         except Exception as e:
@@ -44,7 +46,7 @@ class NoticeBoardService:
             return None
 
     @staticmethod
-    def get_notices(target_roles=None, author_id=None):
+    def get_notices(target_roles=None, author_id=None, institution_id=None):
         try:
             query = """
                 SELECT n.id, n.title, n.content, n.target_role, n.created_at, u.name, r.role_name
@@ -54,6 +56,10 @@ class NoticeBoardService:
                 WHERE 1=1
             """
             params = []
+
+            if institution_id is not None:
+                query += " AND n.institution_id = %s"
+                params.append(institution_id)
             
             if target_roles:
                 query += " AND (n.target_role = ANY(%s)"
@@ -91,11 +97,14 @@ class NoticeBoardService:
             return []
 
     @staticmethod
-    def delete_notice(notice_id: int):
+    def delete_notice(notice_id: int, institution_id=None):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("DELETE FROM notices WHERE id = %s", (notice_id,))
+                    if institution_id is None:
+                        cur.execute("DELETE FROM notices WHERE id = %s", (notice_id,))
+                    else:
+                        cur.execute("DELETE FROM notices WHERE id = %s AND institution_id = %s", (notice_id, institution_id))
             return True
         except Exception as e:
             logger.error(f"Error deleting notice: {e}")

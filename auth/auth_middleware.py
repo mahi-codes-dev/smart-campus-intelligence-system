@@ -26,6 +26,10 @@ def _build_current_user(payload):
         "name": payload.get("name", ""),
         "role": role_name,
         "role_name": role_name,
+        "institution_id": payload.get("institution_id"),
+        "institution_code": payload.get("institution_code"),
+        "institution_name": payload.get("institution_name"),
+        "is_super_admin": bool(payload.get("is_super_admin")),
     }
 
 
@@ -70,6 +74,10 @@ def token_required(f):
             g.user_id = current_user.get("user_id")
             g.user_role = current_user.get("role")
             g.user_name = current_user.get("name", "")  # FIX: was missing, caused AttributeError in ai_routes
+            g.institution_id = current_user.get("institution_id") or getattr(g, "institution_id", None)
+            g.institution_code = current_user.get("institution_code") or getattr(g, "institution_code", None)
+            if current_user.get("institution_name"):
+                g.institution_name = current_user.get("institution_name")
 
         except jwt.ExpiredSignatureError:
             return jsonify({"error": "Token expired"}), 401

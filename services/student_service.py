@@ -1,6 +1,7 @@
 from contextlib import nullcontext
 
 from database import get_db_connection
+from services.institution_service import get_default_institution
 
 _DEPARTMENT_SCHEMA_READY = False
 _STUDENT_SCHEMA_READY = False
@@ -30,6 +31,14 @@ def _table_exists(cur, table_name):
     return cur.fetchone() is not None
 
 
+def _resolve_institution_id(connection, institution_id=None):
+    if institution_id is not None:
+        return institution_id
+
+    institution = get_default_institution(connection=connection)
+    return institution["id"] if institution else None
+
+
 def normalize_department_name(department):
     return " ".join((department or "").strip().split())
 
@@ -39,7 +48,7 @@ def normalize_roll_number(roll_number):
     return cleaned_roll_number
 
 
-def ensure_roll_number_available(roll_number, connection=None, exclude_student_id=None):
+def ensure_roll_number_available(roll_number, connection=None, exclude_student_id=None, institution_id=None):
     normalized_roll_number = normalize_roll_number(roll_number)
 
     if not normalized_roll_number:
@@ -51,9 +60,10 @@ def ensure_roll_number_available(roll_number, connection=None, exclude_student_i
         query = """
             SELECT id
             FROM students
-            WHERE LOWER(COALESCE(roll_number, '')) = LOWER(%s)
+            WHERE institution_id = %s
+              AND LOWER(COALESCE(roll_number, '')) = LOWER(%s)
         """
-        params = [normalized_roll_number]
+        params = [_resolve_institution_id(conn, institution_id), normalized_roll_number]
 
         if exclude_student_id is not None:
             query += " AND id <> %s"
@@ -89,11 +99,12 @@ def ensure_department_table_consistency(connection=None):
 
             cur.execute("ALTER TABLE departments ADD COLUMN IF NOT EXISTS name VARCHAR(100)")
             cur.execute("ALTER TABLE departments ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute("ALTER TABLE departments ADD COLUMN IF NOT EXISTS institution_id INTEGER")
 
     _DEPARTMENT_SCHEMA_READY = True
 
 
-def ensure_department_exists(department, connection=None):
+def ensure_department_exists(department, connection=None, institution_id=None):
     cleaned_department = normalize_department_name(department)
 
     if not cleaned_department:
@@ -145,9 +156,9 @@ def require_department_exists(department, connection=None):
                 """
                 SELECT id, name
                 FROM departments
-                WHERE LOWER(name) = LOWER(%s)
+                WHERE institution_id = %s AND LOWER(name) = LOWER(%s)
                 """,
-                (cleaned_department,),
+                (_resolve_institution_id(conn, institution_id), cleaned_department),
             )
             existing = cur.fetchone()
 
@@ -160,7 +171,7 @@ def require_department_exists(department, connection=None):
     }
 
 
-def create_department(department, connection=None):
+def create_department(department, connection=None, institution_id=None):
     cleaned_department = normalize_department_name(department)
 
     if not cleaned_department:
@@ -169,14 +180,15 @@ def create_department(department, connection=None):
     with _connection_scope(connection) as conn:
         ensure_department_table_consistency(conn)
 
+        scoped_institution_id = _resolve_institution_id(conn, institution_id)
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT id, name
                 FROM departments
-                WHERE LOWER(name) = LOWER(%s)
+                WHERE institution_id = %s AND LOWER(name) = LOWER(%s)
                 """,
-                (cleaned_department,),
+                (scoped_institution_id, cleaned_department),
             )
             existing = cur.fetchone()
 
@@ -185,11 +197,11 @@ def create_department(department, connection=None):
 
             cur.execute(
                 """
-                INSERT INTO departments (name)
-                VALUES (%s)
+                INSERT INTO departments (name, institution_id)
+                VALUES (%s, %s)
                 RETURNING id, name
                 """,
-                (cleaned_department,),
+                (cleaned_department, scoped_institution_id),
             )
             created = cur.fetchone()
 
@@ -199,14 +211,18 @@ def create_department(department, connection=None):
     }
 
 
-def get_department_catalog():
+def get_department_catalog(institution_id=None):
     with get_db_connection() as conn:
         ensure_department_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             subjects_table_exists = _table_exists(cur, "subjects")
 
-            subject_join = "LEFT JOIN subjects sub ON sub.department = d.name" if subjects_table_exists else ""
+            subject_join = (
+                "LEFT JOIN subjects sub ON sub.department = d.name AND sub.institution_id = d.institution_id"
+                if subjects_table_exists else ""
+            )
             subject_count = "COUNT(DISTINCT sub.id) AS subject_count" if subjects_table_exists else "0 AS subject_count"
             cur.execute(
                 f"""
@@ -216,11 +232,13 @@ def get_department_catalog():
                     COUNT(DISTINCT s.id) AS student_count,
                     {subject_count}
                 FROM departments d
-                LEFT JOIN students s ON s.department = d.name
+                LEFT JOIN students s ON s.department = d.name AND s.institution_id = d.institution_id
                 {subject_join}
+                WHERE d.institution_id = %s
                 GROUP BY d.id, d.name
                 ORDER BY d.name ASC
-                """
+                """,
+                (scoped_institution_id,),
             )
             rows = cur.fetchall()
 
@@ -235,28 +253,35 @@ def get_department_catalog():
     ]
 
 
-def delete_department(department_id):
+def delete_department(department_id, institution_id=None):
     with get_db_connection() as conn:
         ensure_department_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT id, name
                 FROM departments
-                WHERE id = %s
+                WHERE id = %s AND institution_id = %s
                 """,
-                (department_id,),
+                (department_id, scoped_institution_id),
             )
             department = cur.fetchone()
 
             if not department:
                 raise ValueError("Department not found")
 
-            cur.execute("SELECT COUNT(*) FROM students WHERE department = %s", (department[1],))
+            cur.execute(
+                "SELECT COUNT(*) FROM students WHERE department = %s AND institution_id = %s",
+                (department[1], scoped_institution_id),
+            )
             student_count = cur.fetchone()[0]
             if _table_exists(cur, "subjects"):
-                cur.execute("SELECT COUNT(*) FROM subjects WHERE department = %s", (department[1],))
+                cur.execute(
+                    "SELECT COUNT(*) FROM subjects WHERE department = %s AND institution_id = %s",
+                    (department[1], scoped_institution_id),
+                )
                 subject_count = cur.fetchone()[0]
             else:
                 subject_count = 0
@@ -267,7 +292,7 @@ def delete_department(department_id):
                     f"{student_count} students and {subject_count} subjects"
                 )
 
-            cur.execute("DELETE FROM departments WHERE id = %s", (department_id,))
+            cur.execute("DELETE FROM departments WHERE id = %s AND institution_id = %s", (department_id, scoped_institution_id))
 
     return {
         "id": department[0],
@@ -305,6 +330,7 @@ def ensure_student_table_consistency(connection=None):
             cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS roll_number VARCHAR(50)")
             cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS department VARCHAR(100)")
             cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS user_id INTEGER")
+            cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS institution_id INTEGER")
             cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
             cur.execute("ALTER TABLE students ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
@@ -345,11 +371,12 @@ def ensure_student_table_consistency(connection=None):
     _STUDENT_SCHEMA_READY = True
 
 
-def sync_student_record(user_id, name, email, department, roll_number=None, connection=None):
+def sync_student_record(user_id, name, email, department, roll_number=None, connection=None, institution_id=None):
     normalized_roll_number = normalize_roll_number(roll_number)
 
     with _connection_scope(connection) as conn:
-        department_record = require_department_exists(department, connection=conn)
+        scoped_institution_id = _resolve_institution_id(conn, institution_id)
+        department_record = require_department_exists(department, connection=conn, institution_id=scoped_institution_id)
         ensure_student_table_consistency(conn)
 
         with conn.cursor() as cur:
@@ -357,11 +384,12 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
                 """
                 SELECT id
                 FROM students
-                WHERE user_id = %s OR LOWER(email) = LOWER(%s)
+                WHERE institution_id = %s
+                  AND (user_id = %s OR LOWER(email) = LOWER(%s))
                 ORDER BY id ASC
                 LIMIT 1
                 """,
-                (user_id, email),
+                (scoped_institution_id, user_id, email),
             )
             existing = cur.fetchone()
 
@@ -370,6 +398,7 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
                     normalized_roll_number,
                     connection=conn,
                     exclude_student_id=existing[0] if existing else None,
+                    institution_id=scoped_institution_id,
                 )
 
             if existing:
@@ -380,20 +409,24 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
                         email = %s,
                         roll_number = COALESCE(NULLIF(%s, ''), roll_number),
                         department = %s,
-                        user_id = %s
+                        user_id = %s,
+                        institution_id = %s
                     WHERE id = %s
                     RETURNING id, roll_number
                     """,
-                    (name, email, normalized_roll_number, department_record["name"], user_id, existing[0]),
+                    (
+                        name, email, normalized_roll_number,
+                        department_record["name"], user_id, scoped_institution_id, existing[0],
+                    ),
                 )
             else:
                 cur.execute(
                     """
-                    INSERT INTO students (name, email, roll_number, department, user_id)
-                    VALUES (%s, %s, NULLIF(%s, ''), %s, %s)
+                    INSERT INTO students (name, email, roll_number, department, user_id, institution_id)
+                    VALUES (%s, %s, NULLIF(%s, ''), %s, %s, %s)
                     RETURNING id, roll_number
                     """,
-                    (name, email, normalized_roll_number, department_record["name"], user_id),
+                    (name, email, normalized_roll_number, department_record["name"], user_id, scoped_institution_id),
                 )
 
             result = cur.fetchone()
@@ -407,33 +440,38 @@ def sync_student_record(user_id, name, email, department, roll_number=None, conn
         "email": email,
         "roll_number": saved_roll_number,
         "department": department_record["name"],
+        "institution_id": scoped_institution_id,
     }
 
 
-def get_all_departments():
+def get_all_departments(institution_id=None):
     with get_db_connection() as conn:
         ensure_department_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT name
                 FROM departments
+                WHERE institution_id = %s
                 ORDER BY name ASC
-                """
+                """,
+                (scoped_institution_id,),
             )
             rows = cur.fetchall()
 
     return [row[0] for row in rows]
 
 
-def _student_email_exists(email, connection, exclude_student_id=None):
+def _student_email_exists(email, connection, exclude_student_id=None, institution_id=None):
     query = """
         SELECT id
         FROM students
-        WHERE LOWER(COALESCE(email, '')) = LOWER(%s)
+        WHERE institution_id = %s
+          AND LOWER(COALESCE(email, '')) = LOWER(%s)
     """
-    params = [email]
+    params = [_resolve_institution_id(connection, institution_id), email]
 
     if exclude_student_id is not None:
         query += " AND id <> %s"
@@ -444,8 +482,8 @@ def _student_email_exists(email, connection, exclude_student_id=None):
         return cur.fetchone() is not None
 
 
-def _ensure_unique_student_fields(email, roll_number, connection, exclude_student_id=None):
-    if _student_email_exists(email, connection, exclude_student_id=exclude_student_id):
+def _ensure_unique_student_fields(email, roll_number, connection, exclude_student_id=None, institution_id=None):
+    if _student_email_exists(email, connection, exclude_student_id=exclude_student_id, institution_id=institution_id):
         raise DuplicateStudentError("Email already exists")
 
     try:
@@ -453,25 +491,27 @@ def _ensure_unique_student_fields(email, roll_number, connection, exclude_studen
             roll_number,
             connection=connection,
             exclude_student_id=exclude_student_id,
+            institution_id=institution_id,
         )
     except ValueError as exc:
         raise DuplicateStudentError(str(exc)) from exc
 
 
-def create_student_record(name, email, department, roll_number):
+def create_student_record(name, email, department, roll_number, institution_id=None):
     with get_db_connection() as conn:
         ensure_student_table_consistency(conn)
-        department_record = ensure_department_exists(department, connection=conn)
-        _ensure_unique_student_fields(email, roll_number, conn)
+        scoped_institution_id = _resolve_institution_id(conn, institution_id)
+        department_record = ensure_department_exists(department, connection=conn, institution_id=scoped_institution_id)
+        _ensure_unique_student_fields(email, roll_number, conn, institution_id=scoped_institution_id)
 
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO students (name, email, department, roll_number)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO students (name, email, department, roll_number, institution_id)
+                VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
                 """,
-                (name, email, department_record["name"], roll_number),
+                (name, email, department_record["name"], roll_number, scoped_institution_id),
             )
             row = cur.fetchone()
 
@@ -481,20 +521,22 @@ def create_student_record(name, email, department, roll_number):
         "email": email,
         "department": department_record["name"],
         "roll_number": roll_number,
+        "institution_id": scoped_institution_id,
     }
 
 
-def update_student_record(student_id, name, email, department, roll_number):
+def update_student_record(student_id, name, email, department, roll_number, institution_id=None):
     with get_db_connection() as conn:
         ensure_student_table_consistency(conn)
+        scoped_institution_id = _resolve_institution_id(conn, institution_id)
 
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM students WHERE id = %s", (student_id,))
+            cur.execute("SELECT id FROM students WHERE id = %s AND institution_id = %s", (student_id, scoped_institution_id))
             if not cur.fetchone():
                 raise StudentNotFoundError("Student not found")
 
-        department_record = ensure_department_exists(department, connection=conn)
-        _ensure_unique_student_fields(email, roll_number, conn, exclude_student_id=student_id)
+        department_record = ensure_department_exists(department, connection=conn, institution_id=scoped_institution_id)
+        _ensure_unique_student_fields(email, roll_number, conn, exclude_student_id=student_id, institution_id=scoped_institution_id)
 
         with conn.cursor() as cur:
             cur.execute(
@@ -521,18 +563,19 @@ def update_student_record(student_id, name, email, department, roll_number):
     }
 
 
-def delete_student_record(student_id):
+def delete_student_record(student_id, institution_id=None):
     with get_db_connection() as conn:
         ensure_student_table_consistency(conn)
+        scoped_institution_id = _resolve_institution_id(conn, institution_id)
 
         with conn.cursor() as cur:
             cur.execute(
                 """
                 DELETE FROM students
-                WHERE id = %s
+                WHERE id = %s AND institution_id = %s
                 RETURNING id, name, email, roll_number, department
                 """,
-                (student_id,),
+                (student_id, scoped_institution_id),
             )
             row = cur.fetchone()
 
@@ -548,11 +591,12 @@ def delete_student_record(student_id):
     }
 
 
-def fetch_all_students():
+def fetch_all_students(institution_id=None):
     with get_db_connection() as conn:
         ensure_student_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT
@@ -563,8 +607,10 @@ def fetch_all_students():
                     COALESCE(NULLIF(s.department, ''), 'Not Assigned') AS department
                 FROM students s
                 LEFT JOIN users u ON s.user_id = u.id
+                WHERE s.institution_id = %s
                 ORDER BY s.id ASC
-                """
+                """,
+                (scoped_institution_id,),
             )
             rows = cur.fetchall()
 
@@ -581,9 +627,10 @@ def fetch_all_students():
     return students
 
 
-def get_student_record_by_user_id(user_id):
+def get_student_record_by_user_id(user_id, institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT
@@ -595,9 +642,9 @@ def get_student_record_by_user_id(user_id):
                     COALESCE(s.department, 'Not Assigned') AS department
                 FROM students s
                 LEFT JOIN users u ON s.user_id = u.id
-                WHERE s.user_id = %s
+                WHERE s.user_id = %s AND s.institution_id = %s
                 """,
-                (user_id,),
+                (user_id, scoped_institution_id),
             )
 
             row = cur.fetchone()
@@ -615,9 +662,10 @@ def get_student_record_by_user_id(user_id):
     }
 
 
-def get_student_profile(student_id):
+def get_student_profile(student_id, institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT
@@ -629,9 +677,9 @@ def get_student_profile(student_id):
                     COALESCE(s.department, 'Not Assigned') AS department
                 FROM students s
                 LEFT JOIN users u ON s.user_id = u.id
-                WHERE s.id = %s
+                WHERE s.id = %s AND s.institution_id = %s
                 """,
-                (student_id,),
+                (student_id, scoped_institution_id),
             )
 
             row = cur.fetchone()

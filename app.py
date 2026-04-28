@@ -11,6 +11,7 @@ from config import settings
 from core.logging_config import configure_logging
 from core.request_context import register_request_context
 from core.security_headers import apply_security_headers
+from core.tenant_context import register_tenant_context
 from database import get_db_connection
 from routes.admin_dashboard_routes import admin_dashboard_bp
 from routes.admin_routes import admin_bp
@@ -74,6 +75,7 @@ if settings.trust_proxy_count > 0:
 
 apply_security_headers(app)
 register_request_context(app)
+register_tenant_context(app)
 
 startup_status = {
     "ready": False,

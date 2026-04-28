@@ -1,7 +1,16 @@
 from database import get_db_connection
+from services.institution_service import get_default_institution
 from services.student_service import ensure_department_table_consistency, require_department_exists
 
 _SUBJECT_SCHEMA_READY = False
+
+
+def _resolve_institution_id(connection, institution_id=None):
+    if institution_id is not None:
+        return institution_id
+
+    institution = get_default_institution(connection=connection)
+    return institution["id"] if institution else None
 
 
 def normalize_subject_name(name):
@@ -43,6 +52,7 @@ def ensure_subject_table_consistency(connection=None):
             cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS name VARCHAR(150)")
             cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS code VARCHAR(50)")
             cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS department VARCHAR(100)")
+            cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS institution_id INTEGER")
             cur.execute("ALTER TABLE subjects ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
 
             cur.execute(
@@ -75,22 +85,23 @@ def ensure_subject_table_consistency(connection=None):
     _SUBJECT_SCHEMA_READY = True
 
 
-def create_subject(name, code, department):
+def create_subject(name, code, department, institution_id=None):
     cleaned_name = normalize_subject_name(name)
     cleaned_code = normalize_subject_code(code)
 
     with get_db_connection() as conn:
         ensure_subject_table_consistency(conn)
-        department_record = require_department_exists(department, conn)
+        scoped_institution_id = _resolve_institution_id(conn, institution_id)
+        department_record = require_department_exists(department, conn, institution_id=scoped_institution_id)
 
         with conn.cursor() as cur:
             cur.execute(
                 """
                 SELECT id
                 FROM subjects
-                WHERE UPPER(code) = %s
+                WHERE institution_id = %s AND UPPER(code) = %s
                 """,
-                (cleaned_code,),
+                (scoped_institution_id, cleaned_code),
             )
             existing = cur.fetchone()
 
@@ -99,24 +110,27 @@ def create_subject(name, code, department):
 
             cur.execute(
                 """
-                INSERT INTO subjects (name, code, department)
-                VALUES (%s, %s, %s)
+                INSERT INTO subjects (name, code, department, institution_id)
+                VALUES (%s, %s, %s, %s)
                 """,
-                (cleaned_name, cleaned_code, department_record["name"]),
+                (cleaned_name, cleaned_code, department_record["name"], scoped_institution_id),
             )
 
 
-def get_all_subjects():
+def get_all_subjects(institution_id=None):
     with get_db_connection() as conn:
         ensure_subject_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT id, name, code, department
                 FROM subjects
+                WHERE institution_id = %s
                 ORDER BY department ASC, name ASC, id ASC
-                """
+                """,
+                (scoped_institution_id,),
             )
             rows = cur.fetchall()
 
@@ -131,18 +145,19 @@ def get_all_subjects():
     ]
 
 
-def get_subject_by_id(subject_id):
+def get_subject_by_id(subject_id, institution_id=None):
     with get_db_connection() as conn:
         ensure_subject_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT id, name, code, department
                 FROM subjects
-                WHERE id = %s
+                WHERE id = %s AND institution_id = %s
                 """,
-                (subject_id,),
+                (subject_id, scoped_institution_id),
             )
             row = cur.fetchone()
 
@@ -157,18 +172,19 @@ def get_subject_by_id(subject_id):
     }
 
 
-def delete_subject(subject_id):
+def delete_subject(subject_id, institution_id=None):
     with get_db_connection() as conn:
         ensure_subject_table_consistency(conn)
 
         with conn.cursor() as cur:
+            scoped_institution_id = _resolve_institution_id(conn, institution_id)
             cur.execute(
                 """
                 SELECT id, name, code
                 FROM subjects
-                WHERE id = %s
+                WHERE id = %s AND institution_id = %s
                 """,
-                (subject_id,),
+                (subject_id, scoped_institution_id),
             )
             subject = cur.fetchone()
 
@@ -177,7 +193,7 @@ def delete_subject(subject_id):
 
             cur.execute("DELETE FROM attendance WHERE subject_id = %s", (subject_id,))
             cur.execute("DELETE FROM marks WHERE subject_id = %s", (subject_id,))
-            cur.execute("DELETE FROM subjects WHERE id = %s", (subject_id,))
+            cur.execute("DELETE FROM subjects WHERE id = %s AND institution_id = %s", (subject_id, scoped_institution_id))
 
     return {
         "id": subject[0],

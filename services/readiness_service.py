@@ -44,6 +44,7 @@ mock_stats AS (
 student_scores AS (
     SELECT
         s.id AS student_id,
+        s.institution_id AS institution_id,
         COALESCE(NULLIF(s.name, ''), u.name) AS name,
         COALESCE(NULLIF(s.email, ''), u.email) AS email,
         COALESCE(NULLIF(s.roll_number, ''), 'Not Assigned') AS roll_number,
@@ -141,9 +142,13 @@ def _row_to_score_payload(row: tuple[Any, ...]) -> dict[str, Any]:
     }
 
 
-def _fetch_student_score_rows(search=None, department=None, sort_order="desc", connection=None):
+def _fetch_student_score_rows(search=None, department=None, sort_order="desc", connection=None, institution_id=None):
     conditions = []
     params = []
+
+    if institution_id is not None:
+        conditions.append("institution_id = %s")
+        params.append(institution_id)
 
     if search:
         conditions.append("(name ILIKE %s OR email ILIKE %s OR roll_number ILIKE %s)")
@@ -187,7 +192,7 @@ def _fetch_student_score_rows(search=None, department=None, sort_order="desc", c
             return cur.fetchall()
 
 
-def calculate_readiness(student_id):
+def calculate_readiness(student_id, institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -207,8 +212,9 @@ def calculate_readiness(student_id):
                     final_score
                 FROM student_scores
                 WHERE student_id = %s
+                  AND (%s IS NULL OR institution_id = %s)
                 """,
-                (student_id,),
+                (student_id, institution_id, institution_id),
             )
             row = cur.fetchone()
 
@@ -238,8 +244,13 @@ def calculate_readiness(student_id):
     }
 
 
-def get_all_scored_students(search=None, department=None, status=None, sort_order="desc"):
-    rows = _fetch_student_score_rows(search=search, department=department, sort_order=sort_order)
+def get_all_scored_students(search=None, department=None, status=None, sort_order="desc", institution_id=None):
+    rows = _fetch_student_score_rows(
+        search=search,
+        department=department,
+        sort_order=sort_order,
+        institution_id=institution_id,
+    )
     results = []
 
     for row in rows:
@@ -253,11 +264,11 @@ def get_all_scored_students(search=None, department=None, status=None, sort_orde
     return results
 
 
-def get_top_students(limit=5):
-    return get_all_scored_students(sort_order="desc")[:limit]
+def get_top_students(limit=5, institution_id=None):
+    return get_all_scored_students(sort_order="desc", institution_id=institution_id)[:limit]
 
 
-def get_top_students_by_department(limit_per_department=3):
+def get_top_students_by_department(limit_per_department=3, institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -283,11 +294,12 @@ def get_top_students_by_department(limit_per_department=3):
                             ORDER BY final_score DESC, name ASC, student_id ASC
                         ) AS department_rank
                     FROM student_scores
+                    WHERE (%s IS NULL OR institution_id = %s)
                 ) ranked_scores
                 WHERE department_rank <= %s
                 ORDER BY department ASC, final_score DESC, name ASC, student_id ASC
                 """,
-                (limit_per_department,),
+                (institution_id, institution_id, limit_per_department),
             )
             rows = cur.fetchall()
 
@@ -320,7 +332,7 @@ def get_top_students_by_department(limit_per_department=3):
     return grouped
 
 
-def get_low_performing_students(threshold=60):
+def get_low_performing_students(threshold=60, institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -340,9 +352,10 @@ def get_low_performing_students(threshold=60):
                     final_score
                 FROM student_scores
                 WHERE final_score < %s
+                  AND (%s IS NULL OR institution_id = %s)
                 ORDER BY final_score ASC, name ASC, student_id ASC
                 """,
-                (threshold,),
+                (threshold, institution_id, institution_id),
             )
             rows = cur.fetchall()
 
@@ -366,7 +379,7 @@ def get_low_performing_students(threshold=60):
     ]
 
 
-def get_department_average_scores():
+def get_department_average_scores(institution_id=None):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -377,9 +390,11 @@ def get_department_average_scores():
                     ROUND(AVG(final_score), 2) AS average_score,
                     COUNT(*) AS student_count
                 FROM student_scores
+                WHERE (%s IS NULL OR institution_id = %s)
                 GROUP BY department
                 ORDER BY average_score DESC, department ASC
-                """
+                """,
+                (institution_id, institution_id),
             )
             rows = cur.fetchall()
 

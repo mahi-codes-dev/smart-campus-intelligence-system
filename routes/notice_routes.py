@@ -31,7 +31,8 @@ def create_notice(current_user):
             title=title,
             content=content,
             target_role=target_role,
-            author_id=current_user["id"]
+            author_id=current_user["id"],
+            institution_id=current_user.get("institution_id"),
         )
         
         if not notice_id:
@@ -59,7 +60,11 @@ def get_notices(current_user):
             roles = ["Student", "All"]
             author = None
             
-        notices = NoticeBoardService.get_notices(target_roles=roles, author_id=author)
+        notices = NoticeBoardService.get_notices(
+            target_roles=roles,
+            author_id=author,
+            institution_id=current_user.get("institution_id"),
+        )
         return jsonify({"data": notices}), 200
     except Exception as e:
         logger.error(f"Error in get_notices route: {e}")
@@ -72,7 +77,7 @@ def delete_notice(current_user, notice_id):
     try:
         # For full security, we would verify the Faculty is the author of this notice.
         # Simple version here.
-        success = NoticeBoardService.delete_notice(notice_id)
+        success = NoticeBoardService.delete_notice(notice_id, institution_id=current_user.get("institution_id"))
         if success:
             return jsonify({"message": "Notice deleted successfully"}), 200
         return jsonify({"error": "Failed to delete notice"}), 500
