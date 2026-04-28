@@ -10,6 +10,8 @@ function getAdminState() {
             departmentCatalog: [],
             dataQuality: null,
             operations: null,
+            context: null,
+            institutions: [],
             userSearch: "",
             subjectSearch: "",
             analyticsSearch: "",
@@ -480,6 +482,62 @@ function renderAdminOperations() {
     `).join("");
 }
 
+function renderAdminContext() {
+    const context = getAdminState().context || {};
+    setText("adminInstitutionName", context.name || "--");
+    setText("adminInstitutionCode", context.code || "--");
+    setText("adminInstitutionPlan", context.plan_name || "--");
+    setText("adminInstitutionStatus", context.status || "--");
+    setText("adminInstitutionUsers", formatValue(context.total_users));
+    setText("adminInstitutionStudents", formatValue(context.total_students));
+    setText("adminInstitutionNotices", formatValue(context.total_notices));
+
+    const featureList = document.getElementById("adminInstitutionFeatures");
+    if (featureList) {
+        const features = context.features || {};
+        const enabled = Object.entries(features)
+            .filter((entry) => entry[1])
+            .map((entry) => entry[0].replaceAll("_", " "));
+
+        featureList.innerHTML = enabled.length
+            ? enabled.map((item) => `<li>${item}</li>`).join("")
+            : "<li>Standard core workflows</li>";
+    }
+
+    const superAdminPanel = document.getElementById("superAdminSection");
+    if (superAdminPanel) {
+        superAdminPanel.hidden = !(context.viewer && context.viewer.is_super_admin);
+    }
+}
+
+function renderAdminInstitutions() {
+    const body = document.getElementById("adminInstitutionsTable");
+    if (!body) {
+        return;
+    }
+
+    const institutions = getAdminState().institutions || [];
+    body.innerHTML = "";
+
+    if (!institutions.length) {
+        body.innerHTML = '<tr><td colspan="6">No institutions available yet.</td></tr>';
+        return;
+    }
+
+    institutions.forEach((institution) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${institution.name}</td>
+            <td>${institution.code}</td>
+            <td>${institution.plan_name}</td>
+            <td>${institution.user_count}</td>
+            <td>${institution.student_count}</td>
+            <td>${institution.status}</td>
+        `;
+        body.appendChild(row);
+    });
+}
+
 function initializeAdminControls() {
     const state = getAdminState();
     if (state.initialized) {
@@ -624,10 +682,11 @@ async function loadAdminDashboard() {
     initializeAdminControls();
 
     try {
-        const [stats, dataQuality, operations] = await Promise.all([
+        const [stats, dataQuality, operations, context] = await Promise.all([
             fetchJson("/admin/stats"),
             fetchJson("/admin/data-quality"),
             fetchJson("/admin/operations"),
+            fetchJson("/admin/context"),
             loadUsers(),
             loadAdminDepartments(),
             loadAdminSubjects(),
@@ -640,6 +699,13 @@ async function loadAdminDashboard() {
         state.departments = stats.departments || [];
         state.dataQuality = dataQuality || {};
         state.operations = operations || {};
+        state.context = context || {};
+
+        if (context?.viewer?.is_super_admin) {
+            state.institutions = await fetchJson("/admin/institutions");
+        } else {
+            state.institutions = [];
+        }
 
         setText("adminTotalStudents", formatValue(stats.total_students));
         setText("adminTotalFaculty", formatValue(stats.total_faculty));
@@ -650,10 +716,45 @@ async function loadAdminDashboard() {
         renderAdminDepartments();
         renderAdminDataQuality();
         renderAdminOperations();
+        renderAdminContext();
+        renderAdminInstitutions();
         setAdminLastSync();
     } catch (error) {
         console.error(error);
         showAdminMessage(error.message || "Unable to load admin dashboard.", "error");
+    }
+}
+
+async function submitInstitution(event) {
+    event.preventDefault();
+
+    try {
+        const name = document.getElementById("adminInstitutionFormName")?.value.trim() || "";
+        const code = document.getElementById("adminInstitutionFormCode")?.value.trim() || "";
+        const subdomain = document.getElementById("adminInstitutionFormSubdomain")?.value.trim() || "";
+        const planName = document.getElementById("adminInstitutionFormPlan")?.value.trim() || "starter";
+
+        if (!name || !code) {
+            throw new Error("Institution name and code are required.");
+        }
+
+        const response = await fetchJson("/admin/institutions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name,
+                code,
+                subdomain,
+                plan_name: planName,
+            }),
+        });
+
+        showAdminMessage(response.message || "Institution created successfully.");
+        event.target.reset();
+        await loadAdminDashboard();
+    } catch (error) {
+        console.error(error);
+        showAdminMessage(error.message || "Unable to create institution.", "error");
     }
 }
 

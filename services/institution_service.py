@@ -5,6 +5,27 @@ import psycopg2
 
 from database import get_db_connection
 
+PLAN_FEATURES = {
+    "starter": {
+        "advanced_analytics": False,
+        "ai_assistant": False,
+        "predictive_interventions": False,
+        "priority_support": False,
+    },
+    "growth": {
+        "advanced_analytics": True,
+        "ai_assistant": True,
+        "predictive_interventions": False,
+        "priority_support": False,
+    },
+    "enterprise": {
+        "advanced_analytics": True,
+        "ai_assistant": True,
+        "predictive_interventions": True,
+        "priority_support": True,
+    },
+}
+
 
 def normalize_institution_name(name: str) -> str:
     cleaned_name = " ".join((name or "").strip().split())
@@ -140,6 +161,7 @@ def list_institutions():
             "is_default": row[6],
             "user_count": row[7],
             "student_count": row[8],
+            "features": get_plan_features(row[4]),
         }
         for row in rows
     ]
@@ -174,6 +196,75 @@ def create_institution(name: str, code: str, subdomain: str | None = None, plan_
             row = cur.fetchone()
 
     return _row_to_institution(row)
+
+
+def get_plan_features(plan_name: str | None):
+    normalized_plan = (plan_name or "starter").strip().lower()
+    return PLAN_FEATURES.get(normalized_plan, PLAN_FEATURES["starter"]).copy()
+
+
+def get_institution_context(institution_id: int | None):
+    if institution_id is None:
+        institution = {
+            "id": None,
+            "name": "All Institutions",
+            "code": "GLOBAL",
+            "subdomain": None,
+            "plan_name": "enterprise",
+            "status": "active",
+        }
+    else:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, name, code, subdomain, plan_name, status
+                    FROM institutions
+                    WHERE id = %s
+                    """,
+                    (institution_id,),
+                )
+                institution = _row_to_institution(cur.fetchone())
+
+    if institution is None:
+        institution = _fallback_institution()
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM users
+                WHERE (%s IS NULL OR institution_id = %s)
+                """,
+                (institution.get("id"), institution.get("id")),
+            )
+            total_users = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM students
+                WHERE (%s IS NULL OR institution_id = %s)
+                """,
+                (institution.get("id"), institution.get("id")),
+            )
+            total_students = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM notices
+                WHERE (%s IS NULL OR institution_id = %s)
+                """,
+                (institution.get("id"), institution.get("id")),
+            )
+            total_notices = cur.fetchone()[0]
+
+    return {
+        **institution,
+        "features": get_plan_features(institution.get("plan_name")),
+        "total_users": total_users,
+        "total_students": total_students,
+        "total_notices": total_notices,
+    }
 
 
 def _row_to_institution(row):

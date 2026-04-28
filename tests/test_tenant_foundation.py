@@ -1,5 +1,5 @@
 from auth.auth_middleware import _build_current_user
-from services.institution_service import extract_institution_code_from_host, normalize_institution_code
+from services.institution_service import extract_institution_code_from_host, get_plan_features, normalize_institution_code
 
 
 def test_extract_institution_code_from_host_uses_subdomain():
@@ -24,3 +24,12 @@ def test_build_current_user_preserves_institution_payload():
     assert user["institution_code"] == "NORTH"
     assert user["institution_name"] == "North Campus"
     assert user["is_super_admin"] is True
+
+
+def test_plan_features_scale_by_tier():
+    starter = get_plan_features("starter")
+    enterprise = get_plan_features("enterprise")
+
+    assert starter["ai_assistant"] is False
+    assert enterprise["ai_assistant"] is True
+    assert enterprise["predictive_interventions"] is True

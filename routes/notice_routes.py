@@ -22,6 +22,9 @@ def create_notice(current_user):
         title = v.validated_data["title"]
         content = v.validated_data["content"]
         target_role = v.validated_data["target_role"]
+        is_pinned = bool(data.get("is_pinned"))
+        publish_at = data.get("publish_at")
+        expires_at = data.get("expires_at")
         
         # Faculty can only notify Students or All
         if current_user["role"] == "Faculty" and target_role not in ["Student", "All"]:
@@ -33,6 +36,9 @@ def create_notice(current_user):
             target_role=target_role,
             author_id=current_user["id"],
             institution_id=current_user.get("institution_id"),
+            is_pinned=is_pinned,
+            publish_at=publish_at,
+            expires_at=expires_at,
         )
         
         if not notice_id:

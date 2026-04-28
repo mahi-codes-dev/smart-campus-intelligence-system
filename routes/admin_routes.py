@@ -11,7 +11,7 @@ from services.admin_service import (
     get_data_quality_snapshot,
     get_operations_snapshot,
 )
-from services.institution_service import create_institution, list_institutions
+from services.institution_service import create_institution, get_institution_context, list_institutions
 from services.subject_service import create_subject, delete_subject, get_all_subjects
 from services.student_service import create_department, delete_department, get_department_catalog
 
@@ -210,6 +210,23 @@ def remove_user(current_user, user_id):
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     except Exception as e:
+        return jsonify({"error": "An internal error occurred"}), 500
+
+
+@admin_bp.route("/admin/context", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_context(current_user):
+    try:
+        institution_id = None if current_user.get("is_super_admin") else current_user.get("institution_id")
+        context_payload = get_institution_context(institution_id)
+        context_payload["viewer"] = {
+            "name": current_user.get("name"),
+            "is_super_admin": current_user.get("is_super_admin"),
+            "institution_code": current_user.get("institution_code"),
+        }
+        return jsonify(context_payload), 200
+    except Exception:
         return jsonify({"error": "An internal error occurred"}), 500
 
 

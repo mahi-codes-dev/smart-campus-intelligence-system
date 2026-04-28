@@ -20,25 +20,43 @@ class NoticeBoardService:
                             target_role VARCHAR(50) NOT NULL,
                             author_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                             institution_id INTEGER,
+                            is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+                            publish_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            expires_at TIMESTAMP NULL,
                             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                         );
                     """)
                     cur.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS institution_id INTEGER")
+                    cur.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN NOT NULL DEFAULT FALSE")
+                    cur.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS publish_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+                    cur.execute("ALTER TABLE notices ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP NULL")
             logger.info("Notices table ensured")
         except Exception as e:
             logger.error(f"Error ensuring notices table: {e}")
             raise
 
     @staticmethod
-    def create_notice(title: str, content: str, target_role: str, author_id: int, institution_id: int | None):
+    def create_notice(
+        title: str,
+        content: str,
+        target_role: str,
+        author_id: int,
+        institution_id: int | None,
+        *,
+        is_pinned: bool = False,
+        publish_at=None,
+        expires_at=None,
+    ):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO notices (title, content, target_role, author_id, institution_id)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO notices (
+                            title, content, target_role, author_id, institution_id, is_pinned, publish_at, expires_at
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, COALESCE(%s, CURRENT_TIMESTAMP), %s)
                         RETURNING id
-                    """, (title, content, target_role, author_id, institution_id))
+                    """, (title, content, target_role, author_id, institution_id, is_pinned, publish_at, expires_at))
                     notice_id = cur.fetchone()[0]
             return notice_id
         except Exception as e:
@@ -50,6 +68,7 @@ class NoticeBoardService:
         try:
             query = """
                 SELECT n.id, n.title, n.content, n.target_role, n.created_at, u.name, r.role_name
+                    , COALESCE(n.is_pinned, FALSE), n.publish_at, n.expires_at
                 FROM notices n
                 JOIN users u ON n.author_id = u.id
                 LEFT JOIN roles r ON u.role_id = r.id
@@ -60,6 +79,9 @@ class NoticeBoardService:
             if institution_id is not None:
                 query += " AND n.institution_id = %s"
                 params.append(institution_id)
+
+            query += " AND COALESCE(n.publish_at, n.created_at) <= CURRENT_TIMESTAMP"
+            query += " AND (n.expires_at IS NULL OR n.expires_at > CURRENT_TIMESTAMP)"
             
             if target_roles:
                 query += " AND (n.target_role = ANY(%s)"
@@ -73,7 +95,7 @@ class NoticeBoardService:
                 query += " AND n.author_id = %s"
                 params.append(author_id)
                 
-            query += " ORDER BY n.created_at DESC"
+            query += " ORDER BY COALESCE(n.is_pinned, FALSE) DESC, COALESCE(n.publish_at, n.created_at) DESC, n.created_at DESC"
             
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -89,7 +111,10 @@ class NoticeBoardService:
                     "target_role": row[3],
                     "created_at": row[4].strftime("%Y-%m-%d %H:%M:%S") if row[4] else "",
                     "author_name": row[5],
-                    "author_role": row[6]
+                    "author_role": row[6],
+                    "is_pinned": row[7],
+                    "publish_at": row[8].strftime("%Y-%m-%d %H:%M:%S") if row[8] else "",
+                    "expires_at": row[9].strftime("%Y-%m-%d %H:%M:%S") if row[9] else "",
                 })
             return notices
         except Exception as e:
