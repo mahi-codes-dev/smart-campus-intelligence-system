@@ -5,7 +5,7 @@ Allows students to set personal academic goals, track milestones,
 and earn badges. Faculty/Admins can view goal statistics.
 """
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, UTC
 from contextlib import nullcontext
 from database import db_cursor
 from database import get_db_connection
@@ -180,7 +180,7 @@ def update_goal_progress(goal_id: int, student_id: int, current_value: float) ->
         completed_at = None
         if target and float(current_value) >= float(target):
             new_status = "completed"
-            completed_at = datetime.utcnow()
+            completed_at = datetime.now(UTC)
 
         cur.execute("""
             UPDATE student_goals

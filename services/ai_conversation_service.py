@@ -8,7 +8,7 @@ Features:
 - Clean up old conversations (keep last 20 per student)
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from database import get_db_connection
 from services.student_service import ensure_student_table_consistency
@@ -199,7 +199,7 @@ def check_rate_limit(student_id: int) -> dict:
         "message": str (user-friendly message if rate limited)
     }
     """
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     
     with get_db_connection() as conn:
         ensure_ai_tables_consistency(conn)
@@ -229,6 +229,9 @@ def check_rate_limit(student_id: int) -> dict:
                 limit_id, count, reset_at = None, 0, reset_time
             else:
                 limit_id, count, reset_at = limit_row
+                # Convert naive datetime from database to timezone-aware
+                if reset_at and reset_at.tzinfo is None:
+                    reset_at = reset_at.replace(tzinfo=UTC)
             
             # Check if window has expired
             if reset_at and reset_at <= now:

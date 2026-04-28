@@ -3,7 +3,7 @@ Integration tests for AI Assistant feature.
 Tests conversation history, rate limiting, and Gemini integration.
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from services.ai_conversation_service import (
     ensure_ai_tables_consistency,
@@ -100,7 +100,7 @@ def test_rate_limit_reset(setup_ai_db):
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             # Use old timestamp (24+ hours ago)
-            old_reset = (datetime.utcnow() - timedelta(days=2)).isoformat()
+            old_reset = (datetime.now(UTC) - timedelta(days=2)).isoformat()
             cur.execute(
                 """
                 INSERT INTO ai_rate_limits (student_id, request_count, reset_at)
