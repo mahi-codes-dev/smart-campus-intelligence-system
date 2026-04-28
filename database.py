@@ -12,15 +12,25 @@ _DB_POOL = None
 
 def _build_connect_kwargs():
     if settings.database_url:
-        return {"dsn": settings.database_url}
+        connect_kwargs = {
+            "dsn": settings.database_url,
+            "connect_timeout": settings.db_connect_timeout,
+        }
+        if settings.db_ssl_mode:
+            connect_kwargs["sslmode"] = settings.db_ssl_mode
+        return connect_kwargs
 
-    return {
+    connect_kwargs = {
         "host": settings.db_host,
         "database": settings.db_name,
         "user": settings.db_user,
         "password": settings.db_password,
         "port": settings.db_port,
+        "connect_timeout": settings.db_connect_timeout,
     }
+    if settings.db_ssl_mode:
+        connect_kwargs["sslmode"] = settings.db_ssl_mode
+    return connect_kwargs
 
 
 def get_db_pool():
@@ -30,7 +40,6 @@ def get_db_pool():
         _DB_POOL = ThreadedConnectionPool(
             minconn=settings.db_pool_minconn,
             maxconn=settings.db_pool_maxconn,
-            connect_timeout=10,
             keepalives=1,
             keepalives_idle=30,
             keepalives_interval=10,

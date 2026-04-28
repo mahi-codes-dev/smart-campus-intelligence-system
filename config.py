@@ -44,6 +44,8 @@ class Settings:
     db_user: str | None
     db_password: str | None
     db_port: int
+    db_connect_timeout: int
+    db_ssl_mode: str | None
     jwt_secret: str
     jwt_algorithm: str
     jwt_exp_hours: int
@@ -57,10 +59,15 @@ class Settings:
     db_pool_minconn: int
     db_pool_maxconn: int
     trust_proxy_count: int
+    web_concurrency: int
+    gunicorn_threads: int
     auth_cookie_name: str
     auth_cookie_secure: bool
     auth_cookie_samesite: str
     auth_cookie_domain: str | None
+    cors_allowed_origins: str | None
+    release_version: str
+    release_commit: str | None
     
     # Email settings for OTP
     smtp_server: str
@@ -81,6 +88,8 @@ settings = Settings(
     db_user=_get_env("DB_USER"),
     db_password=_get_env("DB_PASSWORD"),
     db_port=_get_env("DB_PORT", default="5432", cast=int),
+    db_connect_timeout=_get_env("DB_CONNECT_TIMEOUT", default="10", cast=int),
+    db_ssl_mode=_get_env("DB_SSL_MODE"),
     jwt_secret=_get_env("JWT_SECRET", aliases=["JWT_SECRET_KEY", "SECRET_KEY"], required=True),
     jwt_algorithm=_get_env("JWT_ALGORITHM", default="HS256"),
     jwt_exp_hours=_get_env("JWT_EXP_HOURS", default="24", cast=int),
@@ -98,6 +107,8 @@ settings = Settings(
     db_pool_minconn=_get_env("DB_POOL_MINCONN", default="1", cast=int),
     db_pool_maxconn=_get_env("DB_POOL_MAXCONN", default="10", cast=int),
     trust_proxy_count=_get_env("TRUST_PROXY_COUNT", default="1", cast=int),
+    web_concurrency=_get_env("WEB_CONCURRENCY", default="2", cast=int),
+    gunicorn_threads=_get_env("GUNICORN_THREADS", default="2", cast=int),
     auth_cookie_name=_get_env("AUTH_COOKIE_NAME", default="smart_campus_token"),
     auth_cookie_secure=_get_env(
         "AUTH_COOKIE_SECURE",
@@ -106,6 +117,9 @@ settings = Settings(
     ),
     auth_cookie_samesite=_get_env("AUTH_COOKIE_SAMESITE", default="Lax"),
     auth_cookie_domain=_get_env("AUTH_COOKIE_DOMAIN"),
+    cors_allowed_origins=_get_env("CORS_ALLOWED_ORIGINS"),
+    release_version=_get_env("RELEASE_VERSION", default="dev"),
+    release_commit=_get_env("RENDER_GIT_COMMIT", aliases=["RELEASE_COMMIT", "COMMIT_SHA"]),
     smtp_server=_get_env("SMTP_SERVER", default="smtp.gmail.com"),
     smtp_port=_get_env("SMTP_PORT", default="587", cast=int),
     smtp_username=_get_env("SMTP_USERNAME"),

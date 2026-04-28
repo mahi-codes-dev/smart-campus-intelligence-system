@@ -1,4 +1,6 @@
 import logging
+import os
+import platform
 import time
 from pathlib import Path
 from flask import Flask, jsonify, render_template, request
@@ -7,6 +9,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from auth.auth_routes import auth_bp
 from config import settings
 from core.logging_config import configure_logging
+from core.request_context import register_request_context
 from core.security_headers import apply_security_headers
 from database import get_db_connection
 from routes.admin_dashboard_routes import admin_dashboard_bp
@@ -59,6 +62,7 @@ app.config["DEBUG"] = settings.flask_debug
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = settings.auth_cookie_secure
 app.config["SESSION_COOKIE_SAMESITE"] = settings.auth_cookie_samesite
+app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
 
 if settings.trust_proxy_count > 0:
     app.wsgi_app = ProxyFix(
@@ -69,11 +73,15 @@ if settings.trust_proxy_count > 0:
     )
 
 apply_security_headers(app)
+register_request_context(app)
 
 startup_status = {
     "ready": False,
     "database": "unknown",
     "bootstrap_error": None,
+    "bootstrapped_at": None,
+    "release_version": settings.release_version,
+    "release_commit": settings.release_commit,
 }
 
 
@@ -114,6 +122,7 @@ try:
     bootstrap_with_retry()
     startup_status["ready"] = True
     startup_status["database"] = "connected"
+    startup_status["bootstrapped_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 except Exception as schema_error:
     startup_status["database"] = "disconnected"
     startup_status["bootstrap_error"] = str(schema_error)
@@ -204,7 +213,12 @@ def offline_page():
 
 @app.route("/health/live")
 def live_check():
-    return jsonify({"status": "alive", "app": settings.app_name}), 200
+    return jsonify({
+        "status": "alive",
+        "app": settings.app_name,
+        "environment": settings.flask_env,
+        "release_version": settings.release_version,
+    }), 200
 
 
 @app.route("/health/ready")
@@ -220,7 +234,27 @@ def health_check():
         status["ready"] = False
         status["bootstrap_error"] = status.get("bootstrap_error") or str(e)
     status["status"] = "healthy" if status.get("ready") else "unhealthy"
+    status["environment"] = settings.flask_env
+    status["service"] = os.getenv("RENDER_SERVICE_NAME") or settings.app_name
+    status["runtime"] = {
+        "python": platform.python_version(),
+        "platform": platform.platform(),
+        "web_concurrency": settings.web_concurrency,
+        "gunicorn_threads": settings.gunicorn_threads,
+    }
     return jsonify(status), 200 if status["status"] == "healthy" else 503
+
+
+@app.route("/health/startup")
+def startup_check():
+    status = {
+        "status": "ready" if startup_status.get("ready") else "failed",
+        "bootstrap_error": startup_status.get("bootstrap_error"),
+        "bootstrapped_at": startup_status.get("bootstrapped_at"),
+        "release_version": settings.release_version,
+        "release_commit": settings.release_commit,
+    }
+    return jsonify(status), 200 if startup_status.get("ready") else 503
 
 
 # --- Frontend page routes ---
