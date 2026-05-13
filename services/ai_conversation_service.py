@@ -293,12 +293,12 @@ def build_context_from_history(conversation_history: list[dict], max_messages: i
     return "\n".join(context_lines)
 
 
-def get_quick_prompts(student_id: int) -> list[dict]:
+def get_quick_prompts(student_id: int, institution_id=None) -> list[dict]:
     """Get suggested quick prompts based on student profile."""
     from services.student_dashboard_service import get_student_dashboard_data
     
     try:
-        data = get_student_dashboard_data(student_id)
+        data = get_student_dashboard_data(student_id, institution_id=institution_id)
     except Exception as e:
         logger.error(f"Could not fetch student data for prompts: {e}")
         data = {}

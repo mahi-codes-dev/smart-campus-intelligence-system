@@ -143,7 +143,7 @@ def get_marks():
     return marks_list
 
 
-def get_subject_wise_marks(student_id):
+def get_subject_wise_marks(student_id, institution_id=None):
     with get_db_connection() as conn:
         ensure_marks_table_consistency(conn)
 
@@ -160,10 +160,11 @@ def get_subject_wise_marks(student_id):
                 LEFT JOIN marks m
                     ON m.subject_id = sub.id
                    AND m.student_id = %s
+                WHERE (%s IS NULL OR sub.institution_id = %s)
                 GROUP BY sub.id, sub.name, sub.code
                 ORDER BY sub.name ASC
                 """,
-                (student_id,),
+                (student_id, institution_id, institution_id),
             )
             rows = cur.fetchall()
 
@@ -179,7 +180,7 @@ def get_subject_wise_marks(student_id):
     ]
 
 
-def get_marks_by_student(student_id):
+def get_marks_by_student(student_id, institution_id=None):
     with get_db_connection() as conn:
         ensure_marks_table_consistency(conn)
 
@@ -196,9 +197,10 @@ def get_marks_by_student(student_id):
                 FROM marks m
                 JOIN subjects sub ON m.subject_id = sub.id
                 WHERE m.student_id = %s
+                  AND (%s IS NULL OR sub.institution_id = %s)
                 ORDER BY m.created_at DESC NULLS LAST, m.id DESC
                 """,
-                (student_id,),
+                (student_id, institution_id, institution_id),
             )
             rows = cur.fetchall()
 
@@ -234,7 +236,7 @@ def get_student_average_marks(student_id):
     return round(average_marks, 2)
 
 
-def get_marks_timeline(student_id, limit=10):
+def get_marks_timeline(student_id, limit=10, institution_id=None):
     """
     Get subject-wise performance over time for growth tracking.
     Returns marks history grouped by subject.
@@ -253,10 +255,11 @@ def get_marks_timeline(student_id, limit=10):
                 FROM marks m
                 JOIN subjects sub ON m.subject_id = sub.id
                 WHERE m.student_id = %s
+                  AND (%s IS NULL OR sub.institution_id = %s)
                 ORDER BY m.created_at DESC
                 LIMIT %s
                 """,
-                (student_id, limit),
+                (student_id, institution_id, institution_id, limit),
             )
             rows = cur.fetchall()
 
@@ -271,7 +274,7 @@ def get_marks_timeline(student_id, limit=10):
     ]
 
 
-def get_subject_wise_trend(student_id):
+def get_subject_wise_trend(student_id, institution_id=None):
     """
     Get performance trend for each subject (improving/declining).
     """
@@ -287,11 +290,12 @@ def get_subject_wise_trend(student_id):
                     ARRAY_AGG(m.marks ORDER BY m.created_at DESC) AS marks_history
                 FROM subjects sub
                 LEFT JOIN marks m ON m.subject_id = sub.id AND m.student_id = %s
+                WHERE (%s IS NULL OR sub.institution_id = %s)
                 GROUP BY sub.id, sub.name
                 HAVING COUNT(m.id) > 0
                 ORDER BY sub.name ASC
                 """,
-                (student_id,),
+                (student_id, institution_id, institution_id),
             )
             rows = cur.fetchall()
 

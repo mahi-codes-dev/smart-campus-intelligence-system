@@ -12,6 +12,7 @@ import logging
 from flask import Blueprint, jsonify, request, g
 
 from auth.auth_middleware import token_required, role_required
+from core.feature_flags import require_feature
 from services.company_matching_service import (
     ensure_companies_table_consistency,
     seed_default_companies,
@@ -35,12 +36,12 @@ def student_company_matches():
     - eligible_with_improvement: Close (75-89% match, shows gap)
     - stretch_targets: Aspirational (0-74% match)
     """
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
     
     try:
-        matches = get_company_matches_for_student(student["id"])
+        matches = get_company_matches_for_student(student["id"], institution_id=g.institution_id)
         
         return jsonify({
             "student_name": student.get("name", "Unknown"),
@@ -150,13 +151,17 @@ def student_company_insights():
     Optional query param: company_name (e.g., "Infosys")
     """
     from services.ai_service import AIService
+
+    feature_error = require_feature("ai_assistant")
+    if feature_error:
+        return feature_error
     
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
     
     try:
-        matches = get_company_matches_for_student(student["id"])
+        matches = get_company_matches_for_student(student["id"], institution_id=g.institution_id)
         company_name = request.args.get("company_name", "").strip()
         
         # Build context for Gemini

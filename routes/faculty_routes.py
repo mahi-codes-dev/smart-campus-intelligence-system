@@ -1,6 +1,6 @@
 import logging
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 
 from auth.auth_middleware import role_required, token_required
 from database import get_db_connection
@@ -16,16 +16,24 @@ faculty_bp = Blueprint("faculty_bp", __name__)
 @role_required("Faculty")
 def get_all_students_performance():
     try:
+        institution_id = request.user.get("institution_id")  # type: ignore[attr-defined]
         with get_db_connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT id, name, email FROM students")
+                cur.execute(
+                    """
+                    SELECT id, name, email
+                    FROM students
+                    WHERE institution_id = %s
+                    """,
+                    (institution_id,),
+                )
                 students = cur.fetchall()
 
         result = []
 
         for student in students:
             student_id = student[0]
-            data = calculate_readiness(student_id)
+            data = calculate_readiness(student_id, institution_id=institution_id)
 
             result.append({
                 "id": student_id,
@@ -54,9 +62,22 @@ def add_marks():
         student_id = data["student_id"]
         subject_id = data["subject_id"]
         marks = data["marks"]
+        institution_id = request.user.get("institution_id")  # type: ignore[attr-defined]
 
         with get_db_connection() as conn:
             with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT 1
+                    FROM students s
+                    JOIN subjects sub ON sub.id = %s AND sub.institution_id = s.institution_id
+                    WHERE s.id = %s AND s.institution_id = %s
+                    """,
+                    (subject_id, student_id, institution_id),
+                )
+                if not cur.fetchone():
+                    return jsonify({"error": "Student or subject not found"}), 404
+
                 cur.execute(
                     """
                     INSERT INTO marks (student_id, subject_id, marks)

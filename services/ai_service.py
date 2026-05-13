@@ -48,7 +48,7 @@ class AIService:
     # ── Student advisor ───────────────────────────────────────────────────────
 
     @classmethod
-    def get_student_advice(cls, student_id: int, user_message: str) -> str:
+    def get_student_advice(cls, student_id: int, user_message: str, institution_id=None) -> str:
         model = cls._get_model()
         if not model:
             return (
@@ -63,8 +63,8 @@ class AIService:
         from services.ai_conversation_service import get_conversation_history, build_context_from_history
 
         try:
-            profile = get_student_profile(student_id) or {}
-            data = get_student_dashboard_data(student_id)
+            profile = get_student_profile(student_id, institution_id=institution_id) or {}
+            data = get_student_dashboard_data(student_id, institution_id=institution_id)
             history = get_conversation_history(student_id, limit=10)
         except Exception as exc:
             logger.error("Could not fetch student context for AI: %s", exc)

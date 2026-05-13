@@ -9,7 +9,7 @@ from services.attendance_service import (
 from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
 
-from services.student_service import get_student_record_by_user_id
+from services.student_service import get_student_profile, get_student_record_by_user_id
 
 attendance_bp = Blueprint("attendance_bp", __name__)
 
@@ -32,6 +32,8 @@ def add_attendance():
 
         student_id = v.validated_data["student_id"]
         subject_id = v.validated_data["subject_id"]
+        if not get_student_profile(student_id, institution_id=request.user.get("institution_id")):  # type: ignore[attr-defined]
+            return jsonify({"error": "Student not found"}), 404
 
         if "attendance_percentage" in v.validated_data:
             perc = v.validated_data["attendance_percentage"]
@@ -63,7 +65,7 @@ def add_attendance():
 @role_required("Student")
 def view_attendance():
     try:
-        student = get_student_record_by_user_id(request.user["user_id"])
+        student = get_student_record_by_user_id(request.user["user_id"], institution_id=request.user.get("institution_id"))
         if not student:
             return jsonify({"error": "Student not found"}), 404
 

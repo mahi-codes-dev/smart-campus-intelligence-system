@@ -27,12 +27,12 @@ def suggestions():
     # Assuming g.user_id is set by token_required and refers to the USER record.
     # We need the STUDENT id.
     from services.student_service import get_student_record_by_user_id
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
         
-    suggestions = get_peer_mentorship_suggestions(student['id'])
+    suggestions = get_peer_mentorship_suggestions(student['id'], institution_id=g.institution_id)
     return jsonify(suggestions)
 
 @peer_learning_bp.route('/peer-learning/mentor-status', methods=['GET'])
@@ -42,7 +42,7 @@ def mentor_status():
     Check if the logged-in student is a mentor for any subjects.
     """
     from services.student_service import get_student_record_by_user_id
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
@@ -73,7 +73,7 @@ def get_peer_feed():
         GET /student/peer-feed?limit=20&types=placement,skill
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
@@ -90,7 +90,8 @@ def get_peer_feed():
             student_id=student['id'],
             limit=limit,
             offset=offset,
-            achievement_types=achievement_types
+            achievement_types=achievement_types,
+            institution_id=g.institution_id,
         )
         
         return jsonify({
@@ -123,7 +124,7 @@ def get_peer_achievements():
         }
     """
     try:
-        summary = get_peer_achievements_summary(0)  # Fetch global stats
+        summary = get_peer_achievements_summary(0, institution_id=g.institution_id)
         return jsonify(summary), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -148,7 +149,7 @@ def get_trending_skills_endpoint():
     """
     try:
         limit = request.args.get('limit', 5, type=int)
-        skills = get_trending_skills(limit)
+        skills = get_trending_skills(limit, institution_id=g.institution_id)
         return jsonify({'success': True, 'trending_skills': skills}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -161,7 +162,7 @@ def get_prefs():
     Get student's peer feed privacy preferences.
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
@@ -191,7 +192,7 @@ def update_prefs():
         }
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
@@ -231,7 +232,7 @@ def add_skill():
         }
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
@@ -268,7 +269,7 @@ def get_my_study_groups():
     Get all study groups the student is member of.
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
@@ -299,7 +300,7 @@ def create_group():
         }
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
@@ -341,11 +342,11 @@ def join_group(group_id):
         - group_id: ID of the study group
     """
     try:
-        student = get_student_record_by_user_id(g.user_id)
+        student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
-        success = join_study_group(group_id, student['id'])
+        success = join_study_group(group_id, student['id'], institution_id=g.institution_id)
         
         if success:
             return jsonify({

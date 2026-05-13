@@ -213,7 +213,7 @@ def _hydrate_student_intervention_fields(students):
         student["recommended_focus"] = _get_intervention_focus(student)
 
 
-def get_student_interventions(student_id, limit=10):
+def get_student_interventions(student_id, limit=10, institution_id=None):
     with get_db_connection() as conn:
         ensure_intervention_table_consistency(conn)
 
@@ -237,19 +237,21 @@ def get_student_interventions(student_id, limit=10):
                     si.resolved_at
                 FROM student_interventions si
                 LEFT JOIN users u ON si.faculty_user_id = u.id
+                JOIN students s ON s.id = si.student_id
                 WHERE si.student_id = %s
+                  AND (%s IS NULL OR s.institution_id = %s)
                 ORDER BY si.created_at DESC, si.id DESC
                 LIMIT %s
                 """,
-                (student_id, limit),
+                (student_id, institution_id, institution_id, limit),
             )
             rows = cur.fetchall()
 
     return [_serialize_intervention_row(row) for row in rows]
 
 
-def create_student_intervention(student_id, faculty_user_id, payload):
-    profile = get_student_profile(student_id)
+def create_student_intervention(student_id, faculty_user_id, payload, institution_id=None):
+    profile = get_student_profile(student_id, institution_id=institution_id)
     if not profile:
         raise ValueError("Student not found")
 
@@ -326,11 +328,11 @@ def create_student_intervention(student_id, faculty_user_id, payload):
             },
         )
 
-    created = get_student_interventions(student_id, limit=10)
+    created = get_student_interventions(student_id, limit=10, institution_id=institution_id)
     return next((item for item in created if item["id"] == intervention_id), None)
 
 
-def update_student_intervention_status(intervention_id, status, faculty_user_id=None):
+def update_student_intervention_status(intervention_id, status, faculty_user_id=None, institution_id=None):
     normalized_status = _normalize_intervention_status(status)
 
     with get_db_connection() as conn:
@@ -340,10 +342,12 @@ def update_student_intervention_status(intervention_id, status, faculty_user_id=
             cur.execute(
                 """
                 SELECT student_id
-                FROM student_interventions
-                WHERE id = %s
+                FROM student_interventions si
+                JOIN students s ON s.id = si.student_id
+                WHERE si.id = %s
+                  AND (%s IS NULL OR s.institution_id = %s)
                 """,
-                (intervention_id,),
+                (intervention_id, institution_id, institution_id),
             )
             row = cur.fetchone()
 
@@ -366,16 +370,17 @@ def update_student_intervention_status(intervention_id, status, faculty_user_id=
                 (normalized_status, faculty_user_id, normalized_status, intervention_id),
             )
 
-    updated = get_student_interventions(row[0], limit=10)
+    updated = get_student_interventions(row[0], limit=10, institution_id=institution_id)
     return next((item for item in updated if item["id"] == intervention_id), None)
 
 
-def get_intervention_watchlist(search=None, department=None, limit=8, students=None):
+def get_intervention_watchlist(search=None, department=None, limit=8, students=None, institution_id=None):
     students = students or get_all_students_dashboard(
         filter_status=None,
         sort_order="asc",
         search=search,
         department=department,
+        institution_id=institution_id,
     )
 
     focus_students = [
@@ -420,12 +425,13 @@ def get_intervention_watchlist(search=None, department=None, limit=8, students=N
     return results
 
 
-def get_intervention_summary(search=None, department=None, students=None):
+def get_intervention_summary(search=None, department=None, students=None, institution_id=None):
     students = students or get_all_students_dashboard(
         filter_status=None,
         sort_order="asc",
         search=search,
         department=department,
+        institution_id=institution_id,
     )
     focus_students = [
         student for student in students
@@ -470,8 +476,8 @@ def get_intervention_summary(search=None, department=None, students=None):
     }
 
 
-def calculate_student_dashboard(student_id):
-    dashboard = get_student_dashboard_data(student_id)
+def calculate_student_dashboard(student_id, institution_id=None):
+    dashboard = get_student_dashboard_data(student_id, institution_id=institution_id)
 
     return {
         "attendance": dashboard["attendance"],
@@ -485,12 +491,13 @@ def calculate_student_dashboard(student_id):
     }
 
 
-def get_all_students_dashboard(filter_status=None, sort_order=None, search=None, department=None):
+def get_all_students_dashboard(filter_status=None, sort_order=None, search=None, department=None, institution_id=None):
     students = get_all_scored_students(
         search=search,
         department=department,
         status=filter_status,
         sort_order=sort_order or "desc",
+        institution_id=institution_id,
     )
 
     results = []
@@ -516,7 +523,7 @@ def get_all_students_dashboard(filter_status=None, sort_order=None, search=None,
     return results
 
 
-def get_faculty_dashboard_summary(search=None, department=None, filter_status=None, sort_order=None):
+def get_faculty_dashboard_summary(search=None, department=None, filter_status=None, sort_order=None, institution_id=None):
     """
     Get faculty dashboard summary with enhanced insights.
     Includes: total students, average marks, at-risk count, students needing attention.
@@ -526,6 +533,7 @@ def get_faculty_dashboard_summary(search=None, department=None, filter_status=No
         sort_order=sort_order,
         search=search,
         department=department,
+        institution_id=institution_id,
     )
 
     total_students = len(students)
@@ -553,28 +561,30 @@ def get_faculty_dashboard_summary(search=None, department=None, filter_status=No
             "average_marks": average_marks,
             "at_risk_count": len(at_risk_students),
             "students_needing_attention_count": len(students_needing_attention),
-            "departments": get_all_departments(),
+            "departments": get_all_departments(institution_id=institution_id),
         },
         "intervention_summary": get_intervention_summary(
             search=search,
             department=department,
             students=students,
+            institution_id=institution_id,
         ),
         "intervention_watchlist": get_intervention_watchlist(
             search=search,
             department=department,
             students=students,
+            institution_id=institution_id,
         ),
         "at_risk_students": at_risk_students[:10],
         "students_needing_attention": students_needing_attention[:10],
     }
 
 
-def get_student_detail(student_id):
-    dashboard = get_student_dashboard_data(student_id)
+def get_student_detail(student_id, institution_id=None):
+    dashboard = get_student_dashboard_data(student_id, institution_id=institution_id)
 
     return {
-        "profile": get_student_profile(student_id),
+        "profile": get_student_profile(student_id, institution_id=institution_id),
         "overview": {
             "attendance": dashboard["attendance"],
             "marks": dashboard["marks"],
@@ -583,8 +593,8 @@ def get_student_detail(student_id):
             "status": dashboard["status"],
             "risk_level": dashboard["risk_level"],
         },
-        "subject_performance": get_subject_wise_marks(student_id),
-        "marks_history": get_marks_by_student(student_id),
+        "subject_performance": get_subject_wise_marks(student_id, institution_id=institution_id),
+        "marks_history": get_marks_by_student(student_id, institution_id=institution_id),
         "attendance_history": get_attendance(student_id),
         "mock_scores": get_mock_scores(student_id),
         "placement_reasons": dashboard["placement_reasons"],
@@ -593,12 +603,12 @@ def get_student_detail(student_id):
         "profile_summary": dashboard["profile_summary"],
         "subject_trends": dashboard.get("subject_trends", []),
         "marks_timeline": dashboard.get("marks_timeline", []),
-        "interventions": get_student_interventions(student_id),
+        "interventions": get_student_interventions(student_id, institution_id=institution_id),
     }
 
 
-def get_classroom_roster(subject_id, department=None, search=None):
-    subject = get_subject_by_id(subject_id)
+def get_classroom_roster(subject_id, department=None, search=None, institution_id=None):
+    subject = get_subject_by_id(subject_id, institution_id=institution_id)
 
     if not subject:
         raise ValueError("Subject not found")
@@ -611,6 +621,7 @@ def get_classroom_roster(subject_id, department=None, search=None):
         search=search,
         department=effective_department,
         sort_order="desc",
+        institution_id=institution_id,
     )
 
     with get_db_connection() as conn:
@@ -696,8 +707,8 @@ def get_classroom_roster(subject_id, department=None, search=None):
     }
 
 
-def save_classroom_attendance(subject_id, entries):
-    subject = get_subject_by_id(subject_id)
+def save_classroom_attendance(subject_id, entries, institution_id=None):
+    subject = get_subject_by_id(subject_id, institution_id=institution_id)
 
     if not subject:
         raise ValueError("Subject not found")
@@ -708,6 +719,8 @@ def save_classroom_attendance(subject_id, entries):
         attendance_value = entry.get("attendance_percentage")
         if attendance_value in (None, ""):
             continue
+        if institution_id is not None and not get_student_profile(int(entry["student_id"]), institution_id=institution_id):
+            raise ValueError("Student not found")
 
         save_attendance_percentage(
             int(entry["student_id"]),
@@ -725,8 +738,8 @@ def save_classroom_attendance(subject_id, entries):
     }
 
 
-def save_classroom_marks(subject_id, exam_type, entries):
-    subject = get_subject_by_id(subject_id)
+def save_classroom_marks(subject_id, exam_type, entries, institution_id=None):
+    subject = get_subject_by_id(subject_id, institution_id=institution_id)
 
     if not subject:
         raise ValueError("Subject not found")
@@ -741,6 +754,8 @@ def save_classroom_marks(subject_id, exam_type, entries):
         marks_value = entry.get("marks")
         if marks_value in (None, ""):
             continue
+        if institution_id is not None and not get_student_profile(int(entry["student_id"]), institution_id=institution_id):
+            raise ValueError("Student not found")
 
         save_marks(
             int(entry["student_id"]),

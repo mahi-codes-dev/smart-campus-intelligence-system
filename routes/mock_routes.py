@@ -3,7 +3,7 @@ logger = logging.getLogger(__name__)
 from flask import Blueprint, request, jsonify
 from services.mock_service import add_mock_test, get_mock_scores, save_mock_test
 from auth.auth_middleware import token_required, role_required
-from services.student_service import get_student_record_by_user_id
+from services.student_service import get_student_profile, get_student_record_by_user_id
 from utils.response import success_response, error_response
 from utils.validators import validate_required_fields
 
@@ -26,6 +26,8 @@ def create_mock():
         student_id = data["student_id"]
         score = data["score"]
         test_name = data["test_name"]
+        if not get_student_profile(student_id, institution_id=request.user.get("institution_id")):  # type: ignore[attr-defined]
+            return error_response("Student not found", 404)
 
         add_mock_test(student_id, score, test_name)
 
@@ -52,6 +54,8 @@ def update_mock():
         valid, error = validate_required_fields(data, ["student_id", "score", "test_name"])
         if not valid:
             return error_response(error)
+        if not get_student_profile(data["student_id"], institution_id=request.user.get("institution_id")):  # type: ignore[attr-defined]
+            return error_response("Student not found", 404)
 
         action = save_mock_test(
             data["student_id"],
@@ -79,9 +83,11 @@ def update_mock():
 def fetch_mock(student_id):
     try:
         if request.user.get("role_id") == 3:
-            student = get_student_record_by_user_id(request.user["user_id"])
+            student = get_student_record_by_user_id(request.user["user_id"], institution_id=request.user.get("institution_id"))
             if not student or student["id"] != student_id:
                 return jsonify({"error": "Students can only view their own mock tests"}), 403
+        elif not request.user.get("is_super_admin") and not get_student_profile(student_id, institution_id=request.user.get("institution_id")):
+            return jsonify({"error": "Student not found"}), 404
 
         data = get_mock_scores(student_id)
         return jsonify(data), 200

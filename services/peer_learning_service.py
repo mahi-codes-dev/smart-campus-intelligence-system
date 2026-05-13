@@ -1,7 +1,7 @@
 from database import get_db_connection
 from services.readiness_service import STUDENT_SCORE_CTE
 
-def get_subject_mentors(subject_id, limit=5):
+def get_subject_mentors(subject_id, limit=5, institution_id=None):
     """
     Find students who excel in a specific subject.
     Criteria: Marks > 85
@@ -18,11 +18,13 @@ def get_subject_mentors(subject_id, limit=5):
                     m.marks
                 FROM students s
                 JOIN marks m ON s.id = m.student_id
-                WHERE m.subject_id = %s AND m.marks >= 85
+                WHERE m.subject_id = %s
+                  AND m.marks >= 85
+                  AND (%s IS NULL OR s.institution_id = %s)
                 ORDER BY m.marks DESC, s.name ASC
                 LIMIT %s
                 """,
-                (subject_id, limit)
+                (subject_id, institution_id, institution_id, limit)
             )
             rows = cur.fetchall()
 
@@ -37,7 +39,7 @@ def get_subject_mentors(subject_id, limit=5):
         for row in rows
     ]
 
-def get_peer_mentorship_suggestions(student_id):
+def get_peer_mentorship_suggestions(student_id, institution_id=None):
     """
     Identify subjects where the student is struggling and suggest mentors.
     """
@@ -52,16 +54,19 @@ def get_peer_mentorship_suggestions(student_id):
                     m.marks
                 FROM marks m
                 JOIN subjects sbj ON m.subject_id = sbj.id
-                WHERE m.student_id = %s AND m.marks < 60
+                JOIN students s ON s.id = m.student_id
+                WHERE m.student_id = %s
+                  AND m.marks < 60
+                  AND (%s IS NULL OR s.institution_id = %s)
                 ORDER BY m.marks ASC
                 """,
-                (student_id,)
+                (student_id, institution_id, institution_id)
             )
             struggling_subjects = cur.fetchall()
 
     suggestions = []
     for sub_id, sub_name, marks in struggling_subjects:
-        mentors = get_subject_mentors(sub_id, limit=3)
+        mentors = get_subject_mentors(sub_id, limit=3, institution_id=institution_id)
         if mentors:
             suggestions.append({
                 "subject_id": sub_id,
@@ -207,7 +212,8 @@ def get_peer_feed_for_student(
     student_id: int,
     limit: int = 50,
     offset: int = 0,
-    achievement_types: Optional[List[str]] = None
+    achievement_types: Optional[List[str]] = None,
+    institution_id: int | None = None,
 ) -> Tuple[List[Dict[str, Any]], int]:
     """
     Get personalized peer feed for a student (respecting privacy settings).
@@ -247,9 +253,10 @@ def get_peer_feed_for_student(
                     JOIN students s ON pa.student_id = s.id
                     WHERE pa.visibility = TRUE
                     AND pa.student_id != %s
+                    AND (%s IS NULL OR s.institution_id = %s)
                 """
                 
-                params = [student_id]
+                params = [student_id, institution_id, institution_id]
                 
                 # Filter by achievement types if provided
                 if achievement_types:
@@ -259,7 +266,7 @@ def get_peer_feed_for_student(
                 
                 # Count total items
                 count_query = f"SELECT COUNT(*) FROM ({base_query}) AS count_subquery"
-                cur.execute(count_query, params[:1 + len(achievement_types or [])])
+                cur.execute(count_query, params[:3 + len(achievement_types or [])])
                 total_count = cur.fetchone()[0]
                 
                 # Get paginated results (ordered by recent)
@@ -309,7 +316,7 @@ def get_peer_feed_for_student(
         return [], 0
 
 
-def get_peer_achievements_summary(student_id: int) -> Dict[str, Any]:
+def get_peer_achievements_summary(student_id: int, institution_id=None) -> Dict[str, Any]:
     """Get summary statistics of peer achievements (for dashboard)."""
     try:
         with get_db_connection() as conn:
@@ -318,10 +325,12 @@ def get_peer_achievements_summary(student_id: int) -> Dict[str, Any]:
                 # Total achievements
                 cur.execute("""
                     SELECT COUNT(*), achievement_type 
-                    FROM peer_achievements 
-                    WHERE visibility = TRUE 
+                    FROM peer_achievements pa
+                    JOIN students s ON s.id = pa.student_id
+                    WHERE visibility = TRUE
+                      AND (%s IS NULL OR s.institution_id = %s)
                     GROUP BY achievement_type
-                """)
+                """, (institution_id, institution_id))
                 
                 achievement_counts = {row[1]: row[0] for row in cur.fetchall()}
                 
@@ -334,29 +343,37 @@ def get_peer_achievements_summary(student_id: int) -> Dict[str, Any]:
                             COUNT(*) as count,
                             AVG(CAST(achievement_data->>'package' AS FLOAT)) as avg_package
                         FROM peer_achievements
+                        JOIN students s ON s.id = peer_achievements.student_id
                         WHERE achievement_type = 'placement'
                         AND visibility = TRUE
+                        AND (%s IS NULL OR s.institution_id = %s)
                         GROUP BY company
                         ORDER BY count DESC
                         LIMIT 10
-                    """)
+                    """, (institution_id, institution_id))
                     placement_data = cur.fetchall()
                 
                 # Skills summary
                 cur.execute("""
                     SELECT skill_name, COUNT(*) as count 
                     FROM peer_skills 
+                    JOIN students s ON s.id = peer_skills.student_id
                     WHERE shared = TRUE 
+                      AND (%s IS NULL OR s.institution_id = %s)
                     GROUP BY skill_name 
                     ORDER BY count DESC 
                     LIMIT 5
-                """)
+                """, (institution_id, institution_id))
                 trending_skills = [row[0] for row in cur.fetchall()]
                 
                 # Study groups summary
                 cur.execute("""
-                    SELECT status, COUNT(*) FROM study_groups GROUP BY status
-                """)
+                    SELECT sg.status, COUNT(*)
+                    FROM study_groups sg
+                    JOIN students s ON s.id = sg.created_by
+                    WHERE (%s IS NULL OR s.institution_id = %s)
+                    GROUP BY sg.status
+                """, (institution_id, institution_id))
                 group_stats = {row[0]: row[1] for row in cur.fetchall()}
                 
                 summary = {
@@ -536,7 +553,7 @@ def add_peer_skill(
         return None
 
 
-def get_trending_skills(limit: int = 5) -> List[Dict[str, Any]]:
+def get_trending_skills(limit: int = 5, institution_id=None) -> List[Dict[str, Any]]:
     """Get trending skills across all students."""
     try:
         with get_db_connection() as conn:
@@ -549,11 +566,13 @@ def get_trending_skills(limit: int = 5) -> List[Dict[str, Any]]:
                         AVG(proficiency_level) as avg_proficiency,
                         SUM(recommendation_count) as recommendation_count
                     FROM peer_skills
+                    JOIN students s ON s.id = peer_skills.student_id
                     WHERE shared = TRUE
+                      AND (%s IS NULL OR s.institution_id = %s)
                     GROUP BY skill_name
                     ORDER BY student_count DESC
                     LIMIT %s
-                """, (limit,))
+                """, (institution_id, institution_id, limit))
                 
                 skills = []
                 for row in cur.fetchall():
@@ -609,7 +628,7 @@ def create_study_group(
         return None
 
 
-def join_study_group(group_id: int, student_id: int) -> bool:
+def join_study_group(group_id: int, student_id: int, institution_id=None) -> bool:
     """Add a student to a study group."""
     try:
         with get_db_connection() as conn:
@@ -617,9 +636,12 @@ def join_study_group(group_id: int, student_id: int) -> bool:
                 # Check if group is full
                 cur.execute("""
                     SELECT current_member_count, max_members 
-                    FROM study_groups 
-                    WHERE id = %s
-                """, (group_id,))
+                    FROM study_groups sg
+                    JOIN students creator ON creator.id = sg.created_by
+                    JOIN students requester ON requester.id = %s
+                    WHERE sg.id = %s
+                      AND (%s IS NULL OR (creator.institution_id = %s AND requester.institution_id = %s))
+                """, (student_id, group_id, institution_id, institution_id, institution_id))
                 
                 result = cur.fetchone()
                 if not result:

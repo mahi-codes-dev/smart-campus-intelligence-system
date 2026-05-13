@@ -11,6 +11,7 @@ from contextlib import nullcontext
 
 from database import get_db_connection
 from services.student_service import ensure_student_table_consistency
+from services.student_service import get_student_profile
 from services.readiness_service import calculate_readiness
 
 logger = logging.getLogger(__name__)
@@ -317,7 +318,7 @@ def calculate_company_match_score(student_metrics: dict, company_requirements: d
     }
 
 
-def get_company_matches_for_student(student_id: int) -> dict:
+def get_company_matches_for_student(student_id: int, institution_id=None) -> dict:
     """
     Get company matches for a student grouped by eligibility tier.
     
@@ -328,8 +329,11 @@ def get_company_matches_for_student(student_id: int) -> dict:
         "stretch_targets": [...]
     }
     """
+    if institution_id is not None and not get_student_profile(student_id, institution_id=institution_id):
+        raise ValueError("Student not found")
+
     try:
-        readiness = calculate_readiness(student_id)
+        readiness = calculate_readiness(student_id, institution_id=institution_id)
         from services.skills_service import get_student_skills
         
         student_skills = get_student_skills(student_id)

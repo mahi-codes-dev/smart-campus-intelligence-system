@@ -272,10 +272,13 @@ def _build_placement_score_breakdown(attendance, marks, mock_score, skills_score
     }
 
 
-def get_student_dashboard_data(student_id):
-    readiness = calculate_readiness(student_id)
-    profile = get_student_profile(student_id)
-    subject_performance = get_subject_wise_marks(student_id)
+def get_student_dashboard_data(student_id, institution_id=None):
+    profile = get_student_profile(student_id, institution_id=institution_id)
+    if institution_id is not None and not profile:
+        raise ValueError("Student not found")
+
+    readiness = calculate_readiness(student_id, institution_id=institution_id)
+    subject_performance = get_subject_wise_marks(student_id, institution_id=institution_id)
     goal_summary = get_goal_summary(student_id)
     goals = get_student_goals(student_id)
 
@@ -317,8 +320,8 @@ def get_student_dashboard_data(student_id):
     )
     
     # Get growth tracking data
-    marks_timeline = get_marks_timeline(student_id, limit=8)
-    subject_trends = get_subject_wise_trend(student_id)
+    marks_timeline = get_marks_timeline(student_id, limit=8, institution_id=institution_id)
+    subject_trends = get_subject_wise_trend(student_id, institution_id=institution_id)
     weekly_summary = _build_weekly_summary(
         profile,
         round(final_score, 2),
@@ -362,5 +365,5 @@ def get_student_dashboard_data(student_id):
         "subject_performance": subject_performance,
         "marks_timeline": marks_timeline,
         "subject_trends": subject_trends,
-        "top_students": get_top_students(),
+        "top_students": get_top_students(institution_id=institution_id),
     }

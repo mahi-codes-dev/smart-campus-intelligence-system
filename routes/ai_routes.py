@@ -1,6 +1,7 @@
 import logging
 from flask import Blueprint, jsonify, request, g
 from auth.auth_middleware import token_required, role_required
+from core.feature_flags import require_feature
 from services.ai_service import AIService
 from services.student_service import get_student_record_by_user_id
 from services.ai_conversation_service import (
@@ -20,6 +21,10 @@ _MAX_LEN = 1000
 @token_required
 def student_chat():
     """Chat endpoint for students with rate limiting and conversation history."""
+    feature_error = require_feature("ai_assistant")
+    if feature_error:
+        return feature_error
+
     data = request.get_json() or {}
     message = str(data.get("message") or "").strip()
     if not message:
@@ -27,7 +32,7 @@ def student_chat():
     if len(message) > _MAX_LEN:
         return jsonify({"error": f"Message too long (max {_MAX_LEN} chars)"}), 400
 
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
     
@@ -47,7 +52,7 @@ def student_chat():
         store_conversation(student_id, "student", message)
         
         # Get AI response
-        response = AIService.get_student_advice(student_id, message)
+        response = AIService.get_student_advice(student_id, message, institution_id=g.institution_id)
         
         # Store assistant message in history
         store_conversation(student_id, "assistant", response)
@@ -69,12 +74,16 @@ def student_chat():
 @token_required
 def quick_prompts():
     """Get suggested quick prompts for student."""
-    student = get_student_record_by_user_id(g.user_id)
+    feature_error = require_feature("ai_assistant")
+    if feature_error:
+        return feature_error
+
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
     
     try:
-        prompts = get_quick_prompts(student["id"])
+        prompts = get_quick_prompts(student["id"], institution_id=g.institution_id)
         return jsonify({"prompts": prompts}), 200
     except Exception as e:
         logger.exception("quick_prompts failed")
@@ -86,6 +95,10 @@ def quick_prompts():
 @role_required("Faculty", "Admin")
 def faculty_chat():
     """Chat endpoint for faculty insights."""
+    feature_error = require_feature("ai_assistant")
+    if feature_error:
+        return feature_error
+
     data = request.get_json() or {}
     query = str(data.get("query") or "").strip()
     if not query:
@@ -96,7 +109,7 @@ def faculty_chat():
     try:
         from services.faculty_dashboard_service import get_faculty_dashboard_summary
         # Call with no filters so AI always gets full class picture
-        summary = get_faculty_dashboard_summary()
+        summary = get_faculty_dashboard_summary(institution_id=g.institution_id)
         faculty_name = getattr(g, "user_name", None) or "Faculty"
         response = AIService.get_faculty_insights(faculty_name, summary, query)
         return jsonify({"response": response}), 200
@@ -110,12 +123,16 @@ def faculty_chat():
 @role_required("Faculty", "Admin")
 def faculty_student_summary(student_id):
     """Get AI-generated summary for a specific student (faculty view)."""
+    feature_error = require_feature("ai_assistant")
+    if feature_error:
+        return feature_error
+
     try:
         from services.student_dashboard_service import get_student_dashboard_data
         from services.student_service import get_student_profile
         
-        profile = get_student_profile(student_id) or {}
-        data = get_student_dashboard_data(student_id)
+        profile = get_student_profile(student_id, institution_id=g.institution_id) or {}
+        data = get_student_dashboard_data(student_id, institution_id=g.institution_id)
         
         if not profile or not data:
             return jsonify({"error": "Student not found"}), 404

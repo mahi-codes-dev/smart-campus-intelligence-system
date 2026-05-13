@@ -16,7 +16,7 @@ student_skill_bp = Blueprint("student_skill_bp", __name__)
 def add_skill():
     try:
         data = request.get_json() or {}
-        student = get_student_record_by_user_id(request.user["user_id"])  # type: ignore
+        student = get_student_record_by_user_id(request.user["user_id"], institution_id=request.user.get("institution_id"))  # type: ignore
 
         if not student:
             return jsonify({"error": "Student not found"}), 404
@@ -55,7 +55,7 @@ def add_skill():
 def get_skills(student_id):
     try:
         if request.user.get("role_id") == 3:  # type: ignore
-            student = get_student_record_by_user_id(request.user["user_id"])  # type: ignore
+            student = get_student_record_by_user_id(request.user["user_id"], institution_id=request.user.get("institution_id"))  # type: ignore
             if not student or student["id"] != student_id:
                 return jsonify({"error": "Students can only view their own skills"}), 403
 

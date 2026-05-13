@@ -31,6 +31,7 @@ def faculty_dashboard():
             sort_order=sort_order,
             search=search,
             department=department,
+            institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
         )
 
         return jsonify(data), 200
@@ -55,6 +56,7 @@ def faculty_summary():
                 department=department,
                 filter_status=status_filter,
                 sort_order=sort_order,
+                institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
             )
         ), 200
 
@@ -67,8 +69,10 @@ def faculty_summary():
 @role_required("Faculty")
 def faculty_student_detail(student_id):
     try:
-        return jsonify(get_student_detail(student_id)), 200
+        return jsonify(get_student_detail(student_id, institution_id=request.user.get("institution_id"))), 200  # type: ignore[attr-defined]
 
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": "An internal error occurred"}), 500
 
@@ -83,6 +87,7 @@ def faculty_student_intervention(student_id):
             student_id,
             request.user["user_id"],
             data,
+            institution_id=request.user.get("institution_id"),
         )
         return jsonify({
             "message": "Support intervention saved successfully",
@@ -105,6 +110,7 @@ def faculty_update_intervention(intervention_id):
             intervention_id,
             data.get("status"),
             request.user["user_id"],
+            institution_id=request.user.get("institution_id"),
         )
         return jsonify({
             "message": "Support intervention updated successfully",
@@ -131,6 +137,7 @@ def faculty_classroom():
                 subject_id=subject_id,
                 department=request.args.get("department"),
                 search=request.args.get("search"),
+                institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
             )
         ), 200
 
@@ -150,7 +157,11 @@ def faculty_classroom_attendance():
         if "subject_id" not in data:
             return jsonify({"error": "subject_id is required"}), 400
 
-        result = save_classroom_attendance(data["subject_id"], data.get("entries") or [])
+        result = save_classroom_attendance(
+            data["subject_id"],
+            data.get("entries") or [],
+            institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
+        )
         return jsonify({
             "message": "Class attendance saved successfully",
             **result,
@@ -176,6 +187,7 @@ def faculty_classroom_marks():
             data["subject_id"],
             data.get("exam_type"),
             data.get("entries") or [],
+            institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
         )
         return jsonify({
             "message": "Class marks saved successfully",

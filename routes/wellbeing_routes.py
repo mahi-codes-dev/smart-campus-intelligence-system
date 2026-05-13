@@ -16,7 +16,7 @@ def report_wellbeing():
         return jsonify({"error": "Valid stress_level (1-5) is required"}), 400
         
     from services.student_service import get_student_record_by_user_id
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
@@ -28,7 +28,7 @@ def report_wellbeing():
 @token_required
 def wellbeing_history():
     from services.student_service import get_student_record_by_user_id
-    student = get_student_record_by_user_id(g.user_id)
+    student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
     
     if not student:
         return jsonify({"error": "Student profile not found"}), 404
