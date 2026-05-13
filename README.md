@@ -1,146 +1,124 @@
-# 🎓 Smart Campus Intelligence System
+# Smart Campus Intelligence System
 
-A full-stack campus management platform built with **Flask + PostgreSQL**, featuring role-based access control, AI-powered academic advising, placement readiness prediction, and real-time notifications.
+Production-style, multi-tenant campus intelligence platform built with Flask, PostgreSQL, and Render. The system combines role-based dashboards, placement-readiness analytics, AI advising, tenant isolation, audit logging, CSV operations, and production health checks into one portfolio-grade SaaS case study.
 
-> **Built for MAANG-level resume impact** — demonstrates backend architecture, security practices, AI integration, and production deployment on Render.
+![Python](https://img.shields.io/badge/Python-3.11+-3776AB)
+![Flask](https://img.shields.io/badge/Flask-3.1-000000)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Ready-4169E1)
+![Tests](https://img.shields.io/badge/pytest-78%20passing-2EA44F)
+![Deploy](https://img.shields.io/badge/Deploy-Render-46E3B7)
 
----
+## Why This Project Exists
 
-## ✨ Feature Highlights
+Most campus apps are CRUD portals. This project is designed like a real SaaS product: each institution has isolated data, admins can audit sensitive actions, faculty can identify at-risk students, and students get personalized placement-readiness guidance.
 
-| Area | What's included |
-|------|----------------|
-| **Auth** | JWT (cookie + Bearer), bcrypt hashing, OTP password reset, token blacklist, rate limiting |
-| **Roles** | Admin · Faculty · Student — fully separated dashboards and APIs |
-| **Student** | Readiness score, placement prediction, attendance, marks, skills, goals, peer learning, wellbeing |
-| **Faculty** | Class analytics, at-risk alerts, intervention tracking, notice board, resource uploads |
-| **Admin** | User management, department management, system health |
-| **AI** | Gemini-powered personal advisor for students and class insights for faculty |
-| **Security** | CSP headers, HSTS, X-Frame-Options, no user enumeration, timing-attack-safe login |
-| **Ops** | Migration runner, `/health/live` + `/health/ready` endpoints, structured logging |
+It is intentionally scoped as a portfolio and resume project for backend/product engineering interviews, especially companies that value production thinking: reliability, security, architecture, testing, deployment, and tradeoff awareness.
 
----
+## Engineering Highlights
 
-## 🚀 Deploy on Render (one-click)
+| Area | Implementation |
+| --- | --- |
+| Multi-tenancy | Shared-schema SaaS model with `institutions`, `institution_id` scoping, tenant-aware auth payloads, and tenant isolation regression tests |
+| Auth & Security | JWT via Bearer/cookie, bcrypt, OTP reset, token blacklist, timing-safe login, rate limiting, secure headers, proxy-aware cookies |
+| Data Platform | PostgreSQL, migration runner, connection pooling, schema hardening, tenant-aware uniqueness constraints |
+| Student Success | Readiness scoring, placement prediction, attendance, marks, mock tests, skills, goals, wellbeing, peer learning |
+| AI | Gemini-backed student advisor and faculty insights, feature-gated by institution plan with safe fallback behavior |
+| Enterprise Ops | Health checks, structured logging, request IDs, audit logs, CSV exports/imports, async report-job simulation |
+| Deployment | Render Blueprint with managed PostgreSQL, Gunicorn, SSL DB mode, strict startup validation |
+| Testing | 78 automated tests covering auth, readiness, tenant hardening, health endpoints, AI helpers, peer learning, and company matching |
 
-1. Fork / push this repo to GitHub.
-2. Go to [render.com](https://render.com) → **New Blueprint**.
-3. Connect your GitHub repo — Render picks up `render.yaml` automatically.
-4. It provisions a **free PostgreSQL** database and a **free web service**.
-5. After deploy, set the optional secrets in the Render dashboard:
-   - `GEMINI_API_KEY` — for AI assistant (free key at [aistudio.google.com](https://aistudio.google.com/app/apikey))
-   - `SMTP_USERNAME` / `SMTP_PASSWORD` — for OTP email (Gmail App Password)
+## Architecture
 
-> The first deploy runs all SQL migrations automatically. No manual DB setup needed.
+```text
+Browser / Jinja UI / Vanilla JS
+        |
+        v
+Flask Blueprints
+        |
+        v
+Service Layer
+        |
+        v
+PostgreSQL with migrations + pooled connections
+```
 
----
+Tenant context is resolved from subdomain/header/body for public auth flows, then enforced from the authenticated JWT institution for protected APIs. This prevents one campus from reading or mutating another campus's data.
 
-## 🛠 Local Development
+Read the full architecture write-up: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-### Prerequisites
+## Key Features
+
+- Student dashboard with placement-readiness score, trend insights, goals, alerts, and company matching.
+- Faculty dashboard with class analytics, at-risk watchlist, interventions, classroom marks, and attendance management.
+- Admin dashboard with users, departments, subjects, CSV exports/imports, audit logs, institution context, and async report jobs.
+- Super-admin institution management for SaaS onboarding.
+- AI assistant for student advice and faculty class insights, gated by plan tier.
+- Production health endpoints: `/health/live`, `/health/ready`, `/health/startup`.
+
+## API Examples
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/auth/login` | Login and receive JWT/cookie |
+| `GET` | `/student/dashboard` | Student readiness dashboard |
+| `GET` | `/faculty/summary` | Faculty class summary |
+| `GET` | `/admin/exports/students` | Tenant-scoped CSV export |
+| `POST` | `/admin/imports/students` | Tenant-scoped CSV import |
+| `GET` | `/admin/audit-logs` | Sensitive action audit trail |
+| `POST` | `/admin/reports/jobs` | Start async report job |
+| `GET` | `/health/ready` | Readiness probe with DB check |
+
+## Local Development
+
+Prerequisites:
+
 - Python 3.11+
 - PostgreSQL 14+
 
-### Setup
-
 ```bash
-# 1. Clone
-git clone https://github.com/your-username/smart-campus-intelligence-system.git
-cd smart-campus-intelligence-system
-
-# 2. Virtual environment
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-
-# 3. Install dependencies
+venv\Scripts\activate
 pip install -r requirements.txt
-
-# 4. Configure environment
-cp .env.example .env
-# Edit .env — fill in DB credentials and JWT_SECRET / SECRET_KEY
-
-# 5. Create the database
-createdb smart_campus_db       # or use pgAdmin / psql
-
-# 6. Run (migrations run automatically on startup)
+copy .env.example .env
 python app.py
 ```
 
-Open [http://localhost:5000](http://localhost:5000)
-
-### Seed demo data
+Seed demo data:
 
 ```bash
 python scripts/seed_data.py
 ```
 
----
-
-## 🏗 Architecture
-
-```
-smart-campus-intelligence-system/
-├── app.py                  # Flask app factory, error handlers, root routes
-├── wsgi.py                 # Gunicorn entry point
-├── config.py               # Typed settings from environment variables
-├── database.py             # Connection pool (psycopg2 ThreadedConnectionPool)
-├── auth/
-│   ├── auth_middleware.py  # JWT token_required / role_required decorators
-│   └── auth_routes.py      # /auth/login, /auth/register, /auth/logout, OTP reset
-├── core/
-│   ├── logging_config.py   # Structured logging
-│   ├── rate_limiter.py     # Sliding-window per-IP rate limiter
-│   └── security_headers.py # CSP, HSTS, X-Frame-Options, etc.
-├── routes/                 # One Blueprint per feature domain
-├── services/               # Business logic layer (no Flask imports)
-├── migrations/             # Ordered SQL migrations (auto-applied on startup)
-├── templates/              # Jinja2 HTML templates
-│   └── errors/             # 400, 403, 404, 500 error pages
-├── static/                 # CSS, JS, PWA manifest + service worker
-├── utils/
-│   ├── validators.py       # Input sanitisation + validation helpers
-│   └── response.py         # Standardised JSON response helpers
-└── render.yaml             # Render Blueprint (IaC)
-```
-
----
-
-## 🔐 Security Notes
-
-- Passwords hashed with **bcrypt** (cost factor 12)
-- Login uses **constant-time comparison** to prevent timing-based user enumeration
-- All logins and registrations are **rate-limited**
-- JWT tokens carry a **`jti`** claim; logout adds it to a **blacklist table**
-- HTTP responses include **Content-Security-Policy**, **X-Frame-Options**, **HSTS** (on HTTPS), and other OWASP-recommended headers
-- Passwords capped at 128 chars to prevent DoS via bcrypt's O(n) cost
-
----
-
-## 📡 Key API Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/auth/login` | — | Login, returns JWT |
-| POST | `/auth/register` | — | Register new user |
-| POST | `/auth/logout` | ✓ | Revoke token |
-| POST | `/auth/forgot-password` | — | Request OTP |
-| POST | `/auth/reset-password` | — | Reset via OTP |
-| GET  | `/health/live` | — | Liveness probe |
-| GET  | `/health/ready` | — | Readiness probe (checks DB) |
-| POST | `/ai/chat/student` | Student | AI academic advisor |
-| POST | `/ai/chat/faculty` | Faculty | AI class insights |
-
----
-
-## 🧪 Health Checks
+Run tests:
 
 ```bash
-curl http://localhost:5000/health/live   # {"status":"alive"}
-curl http://localhost:5000/health/ready  # {"status":"healthy","database":"connected"}
+pytest -q
 ```
 
----
+Current baseline: `78 passed`.
 
-## 📜 License
+## Render Deployment
 
-MIT — see `LICENSE` for details.
+This repo includes `render.yaml` for one-click deployment:
+
+- Web service: Gunicorn via `wsgi:application`
+- Database: Render managed PostgreSQL
+- Health check: `/health/ready`
+- Production env: `STRICT_STARTUP_VALIDATION=true`, `DB_SSL_MODE=require`, secure cookies
+
+Deployment and demo guidance: [docs/DEMO.md](docs/DEMO.md)
+
+## Resume Bullets
+
+- Built a production-style multi-tenant campus intelligence SaaS using Flask, PostgreSQL, JWT auth, and Render, supporting role-based dashboards for admins, faculty, and students.
+- Implemented tenant isolation across protected APIs with institution-scoped data access, feature gating, audit logs, and regression tests to prevent cross-campus data leakage.
+- Designed placement-readiness analytics using attendance, marks, skills, mock tests, goals, and AI-assisted advising to identify at-risk and placement-ready students.
+- Added production hardening with migrations, connection pooling, secure headers, rate limiting, health checks, CSV operations, async report jobs, and 78 automated tests.
+
+## Honest Scope
+
+This is a strong portfolio/pilot-grade SaaS prototype, not a full enterprise SIS replacement. The next real production steps would be SSO, object storage, deeper audit coverage, backup/restore policy, observability dashboards, and integrations with existing SIS/LMS platforms.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

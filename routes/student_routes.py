@@ -18,6 +18,7 @@ from services.attendance_service import get_attendance
 from services.skills_service import get_student_skills
 from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
+from services.audit_service import record_audit_event
 
 logger = logging.getLogger(__name__)
 student_bp = Blueprint("student_bp", __name__)
@@ -83,6 +84,16 @@ def add_student():
             validator.validated_data["roll_number"],
             institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
         )
+        record_audit_event(
+            "student.created",
+            actor_user_id=request.user.get("user_id"),  # type: ignore[attr-defined]
+            institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
+            entity_type="student",
+            entity_id=student.get("id"),
+            metadata={"email": student.get("email"), "department": student.get("department")},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
 
         return jsonify({
             "message": "Student added successfully",
@@ -115,6 +126,16 @@ def update_student(student_id):
             validator.validated_data["roll_number"],
             institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
         )
+        record_audit_event(
+            "student.updated",
+            actor_user_id=request.user.get("user_id"),  # type: ignore[attr-defined]
+            institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
+            entity_type="student",
+            entity_id=student_id,
+            metadata={"email": student.get("email"), "department": student.get("department")},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
 
         return jsonify({
             "message": "Student updated successfully",
@@ -138,6 +159,16 @@ def update_student(student_id):
 def delete_student(student_id):
     try:
         student = delete_student_record(student_id, institution_id=request.user.get("institution_id"))  # type: ignore[attr-defined]
+        record_audit_event(
+            "student.deleted",
+            actor_user_id=request.user.get("user_id"),  # type: ignore[attr-defined]
+            institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
+            entity_type="student",
+            entity_id=student_id,
+            metadata={"email": student.get("email"), "department": student.get("department")},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
         return jsonify({
             "message": "Student deleted successfully",
             "student": student,

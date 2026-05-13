@@ -59,7 +59,66 @@ def ensure_roles(cur):
     """)
 
 
-def seed_faculty(cur):
+def ensure_demo_institution(cur):
+    cur.execute(
+        """
+        INSERT INTO institutions (name, code, subdomain, plan_name, status, is_default)
+        VALUES ('Demo Campus', 'DEMO', 'demo', 'enterprise', 'active', TRUE)
+        ON CONFLICT DO NOTHING
+        """
+    )
+    cur.execute(
+        """
+        SELECT id FROM institutions
+        WHERE UPPER(code) = 'DEMO'
+        ORDER BY id ASC
+        LIMIT 1
+        """
+    )
+    return cur.fetchone()[0]
+
+
+def seed_super_admin(cur, institution_id):
+    print("Seeding super admin user...")
+    password_hash = bcrypt.hashpw("password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    cur.execute(
+        """
+        INSERT INTO users (name, email, password, role_id, institution_id, is_super_admin)
+        VALUES (%s, %s, %s, 1, %s, TRUE)
+        ON CONFLICT DO NOTHING
+        RETURNING id
+        """,
+        ("Super Admin", "superadmin@smartcampus.edu", password_hash, institution_id),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+
+    cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s) LIMIT 1", ("superadmin@smartcampus.edu",))
+    return cur.fetchone()[0]
+
+
+def seed_admin(cur, institution_id):
+    print("Seeding institution admin user...")
+    password_hash = bcrypt.hashpw("password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    cur.execute(
+        """
+        INSERT INTO users (name, email, password, role_id, institution_id, is_super_admin)
+        VALUES (%s, %s, %s, 1, %s, FALSE)
+        ON CONFLICT DO NOTHING
+        RETURNING id
+        """,
+        ("Demo Admin", "admin@smartcampus.edu", password_hash, institution_id),
+    )
+    row = cur.fetchone()
+    if row:
+        return row[0]
+
+    cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s) LIMIT 1", ("admin@smartcampus.edu",))
+    return cur.fetchone()[0]
+
+
+def seed_faculty(cur, institution_id):
     print("Seeding faculty user...")
     password_hash = bcrypt.hashpw("password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     cur.execute("SELECT id FROM users WHERE LOWER(email) = LOWER(%s)", ("faculty@smartcampus.edu",))
@@ -68,26 +127,33 @@ def seed_faculty(cur):
     if existing:
         cur.execute("""
             UPDATE users
-            SET name = %s, password = %s, role_id = 2
+            SET name = %s, password = %s, role_id = 2, institution_id = %s
             WHERE id = %s
             RETURNING id
-        """, ("Dr. Sarah Smith", password_hash, existing[0]))
+        """, ("Dr. Sarah Smith", password_hash, institution_id, existing[0]))
         return cur.fetchone()[0]
 
     cur.execute("""
-        INSERT INTO users (name, email, password, role_id)
-        VALUES (%s, %s, %s, 2)
+        INSERT INTO users (name, email, password, role_id, institution_id)
+        VALUES (%s, %s, %s, 2, %s)
         RETURNING id
-    """, ("Dr. Sarah Smith", "faculty@smartcampus.edu", password_hash))
+    """, ("Dr. Sarah Smith", "faculty@smartcampus.edu", password_hash, institution_id))
     return cur.fetchone()[0]
 
-def seed_departments(cur):
+def seed_departments(cur, institution_id):
     print("Seeding departments...")
     departments = ["Computer Science", "Information Technology", "Electronic Engineering", "Mechanical Engineering"]
     for dept in departments:
-        cur.execute("INSERT INTO departments (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (dept,))
+        cur.execute(
+            """
+            INSERT INTO departments (name, institution_id)
+            VALUES (%s, %s)
+            ON CONFLICT DO NOTHING
+            """,
+            (dept, institution_id),
+        )
 
-def seed_subjects(cur):
+def seed_subjects(cur, institution_id):
     print("Seeding subjects...")
     subjects = [
         ("Data Structures", "CS101", "Computer Science"),
@@ -101,16 +167,23 @@ def seed_subjects(cur):
         ("Thermodynamics", "ME101", "Mechanical Engineering"),
         ("Fluid Mechanics", "ME201", "Mechanical Engineering"),
     ]
-    cur.execute("SELECT id, name FROM subjects")
+    cur.execute("SELECT id, name FROM subjects WHERE institution_id = %s", (institution_id,))
     existing = {name: id for id, name in cur.fetchall()}
     
     for name, code, dept in subjects:
         if name not in existing:
-            cur.execute("INSERT INTO subjects (name, code, department) VALUES (%s, %s, %s) RETURNING id", (name, code, dept))
+            cur.execute(
+                """
+                INSERT INTO subjects (name, code, department, institution_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
+                """,
+                (name, code, dept, institution_id),
+            )
             existing[name] = cur.fetchone()[0]
     return existing
 
-def seed_students(cur, count=55):
+def seed_students(cur, institution_id, count=55):
     print(f"Seeding {count} students...")
     first_names = ["Arjun", "Neha", "Rohan", "Sanya", "Vikram", "Anjali", "Kabir", "Ishani", "Arav", "Meera", "Ishaan", "Zoya", "Aditya", "Riya", "Aaryan", "Ananya"]
     last_names = ["Sharma", "Verma", "Gupta", "Malhotra", "Kapoor", "Joshi", "Patel", "Reddy", "Nair", "Iyer", "Mehta", "Singh"]
@@ -127,16 +200,16 @@ def seed_students(cur, count=55):
         name = f"{fname} {lname}"
         password_hash = bcrypt.hashpw("password123".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         cur.execute("""
-            INSERT INTO users (name, email, password, role_id)
-            VALUES (%s, %s, %s, 3)
+            INSERT INTO users (name, email, password, role_id, institution_id)
+            VALUES (%s, %s, %s, 3, %s)
             RETURNING id
-        """, (name, email, password_hash))
+        """, (name, email, password_hash, institution_id))
         user_id = cur.fetchone()[0]
 
         cur.execute("""
-            INSERT INTO students (name, email, department, roll_number, user_id)
-            VALUES (%s, %s, %s, %s, %s) RETURNING id
-        """, (name, email, dept, roll, user_id))
+            INSERT INTO students (name, email, department, roll_number, user_id, institution_id)
+            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+        """, (name, email, dept, roll, user_id, institution_id))
         student_id = cur.fetchone()[0]
         students.append({"id": student_id, "dept": dept})
     return students
@@ -161,7 +234,7 @@ def seed_marks_and_attendance(cur, students, subject_map):
                 cur.execute("INSERT INTO attendance (student_id, subject_id, date, status) VALUES (%s, %s, %s, %s)", 
                            (student['id'], sub_id, date.date(), status))
 
-def seed_notices_and_resources(cur, faculty_id):
+def seed_notices_and_resources(cur, faculty_id, institution_id):
     print("Seeding notices and resources...")
     notices = [
         ("Campus Recruitment 2024", "Top companies are visiting next month. Keep your profiles updated.", "All"),
@@ -170,9 +243,9 @@ def seed_notices_and_resources(cur, faculty_id):
     ]
     for title, content, target in notices:
         cur.execute("""
-            INSERT INTO notices (title, content, target_role, author_id)
-            VALUES (%s, %s, %s, %s)
-        """, (title, content, target, faculty_id))
+                INSERT INTO notices (title, content, target_role, author_id, institution_id)
+                VALUES (%s, %s, %s, %s, %s)
+        """, (title, content, target, faculty_id, institution_id))
     
     resources = [
         ("Advanced Data Structures PDF", "Comprehensive guide to trees and graphs", "https://example.com/ds", "Algorithms"),
@@ -196,14 +269,20 @@ def run_seed():
             with conn.cursor() as cur:
                 clear_data(conn, cur)
                 ensure_roles(cur)
-                faculty_id = seed_faculty(cur)
-                seed_departments(cur)
-                subject_map = seed_subjects(cur)
-                students = seed_students(cur, count=60)
+                institution_id = ensure_demo_institution(cur)
+                seed_super_admin(cur, institution_id)
+                seed_admin(cur, institution_id)
+                faculty_id = seed_faculty(cur, institution_id)
+                seed_departments(cur, institution_id)
+                subject_map = seed_subjects(cur, institution_id)
+                students = seed_students(cur, institution_id, count=60)
                 seed_marks_and_attendance(cur, students, subject_map)
-                seed_notices_and_resources(cur, faculty_id)
+                seed_notices_and_resources(cur, faculty_id, institution_id)
 
         print("Success: Database successfully enriched with production-ready data!")
+        print("Demo logins: superadmin@smartcampus.edu / password123")
+        print("Demo logins: admin@smartcampus.edu / password123")
+        print("Demo logins: faculty@smartcampus.edu / password123")
     except Exception as e:
         print(f"Error during seeding: {e}")
 

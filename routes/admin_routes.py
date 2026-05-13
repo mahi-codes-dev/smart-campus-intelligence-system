@@ -10,8 +10,11 @@ from services.admin_service import (
     get_all_users,
     get_data_quality_snapshot,
     get_operations_snapshot,
+    import_students_from_csv,
 )
+from services.audit_service import list_audit_events, record_audit_event
 from services.institution_service import create_institution, get_institution_context, list_institutions
+from services.report_job_service import create_report_job, get_report_job
 from services.subject_service import create_subject, delete_subject, get_all_subjects
 from services.student_service import create_department, delete_department, get_department_catalog
 
@@ -96,6 +99,88 @@ def download_admin_export(current_user, export_name):
         return jsonify({"error": "An internal error occurred"}), 500
 
 
+@admin_bp.route("/admin/imports/students", methods=["POST"])
+@token_required
+@role_required("Admin")
+def import_admin_students(current_user):
+    try:
+        if "file" in request.files:
+            csv_content = request.files["file"].read().decode("utf-8")
+        else:
+            csv_content = (request.get_json(silent=True) or {}).get("csv", "")
+
+        result = import_students_from_csv(
+            csv_content,
+            institution_id=current_user.get("institution_id"),
+        )
+        record_audit_event(
+            "students.import_csv",
+            actor_user_id=current_user.get("user_id"),
+            institution_id=current_user.get("institution_id"),
+            entity_type="student",
+            metadata={
+                "imported_count": result["imported_count"],
+                "error_count": result["error_count"],
+            },
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
+        return jsonify(result), 200 if result["error_count"] == 0 else 207
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        return jsonify({"error": "An internal error occurred"}), 500
+
+
+@admin_bp.route("/admin/audit-logs", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_audit_logs(current_user):
+    try:
+        institution_id = None if current_user.get("is_super_admin") else current_user.get("institution_id")
+        return jsonify(list_audit_events(institution_id=institution_id, limit=request.args.get("limit", 100))), 200
+    except Exception:
+        return jsonify({"error": "An internal error occurred"}), 500
+
+
+@admin_bp.route("/admin/reports/jobs", methods=["POST"])
+@token_required
+@role_required("Admin")
+def create_admin_report_job(current_user):
+    try:
+        data = request.get_json() or {}
+        institution_id = None if current_user.get("is_super_admin") else current_user.get("institution_id")
+        job = create_report_job(data.get("report_type") or "readiness", institution_id=institution_id)
+        record_audit_event(
+            "reports.job_created",
+            actor_user_id=current_user.get("user_id"),
+            institution_id=institution_id,
+            entity_type="report_job",
+            entity_id=job["id"],
+            metadata={"report_type": job["report_type"]},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
+        return jsonify(job), 202
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception:
+        return jsonify({"error": "An internal error occurred"}), 500
+
+
+@admin_bp.route("/admin/reports/jobs/<string:job_id>", methods=["GET"])
+@token_required
+@role_required("Admin")
+def fetch_admin_report_job(current_user, job_id):
+    job = get_report_job(job_id)
+    if not job:
+        return jsonify({"error": "Report job not found"}), 404
+    if not current_user.get("is_super_admin") and job.get("institution_id") != current_user.get("institution_id"):
+        return jsonify({"error": "Report job not found"}), 404
+    return jsonify(job), 200
+
+
 @admin_bp.route("/admin/subject", methods=["POST"])
 @token_required
 @role_required("Admin")
@@ -110,6 +195,16 @@ def create_admin_subject(current_user):
             return jsonify({"error": "name, code, and department are required"}), 400
 
         create_subject(name, code, department, institution_id=current_user.get("institution_id"))
+        record_audit_event(
+            "subject.created",
+            actor_user_id=current_user.get("user_id"),
+            institution_id=current_user.get("institution_id"),
+            entity_type="subject",
+            entity_id=code,
+            metadata={"name": name, "department": department},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
         return jsonify({"message": "Subject added successfully"}), 201
 
     except ValueError as e:
@@ -202,6 +297,16 @@ def remove_user(current_user, user_id):
             current_user_id=request.user["user_id"],
             institution_id=None if current_user.get("is_super_admin") else current_user.get("institution_id"),
         )
+        record_audit_event(
+            "user.deleted",
+            actor_user_id=current_user.get("user_id"),
+            institution_id=None if current_user.get("is_super_admin") else current_user.get("institution_id"),
+            entity_type="user",
+            entity_id=user_id,
+            metadata={"deleted_email": deleted_user.get("email")},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
+        )
         return jsonify({
             "message": "User deleted successfully",
             "user": deleted_user,
@@ -257,6 +362,16 @@ def create_admin_institution(current_user):
             data.get("code") or "",
             subdomain=data.get("subdomain"),
             plan_name=(data.get("plan_name") or "starter"),
+        )
+        record_audit_event(
+            "institution.created",
+            actor_user_id=current_user.get("user_id"),
+            institution_id=institution.get("id"),
+            entity_type="institution",
+            entity_id=institution.get("id"),
+            metadata={"code": institution.get("code"), "plan_name": institution.get("plan_name")},
+            ip_address=request.remote_addr,
+            user_agent=request.headers.get("User-Agent"),
         )
         return jsonify({"message": "Institution created successfully", "institution": institution}), 201
     except ValueError as e:

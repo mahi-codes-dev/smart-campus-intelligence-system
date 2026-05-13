@@ -141,6 +141,7 @@ def _disable_startup_db_bootstrap():
     import services.student_service as student_service
     import services.subject_service as subject_service
     import services.theme_service as theme_service
+    import services.audit_service as audit_service
 
     no_op = lambda *args, **kwargs: None
     attendance_service.ensure_attendance_table_consistency = no_op
@@ -156,6 +157,7 @@ def _disable_startup_db_bootstrap():
     theme_service.ThemeService.ensure_theme_table = no_op
     notice_board_service.NoticeBoardService.ensure_notices_table = no_op
     resources_service.ResourcesService.ensure_resources_table = no_op
+    audit_service.ensure_audit_table = no_op
 
 
 def _register_test_auth_routes(flask_app):

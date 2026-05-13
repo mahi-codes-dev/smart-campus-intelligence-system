@@ -10,6 +10,37 @@ from services.readiness_service import (
     get_low_performing_students,
     get_top_students_by_department,
 )
+from services.student_service import create_student_record
+
+
+def import_students_from_csv(csv_content, institution_id=None):
+    reader = csv.DictReader(StringIO(csv_content or ""))
+    required = {"name", "email", "department", "roll_number"}
+    if not reader.fieldnames or not required.issubset({field.strip() for field in reader.fieldnames}):
+        raise ValueError("CSV must include name, email, department, and roll_number columns")
+
+    imported = []
+    errors = []
+
+    for index, row in enumerate(reader, start=2):
+        try:
+            student = create_student_record(
+                (row.get("name") or "").strip(),
+                (row.get("email") or "").strip(),
+                (row.get("department") or "").strip(),
+                (row.get("roll_number") or "").strip(),
+                institution_id=institution_id,
+            )
+            imported.append(student)
+        except Exception as exc:
+            errors.append({"row": index, "error": str(exc)})
+
+    return {
+        "imported_count": len(imported),
+        "error_count": len(errors),
+        "imported": imported,
+        "errors": errors,
+    }
 from services.student_service import (
     ensure_student_table_consistency,
     get_all_departments,
@@ -594,3 +625,5 @@ def delete_user(user_id, current_user_id=None, institution_id=None):
         "email": user[1],
         "role": user[2] or "Unknown",
     }
+import csv
+import io
