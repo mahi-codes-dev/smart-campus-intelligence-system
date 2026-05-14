@@ -35,6 +35,8 @@ from routes.ai_routes import ai_bp
 from routes.notice_routes import notice_bp
 from routes.resource_routes import resource_bp
 from routes.company_routes import company_bp
+from routes.media_routes import media_bp
+from routes.export_routes import export_bp
 from services.attendance_service import ensure_attendance_table_consistency
 from services.faculty_dashboard_service import ensure_intervention_table_consistency
 from services.goals_service import ensure_goals_tables
@@ -52,6 +54,7 @@ from services.ai_conversation_service import ensure_ai_tables_consistency
 from services.company_matching_service import ensure_companies_table_consistency
 from services.peer_learning_service import ensure_peer_tables_consistency
 from services.audit_service import ensure_audit_table
+from services.media_service import initialize_media, ensure_media_table
 
 configure_logging(settings.log_level)
 logger = logging.getLogger(__name__)
@@ -64,7 +67,7 @@ app.config["DEBUG"] = settings.flask_debug
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = settings.auth_cookie_secure
 app.config["SESSION_COOKIE_SAMESITE"] = settings.auth_cookie_samesite
-app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50MB for file uploads
 
 if settings.trust_proxy_count > 0:
     app.wsgi_app = ProxyFix(
@@ -108,6 +111,8 @@ def bootstrap_with_retry(retries=5, delay=3):
             ensure_companies_table_consistency()
             ensure_peer_tables_consistency()
             ensure_audit_table()
+            ensure_media_table()
+            initialize_media()
             RealtimeNotificationService.ensure_notifications_table()
             ThemeService.ensure_theme_table()
             NoticeBoardService.ensure_notices_table()
@@ -158,6 +163,8 @@ app.register_blueprint(ai_bp)
 app.register_blueprint(notice_bp)
 app.register_blueprint(company_bp)
 app.register_blueprint(resource_bp)
+app.register_blueprint(media_bp)
+app.register_blueprint(export_bp)
 
 
 # --- Global error handlers ---

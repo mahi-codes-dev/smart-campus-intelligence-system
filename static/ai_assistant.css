@@ -1,14 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════
    Campus AI Assistant Widget
    Uses CSS variables from style.css (--primary, --bg-sidebar, etc.)
+   ✓ Fixed: Better positioning, responsive design, z-index management
 ═══════════════════════════════════════════════════════════════ */
 
 #campus-ai-widget {
   position: fixed;
-  bottom: 28px;
-  right: 28px;
-  z-index: 1100;
+  bottom: 20px;
+  right: 20px;
+  z-index: 999999;
   font-family: inherit;
+  max-width: 100%;
 }
 
 /* ── Toggle button ─────────────────────────────────────────── */
@@ -27,12 +29,15 @@
   box-shadow: 0 4px 20px rgba(79, 70, 229, 0.45);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   position: relative;
-  z-index: 2;
+  z-index: 1;
+  padding: 0;
 }
+
 .ai-toggle-btn:hover {
   transform: translateY(-3px) scale(1.05);
   box-shadow: 0 8px 28px rgba(79, 70, 229, 0.55);
 }
+
 .ai-toggle-btn.open {
   background: linear-gradient(135deg, #374151, #1f2937);
 }
@@ -45,7 +50,9 @@
   border-radius: 50%;
   border: 2px solid rgba(79, 70, 229, 0.35);
   animation: ai-pulse 2.5s ease infinite;
+  pointer-events: none;
 }
+
 @keyframes ai-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0; transform: scale(1.35); }
@@ -53,11 +60,12 @@
 
 /* ── Chat window ────────────────────────────────────────────── */
 .ai-chat-window {
-  position: absolute;
-  bottom: 68px;
-  right: 0;
+  position: fixed;
+  bottom: 84px;
+  right: 20px;
   width: 380px;
-  max-height: 580px;
+  max-height: 600px;
+  height: 600px;
   background: var(--bg-card, #fff);
   border-radius: 20px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
@@ -65,6 +73,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  z-index: 1;
 
   /* Hidden state */
   transform: translateY(16px) scale(0.97);
@@ -73,18 +82,42 @@
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
               opacity 0.2s ease;
 }
+
 .ai-chat-window.active {
   transform: translateY(0) scale(1);
   opacity: 1;
   pointer-events: all;
 }
 
+/* Tablet */
+@media (max-width: 768px) {
+  .ai-chat-window {
+    width: calc(100vw - 40px);
+    max-height: 500px;
+    height: 500px;
+  }
+}
+
 /* Mobile */
 @media (max-width: 480px) {
+  #campus-ai-widget {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .ai-toggle-btn {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
   .ai-chat-window {
     width: calc(100vw - 32px);
-    right: -14px;
-    bottom: 72px;
+    max-height: calc(100vh - 100px);
+    height: auto;
+    bottom: 70px;
+    right: 16px;
+    border-radius: 16px;
   }
 }
 
@@ -301,3 +334,104 @@
 .ai-send-btn:hover  { opacity: 0.9; transform: translateY(-1px); }
 .ai-send-btn:active { transform: scale(0.95); }
 .ai-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ── Dark Mode Support ──────────────────────────────────────── */
+body.dark #campus-ai-widget {
+  color: #f1f5f9;
+}
+
+body.dark .ai-chat-window {
+  background: var(--card-dark, #1e293b);
+  border-color: var(--border-dark, #334155);
+}
+
+body.dark .ai-chat-messages {
+  background: var(--card-dark, #1e293b);
+  color: #f1f5f9;
+}
+
+body.dark .ai-message-ai .ai-bubble {
+  background: var(--bg-sidebar, #0f172a);
+  color: #f1f5f9;
+  border-color: var(--border-dark, #334155);
+}
+
+body.dark .ai-chat-textarea {
+  background: var(--bg-sidebar, #0f172a);
+  border-color: var(--border-dark, #334155);
+  color: #f1f5f9;
+}
+
+body.dark .ai-chat-textarea:focus {
+  background: var(--card-dark, #1e293b);
+  border-color: var(--primary, #4f46e5);
+}
+
+body.dark .ai-chat-input-area {
+  background: var(--card-dark, #1e293b);
+  border-color: var(--border-dark, #334155);
+}
+
+body.dark .ai-suggestions {
+  background: var(--card-dark, #1e293b);
+  border-color: var(--border-dark, #334155);
+}
+
+body.dark .ai-suggestion-chip {
+  background: var(--bg-sidebar, #0f172a);
+  border-color: var(--border-dark, #334155);
+  color: var(--primary, #4f46e5);
+}
+
+body.dark .ai-suggestion-chip:hover {
+  background: var(--primary, #4f46e5);
+  color: #fff;
+}
+
+/* ── Accessibility ──────────────────────────────────────────– */
+.ai-chat-textarea::placeholder {
+  color: var(--text-muted, #94a3b8);
+}
+
+body.dark .ai-chat-textarea::placeholder {
+  color: #64748b;
+}
+
+.ai-toggle-btn:focus-visible {
+  outline: 2px solid var(--primary, #4f46e5);
+  outline-offset: 2px;
+}
+
+.ai-close-btn:focus-visible,
+.ai-send-btn:focus-visible,
+.ai-suggestion-chip:focus-visible {
+  outline: 2px solid var(--primary, #4f46e5);
+  outline-offset: 1px;
+}
+
+/* ── Prevent layout shift ───────────────────────────────────── */
+.ai-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+body.dark .ai-chat-messages::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+body.dark .ai-chat-messages::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* ── Animation refinements ──────────────────────────────────– */
+@media (prefers-reduced-motion: reduce) {
+  .ai-toggle-btn::before,
+  .ai-status-dot,
+  .ai-typing span,
+  .ai-message {
+    animation: none !important;
+  }
+  
+  .ai-chat-window {
+    transition: none !important;
+  }
+}
