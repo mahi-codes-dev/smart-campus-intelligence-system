@@ -8,6 +8,8 @@ from services.attendance_service import (
 )
 from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 from services.student_service import get_student_profile, get_student_record_by_user_id
 
@@ -65,14 +67,29 @@ def add_attendance():
 @role_required("Student")
 def view_attendance():
     try:
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
         student = get_student_record_by_user_id(request.user["user_id"], institution_id=request.user.get("institution_id"))
         if not student:
             return jsonify({"error": "Student not found"}), 404
 
-        attendance = get_attendance(student["id"])
+        all_attendance = get_attendance(student["id"])
 
-        return jsonify(attendance), 200
+        # Apply pagination
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_attendance) if all_attendance else 0
+        offset = (page - 1) * per_page
+        attendance = all_attendance[offset:offset + per_page] if all_attendance else []
+        
+        response = PaginationHelper.paginate(attendance, total, page, per_page)
+        return jsonify(response), 200
 
     except Exception as e:
-        return jsonify({"error": "An internal error occurred"}), 500
-
+        logger.exception("view_attendance failed")
+        error_resp, status_code = create_error_response("SERVER_ERROR", "An internal error occurred", 500)
+        return jsonify(error_resp), status_code

@@ -18,6 +18,8 @@ from services.attendance_service import get_attendance
 from services.skills_service import get_student_skills
 from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 from services.audit_service import record_audit_event
 
 logger = logging.getLogger(__name__)
@@ -38,14 +40,31 @@ def _call_with_institution(func, *args, institution_id=None, **kwargs):
 @role_required("Admin")
 def get_students():
     try:
-        students = _call_with_institution(
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
+        # Get all students
+        all_students = _call_with_institution(
             fetch_all_students,
             institution_id=request.user.get("institution_id"),  # type: ignore[attr-defined]
         )
-        return jsonify(students), 200
+        
+        # Apply pagination
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_students)
+        offset = (page - 1) * per_page
+        students = all_students[offset:offset + per_page]
+        
+        response = PaginationHelper.paginate(students, total, page, per_page)
+        return jsonify(response), 200
     except Exception as e:
         logger.exception("get_students failed")
-        return jsonify({"error": "An internal error occurred"}), 500
+        error_resp, status_code = create_error_response("SERVER_ERROR", "An internal error occurred", 500)
+        return jsonify(error_resp), status_code
 
 
 @student_bp.route("/create-table")

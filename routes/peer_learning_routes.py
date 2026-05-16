@@ -15,6 +15,8 @@ from services.peer_learning_service import (
     record_peer_achievement
 )
 from services.student_service import get_student_record_by_user_id
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 peer_learning_bp = Blueprint('peer_learning', __name__)
 
@@ -65,48 +67,46 @@ def get_peer_feed():
     Get personalized peer feed (with privacy controls).
     
     Query Parameters:
-        - limit: Max items (default 50)
-        - offset: Pagination offset (default 0)
+        - page: Page number (default 1)
+        - per_page: Items per page (default 20, max 100)
         - types: Filter by achievement types (placement,skill,badge,goal)
         
     Example:
-        GET /student/peer-feed?limit=20&types=placement,skill
+        GET /student/peer-feed?page=1&per_page=20&types=placement,skill
     """
     try:
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
         student = get_student_record_by_user_id(g.user_id, institution_id=g.institution_id)
         if not student:
             return jsonify({"error": "Student profile not found"}), 404
         
-        limit = request.args.get('limit', 50, type=int)
-        offset = request.args.get('offset', 0, type=int)
+        # Convert page-based to offset-based for service call
+        page = params['page']
+        per_page = min(params['per_page'], 100)  # Max 100 items per request
+        offset = (page - 1) * per_page
+        
         types_str = request.args.get('types', '')
-        
         achievement_types = [t.strip() for t in types_str.split(',')] if types_str else None
-        
-        # Validate limit
-        limit = min(limit, 100)  # Max 100 items per request
         
         feed_items, total_count = get_peer_feed_for_student(
             student_id=student['id'],
-            limit=limit,
+            limit=per_page,
             offset=offset,
             achievement_types=achievement_types,
             institution_id=g.institution_id,
         )
         
-        return jsonify({
-            'success': True,
-            'feed': feed_items,
-            'pagination': {
-                'limit': limit,
-                'offset': offset,
-                'total': total_count,
-                'has_more': (offset + limit) < total_count
-            }
-        }), 200
+        response = PaginationHelper.paginate(feed_items, total_count, page, per_page)
+        return jsonify(response), 200
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        error_resp, status_code = create_error_response("SERVER_ERROR", str(e), 500)
+        return jsonify(error_resp), status_code
 
 
 @peer_learning_bp.route('/student/peer-achievements', methods=['GET'])

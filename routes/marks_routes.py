@@ -4,7 +4,8 @@ from flask import Blueprint, request, jsonify
 from services.marks_service import add_marks, get_marks, save_marks
 from auth.auth_middleware import token_required, role_required
 from utils.validators import RequestValidator
-from utils.validators import RequestValidator
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 marks_bp = Blueprint("marks_bp", __name__)
 
@@ -63,8 +64,26 @@ def fetch_marks():
         if not user or user.get("role_id") not in (1, 2):
             return jsonify({"error": "Access denied"}), 403
 
-        data = get_marks()
-        return jsonify(data), 200
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
+        # Get all marks
+        all_marks = get_marks()
+        
+        # Apply pagination
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_marks) if all_marks else 0
+        offset = (page - 1) * per_page
+        marks = all_marks[offset:offset + per_page] if all_marks else []
+        
+        response = PaginationHelper.paginate(marks, total, page, per_page)
+        return jsonify(response), 200
 
     except Exception as e:
-        return jsonify({"error": "An internal error occurred"}), 500
+        logger.exception("fetch_marks failed")
+        error_resp, status_code = create_error_response("SERVER_ERROR", "An internal error occurred", 500)
+        return jsonify(error_resp), status_code

@@ -29,7 +29,7 @@ itsdangerous==2.2.0
 google-generativeai==0.8.4
 
 # Data Export & File Handling
-openpyxl==3.11.0  # Excel export support
+openpyxl==3.1.5  # Excel export support
 reportlab==4.0.9  # PDF generation
 python-magic==0.4.27  # File type detection
 
@@ -40,4 +40,14 @@ Pillow==10.1.0  # Image processing
 # Data Processing
 pandas==2.1.3  # CSV/Excel data manipulation
 numpy==1.26.2  # Numerical operations
+
+# Validation & Serialization
+marshmallow==3.20.1  # Request/response validation and serialization
+
+# Caching
+flask-caching==2.1.0  # Redis-backed caching
+redis==5.0.1  # Redis client
+
+# Security & Input Sanitization
+bleach==6.1.0  # HTML/input sanitization
 

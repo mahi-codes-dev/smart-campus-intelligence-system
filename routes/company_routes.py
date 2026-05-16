@@ -20,6 +20,8 @@ from services.company_matching_service import (
     get_all_companies,
 )
 from services.student_service import get_student_record_by_user_id
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 company_bp = Blueprint("company", __name__)
 logger = logging.getLogger(__name__)
@@ -85,16 +87,30 @@ def seed_companies():
 @token_required
 @role_required("Admin")
 def admin_list_companies():
-    """Admin: list all companies for management."""
+    """Admin: list all companies for management with pagination."""
     try:
-        companies = get_all_companies()
-        return jsonify({
-            "total": len(companies),
-            "companies": companies
-        }), 200
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
+        all_companies = get_all_companies()
+        
+        # Apply pagination
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_companies) if all_companies else 0
+        offset = (page - 1) * per_page
+        companies = all_companies[offset:offset + per_page] if all_companies else []
+        
+        response = PaginationHelper.paginate(companies, total, page, per_page)
+        response["meta"]["total"] = total
+        return jsonify(response), 200
     except Exception as e:
         logger.exception("admin_list_companies failed")
-        return jsonify({"error": "Could not fetch companies"}), 500
+        error_resp, status_code = create_error_response("SERVER_ERROR", "Could not fetch companies", 500)
+        return jsonify(error_resp), status_code
 
 
 @company_bp.route("/admin/companies", methods=["POST"])

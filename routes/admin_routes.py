@@ -17,6 +17,8 @@ from services.institution_service import create_institution, get_institution_con
 from services.report_job_service import create_report_job, get_report_job
 from services.subject_service import create_subject, delete_subject, get_all_subjects
 from services.student_service import create_department, delete_department, get_department_catalog
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 admin_bp = Blueprint("admin_bp", __name__)
 
@@ -38,11 +40,29 @@ def fetch_admin_stats(current_user):
 @role_required("Admin")
 def fetch_admin_users(current_user):
     try:
-        users = get_all_users(institution_id=None if current_user.get("is_super_admin") else current_user.get("institution_id"))
-        return jsonify(users), 200
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
+        # Get all users and apply pagination
+        all_users = get_all_users(institution_id=None if current_user.get("is_super_admin") else current_user.get("institution_id"))
+        
+        # Simple list-based pagination (convert to database query pagination in production)
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_users)
+        offset = (page - 1) * per_page
+        users = all_users[offset:offset + per_page]
+        
+        response = PaginationHelper.paginate(users, total, page, per_page)
+        return jsonify(response), 200
 
     except Exception as e:
-        return jsonify({"error": "An internal error occurred"}), 500
+        logger.exception("fetch_admin_users failed")
+        error_resp, status_code = create_error_response("SERVER_ERROR", "An internal error occurred", 500)
+        return jsonify(error_resp), status_code
 
 
 @admin_bp.route("/admin/data-quality", methods=["GET"])
@@ -138,10 +158,30 @@ def import_admin_students(current_user):
 @role_required("Admin")
 def fetch_audit_logs(current_user):
     try:
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
         institution_id = None if current_user.get("is_super_admin") else current_user.get("institution_id")
-        return jsonify(list_audit_events(institution_id=institution_id, limit=request.args.get("limit", 100))), 200
-    except Exception:
-        return jsonify({"error": "An internal error occurred"}), 500
+        
+        # Get all audit logs
+        all_logs = list_audit_events(institution_id=institution_id, limit=1000)
+        
+        # Apply pagination
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_logs)
+        offset = (page - 1) * per_page
+        logs = all_logs[offset:offset + per_page]
+        
+        response = PaginationHelper.paginate(logs, total, page, per_page)
+        return jsonify(response), 200
+    except Exception as e:
+        logger.exception("fetch_audit_logs failed")
+        error_resp, status_code = create_error_response("SERVER_ERROR", "An internal error occurred", 500)
+        return jsonify(error_resp), status_code
 
 
 @admin_bp.route("/admin/reports/jobs", methods=["POST"])

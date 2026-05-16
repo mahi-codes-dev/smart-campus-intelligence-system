@@ -12,6 +12,8 @@ from services.goals_service import (
 )
 from services.student_service import get_student_profile, get_student_record_by_user_id
 from utils.response import success_response, error_response
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 goals_bp = Blueprint("goals", __name__, url_prefix="/api/goals")
 
@@ -30,13 +32,30 @@ def _student_id():
 @token_required
 @role_required("Student")
 def list_goals():
-    """GET /api/goals/?status=active  – list goals, optionally filtered."""
+    """GET /api/goals/?status=active&page=1&per_page=20  – list goals, optionally filtered with pagination."""
     sid = _student_id()
     if sid is None:
         return error_response("Student not found", 404)
+    
+    # Get pagination parameters
+    params, errors = PaginationHelper.get_pagination_params()
+    if errors:
+        error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+        return jsonify(error_resp), status_code
+    
+    # Get all goals filtered by status if provided
     status = request.args.get("status")
-    goals = get_student_goals(sid, status)
-    return success_response(goals)
+    all_goals = get_student_goals(sid, status)
+    
+    # Apply pagination
+    page = params['page']
+    per_page = params['per_page']
+    total = len(all_goals)
+    offset = (page - 1) * per_page
+    goals = all_goals[offset:offset + per_page]
+    
+    response = PaginationHelper.paginate(goals, total, page, per_page)
+    return jsonify(response), 200
 
 
 @goals_bp.route("/", methods=["POST"])

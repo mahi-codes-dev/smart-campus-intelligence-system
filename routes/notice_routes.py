@@ -3,6 +3,8 @@ from flask import Blueprint, jsonify, request
 from auth.auth_middleware import token_required, role_required
 from services.notice_board_service import NoticeBoardService
 from utils.validators import RequestValidator
+from utils.pagination import PaginationHelper
+from utils.schemas import create_error_response
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,12 @@ def create_notice(current_user):
 @token_required
 def get_notices(current_user):
     try:
+        # Get pagination parameters
+        params, errors = PaginationHelper.get_pagination_params()
+        if errors:
+            error_resp, status_code = create_error_response("INVALID_PARAMS", "Invalid pagination parameters", 400, errors)
+            return jsonify(error_resp), status_code
+
         user_role = current_user["role"]
         user_id = current_user["id"]
         
@@ -66,15 +74,25 @@ def get_notices(current_user):
             roles = ["Student", "All"]
             author = None
             
-        notices = NoticeBoardService.get_notices(
+        all_notices = NoticeBoardService.get_notices(
             target_roles=roles,
             author_id=author,
             institution_id=current_user.get("institution_id"),
         )
-        return jsonify({"data": notices}), 200
+        
+        # Apply pagination
+        page = params['page']
+        per_page = params['per_page']
+        total = len(all_notices)
+        offset = (page - 1) * per_page
+        notices = all_notices[offset:offset + per_page]
+        
+        response = PaginationHelper.paginate(notices, total, page, per_page)
+        return jsonify(response), 200
     except Exception as e:
         logger.error(f"Error in get_notices route: {e}")
-        return jsonify({"error": "An error occurred"}), 500
+        error_resp, status_code = create_error_response("SERVER_ERROR", "An error occurred", 500)
+        return jsonify(error_resp), status_code
 
 @notice_bp.route("/api/notices/<int:notice_id>", methods=["DELETE"])
 @token_required
