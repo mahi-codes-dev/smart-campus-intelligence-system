@@ -7,6 +7,7 @@ import os
 import logging
 import mimetypes
 import uuid
+from contextlib import contextmanager
 from pathlib import Path
 from datetime import datetime
 from werkzeug.utils import secure_filename
@@ -27,16 +28,14 @@ CHUNK_SIZE = 1024 * 1024  # 1MB
 # Create upload folder if it doesn't exist
 UPLOAD_FOLDER.mkdir(exist_ok=True)
 
+@contextmanager
 def _connection_scope(connection=None):
     """Context manager for database connection."""
     if connection:
         yield connection
     else:
-        conn = get_db_connection()
-        try:
+        with get_db_connection() as conn:
             yield conn
-        finally:
-            conn.close()
 
 def ensure_media_table(connection=None):
     """Create media table if it doesn't exist."""
@@ -59,7 +58,7 @@ def ensure_media_table(connection=None):
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY(student_id) REFERENCES students(id),
-                    FOREIGN KEY(faculty_id) REFERENCES faculty(id)
+                    FOREIGN KEY(faculty_id) REFERENCES users(id)
                 )
             """)
             
@@ -76,8 +75,6 @@ def ensure_media_table(connection=None):
             cur.execute("""
                 CREATE INDEX IF NOT EXISTS idx_media_created_at ON media(created_at)
             """)
-            
-        conn.commit()
 
 def is_file_allowed(filename):
     """Check if file type is allowed."""

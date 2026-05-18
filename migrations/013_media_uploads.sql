@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS media (
     id SERIAL PRIMARY KEY,
     file_id UUID UNIQUE NOT NULL,
     student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
-    faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
+    faculty_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     original_filename VARCHAR(255) NOT NULL,
     stored_filename VARCHAR(255) NOT NULL,
     file_type VARCHAR(50),
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS data_exports (
     id SERIAL PRIMARY KEY,
     export_id UUID UNIQUE NOT NULL,
     student_id INTEGER REFERENCES students(id) ON DELETE SET NULL,
-    faculty_id INTEGER REFERENCES faculty(id) ON DELETE SET NULL,
+    faculty_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
     export_type VARCHAR(50) NOT NULL, -- 'csv', 'json', 'pdf', 'xlsx'
     data_type VARCHAR(50) NOT NULL, -- 'marks', 'attendance', 'skills', 'goals', 'performance'
     file_path TEXT,
