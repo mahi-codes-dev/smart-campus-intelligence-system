@@ -19,7 +19,11 @@ def test_admin_can_fetch_students(client, mock_db, monkeypatch, valid_admin_toke
     response = client.get("/students", headers=_auth_header(valid_admin_token))
 
     assert response.status_code == 200
-    assert response.get_json() == expected_students
+    body = response.get_json()
+    assert body["status"] == "success"
+    assert body["data"] == expected_students
+    assert body["pagination"]["total"] == 1
+    assert body["pagination"]["page"] == 1
 
 
 def test_student_dashboard_returns_current_student_data(client, mock_db, monkeypatch, valid_student_token):
