@@ -1,38 +1,58 @@
-# 🚀 Quick Start - Deployment Guide
+# 🚀 Quick Start - Render Deployment Guide
 
 ## One-Line Summary
-We've added **media upload**, **data export**, and **fixed the chatbot UI** with full responsive design and dark mode support.
+**Deploy to production in 10 minutes** with Render.com - No Docker, No Redis, No infrastructure management needed!
 
 ---
 
-## ⚡ Quick Installation (5 minutes)
+## 🚀 Deploy to Render (10 minutes)
 
-### 1. Install Dependencies
+### Quick Prerequisites
+- ✅ GitHub account (sign up free: github.com)
+- ✅ Render account (sign up free: render.com)
+- ✅ Code pushed to GitHub
+
+### Deployment Steps
+
+1. **Push to GitHub**
+   ```bash
+   git add -A
+   git commit -m "Deploy: ready for Render"
+   git push origin dev
+   ```
+
+2. **Deploy on Render** (3 clicks)
+   - Go to https://render.com
+   - Click "New +" → "Blueprint"
+   - Connect your GitHub repository
+   - Select `dev` branch
+   - Click "Deploy"
+   - Wait 5 minutes ☕
+
+3. **Done! 🎉**
+   - Service live at `https://YOUR-SERVICE.onrender.com`
+   - Database automatically created & migrated
+   - Auto-deploy enabled (push → auto redeploy)
+
+### Local Testing (Optional)
 ```bash
-pip install --upgrade pip
+# Only if you want to test locally first
 pip install -r requirements.txt
-```
-
-### 2. Create Upload Directory
-```bash
-mkdir -p uploads
-chmod 755 uploads
-```
-
-### 3. Run Migrations
-```bash
 python app.py
 ```
-App will automatically create all necessary database tables on startup.
-
-### 4. Done! 🎉
-Start using the new features immediately.
 
 ---
 
-## 📝 What You Get
+## � Next Steps After Deployment
 
-### ✅ Media Upload API
+### ✅ Verify Deployment
+```bash
+# Test your live service
+curl https://YOUR-SERVICE.onrender.com/health/live
+# Should return: {"status":"ok","service":"smart-campus-intelligence"}
+```
+
+### ✅ Features Available
 Upload files up to 50MB with automatic validation
 ```bash
 # Upload a file

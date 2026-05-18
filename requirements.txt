@@ -44,9 +44,8 @@ numpy==1.26.2  # Numerical operations
 # Validation & Serialization
 marshmallow==3.20.1  # Request/response validation and serialization
 
-# Caching
-flask-caching==2.1.0  # Redis-backed caching
-redis==5.0.1  # Redis client
+# Note: For Render deployment without Docker/Redis, we use in-process rate limiting
+# and session-based caching. See core/rate_limiter.py for details.
 
 # Security & Input Sanitization
 bleach==6.1.0  # HTML/input sanitization

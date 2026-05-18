@@ -1,11 +1,18 @@
 """
 In-process rate limiter using a sliding-window algorithm.
 
+Optimized for Render deployment (max 2 workers on free tier).
 NOTE: This limiter is per-process. In a multi-worker Gunicorn setup,
 each worker maintains its own window, so the effective limit is
-max_requests * num_workers per IP. For production with many workers,
-swap this for a Redis-backed limiter (e.g. flask-limiter with Redis).
-The current implementation is correct for single-worker or development use.
+max_requests * num_workers per IP. This is acceptable for Render's
+free tier (2 workers max) as it provides ~2x the limit across all workers.
+
+For very high traffic scenarios (future), consider upgrading to:
+- Paid Render tier with load balancer
+- Redis-backed limiter (flask-limiter with Redis)
+- Dedicated rate limiting service
+
+Current setup is production-ready for typical campus usage.
 """
 from collections import defaultdict, deque
 from functools import wraps

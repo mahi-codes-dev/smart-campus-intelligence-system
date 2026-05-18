@@ -6,6 +6,8 @@
 {% block page_title %}System Control Center{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='ai-assistant-modern.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='ai_assistant.css') }}">
 <style>
     .dashboard-premium section,
     .dashboard-premium .card { scroll-margin-top: 100px; }
